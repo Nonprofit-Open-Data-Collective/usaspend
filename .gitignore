@@ -39,8 +39,8 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# pkgdown site
-docs/
+# pkgdown site is committed (GitHub Pages serves main /docs)
+# docs/
 
 # translation temp files
 po/*~
