@@ -100,3 +100,11 @@ reference:
   - us_cache_status
   - usaspend-options
   - usaspend-package
+
+articles:
+- title: Using usaspend
+  navbar: ~
+  contents:
+  - structure
+  - acquisition
+  - panel

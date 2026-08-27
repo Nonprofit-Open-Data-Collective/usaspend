@@ -4,9 +4,9 @@ What the package documentation has to teach, and the measured material to teach
 it with. Written 2026-08-27; numbers are from the 50-nonprofit pilot (302,025
 prime transactions, 39,243 subaward rows) unless marked otherwise.
 
-Nothing here is user-facing text yet. This is the content bank: the facts a
-reader has to be told, in the order that makes them land, so that when
-`vignettes/` gets written the arguing is already done.
+This is the content bank behind `vignettes/`: the facts a reader has to be
+told, in the order that makes them land, so the arguing is done before the
+user-facing text is written. Three vignettes now exist; §1 tracks status.
 
 Companion documents: `ACCOUNTING.md` (the rules), `PLAN.md` (the pipeline).
 
@@ -14,17 +14,26 @@ Companion documents: `ACCOUNTING.md` (the rules), `PLAN.md` (the pipeline).
 
 ## 1. The planned set
 
-| vignette | question it answers | depends on |
-|---|---|---|
-| `usaspend.Rmd` (intro) | UEIs in, panel out — the ten-line path | nothing |
-| `data-model.Rmd` | **How USAspending is structured**: transaction vs award vs subaward, and why the annual panel can only be built from transactions | §2, §3 below |
-| `award-types.Rmd` | What is actually in the data: grants, contracts, IDVs, direct payments, loans — and which of them are revenue | §3 below, `ACCOUNTING.md` §2, §5.6 |
-| `subawards.Rmd` | What "subaward" means here, why direction is the whole problem, and what the data cannot see | §2 below, `ACCOUNTING.md` §6 |
-| `accounting.Rmd` | Modifications, de-obligations, the year a claw-back belongs to | `ACCOUNTING.md` §5 |
-| `reconciliation.Rmd` | Why 72% is a good number, and how to read a break | `ACCOUNTING.md` §8 |
+Status as of 2026-08-27: three vignettes are **written** and render offline
+(`vignettes/`); the rest remain planned. `VignetteBuilder: knitr` is in
+`DESCRIPTION` and the pkgdown `articles` index orders them.
 
-The two the user asked for first are `data-model.Rmd` and `accounting.Rmd`. The
-rest can lag.
+| vignette | status | question it answers | depends on |
+|---|---|---|---|
+| `structure.Rmd` | **written** | package architecture: the layers, the canonical schema boundary, and a mermaid diagram of the function-call workflow | — |
+| `acquisition.Rmd` | **written** | API download jobs (cost scales with UEIs) vs annual archives (cost fixed in fiscal years); the measured constraints; `us_extract_plan()` and the ~2,900-UEI crossover; why outbound subawards always cost an extra pass | — |
+| `panel.Rmd` | **written** | reading the normalized output: obligations ≠ cash, `net_revenue = obligation_net − subaward_out_amount`, the not-fetched flag, negatives kept, loans/student aid separable, inbound subawards as a separate org-year table; demos of `us_org_year()`, `us_rollup()` (incl. `total_net`), and `us_adjust_inflation()` | — |
+| `usaspend.Rmd` (intro) | planned | UEIs in, panel out — the ten-line path | nothing |
+| `data-model.Rmd` | planned | **How USAspending is structured**: transaction vs award vs subaward, and why the annual panel can only be built from transactions | §2, §3 below |
+| `award-types.Rmd` | planned | What is actually in the data: grants, contracts, IDVs, direct payments, loans — and which of them are revenue | §3 below, `ACCOUNTING.md` §2, §5.6 |
+| `subawards.Rmd` | planned | What "subaward" means here, why direction is the whole problem, and what the data cannot see | §2 below, `ACCOUNTING.md` §6 |
+| `accounting.Rmd` | planned | Modifications, de-obligations, the year a claw-back belongs to | `ACCOUNTING.md` §5 |
+| `reconciliation.Rmd` | planned | Why 72% is a good number, and how to read a break | `ACCOUNTING.md` §8 |
+
+Of the planned set, `data-model.Rmd` and `accounting.Rmd` come first. The
+written three already cover pieces of the planned ones (`panel.Rmd` carries
+the loan/direct-payment treatment; `acquisition.Rmd` carries the outbound
+subaward asymmetry), so the planned vignettes should link rather than repeat.
 
 Teaching order matters more than completeness. A reader who has not yet
 internalised "an award is a ledger of modifications, not a payment" will
@@ -145,5 +154,13 @@ panel carries gross positive, gross negative and net rather than net alone.
   administrative actions, and a $40M IDV ceiling against $0 obligated. That is
   enough to demonstrate §3.1 and most of `ACCOUNTING.md` §5 live, without a
   network call. Vignettes must build offline.
-- `knitr` and `rmarkdown` are already in `Suggests`; adding
-  `VignetteBuilder: knitr` to `DESCRIPTION` is the only packaging change needed.
+- Packaging is done: `VignetteBuilder: knitr` is in `DESCRIPTION` (`knitr` and
+  `rmarkdown` were already in `Suggests`), and `_pkgdown.yml` carries an
+  `articles` index ordering structure -> acquisition -> panel.
+- The fixture also demonstrates the inbound-subaward asymmetry live:
+  `CFFMYPABYAG3` shows ~$220k of prime obligations against ~$60M received as
+  a subrecipient (`panel.Rmd` uses it). An organization judged on prime awards
+  alone can barely exist as a federal recipient.
+- `structure.Rmd` renders its workflow diagram with mermaid via the jsdelivr
+  CDN in a raw-HTML block. Building the vignette needs no network; *viewing*
+  the diagram does. If that ever bothers CRAN, pre-render the SVG and commit it.

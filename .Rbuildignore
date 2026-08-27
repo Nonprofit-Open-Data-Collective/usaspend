@@ -9,7 +9,6 @@
 ^\.claude$
 ^scratch$
 ^LICENSE\.md$
-^VIGNETTES\.md$
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$

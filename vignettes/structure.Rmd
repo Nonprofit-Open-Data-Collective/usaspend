@@ -1,0 +1,163 @@
+---
+title: "Package architecture"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Package architecture}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+usaspend turns a list of SAM.gov UEIs into a clean **organization × award ×
+year** panel of net federal award activity. The package is organized as a
+pipeline with one hard internal boundary, and every exported function has a
+fixed place in it.
+
+## The shape of the pipeline
+
+Four layers:
+
+1. **Acquisition** — get raw transaction CSVs from USAspending, by either of
+   two interchangeable paths (REST API download jobs, or the bulk annual
+   archives). This layer knows about HTTP, zip files, and duckdb.
+2. **Harmonization** — map both paths' raw columns onto one canonical schema.
+   This is the boundary: everything below it never learns where a row came
+   from.
+3. **Normalization and accounting** — de-duplicate, apply corrections and
+   deletes, classify award and action types, net de-obligations by year,
+   resolve subaward direction. The rules are specified in the project's
+   `ACCOUNTING.md` and implemented one function per section.
+4. **Assembly and analysis** — build the panel, roll it up, deflate it,
+   reconcile it against USAspending's independently computed lifetime totals.
+
+## The workflow, as function calls
+
+A typical session touches four verbs — plan, extract, panel, rollup — and
+each expands into the calls below. Solid arrows are data flow; the dashed
+arrow is a recommendation.
+
+```{=html}
+<pre class="mermaid" style="text-align: center; background: transparent;">
+flowchart TD
+    plan["us_extract_plan()"] -. "recommends a path" .-> extract
+    extract["us_extract()"]
+
+    extract -- "source = 'api'" --> api["us_download_run()<br/>us_download_fetch()"]
+    extract -- "source = 'archive'" --> arch["us_archive_manifest()<br/>us_archive_download()<br/>us_archive_filter()"]
+    extract -- "subawards = 'out'" --> subout["us_fetch_subawards_out()<br/>us_fetch_subawards_batch()"]
+
+    api --> harm["us_harmonize_transactions()<br/>us_harmonize_subawards()"]
+    arch --> harm
+    subout --> harm
+
+    harm == "canonical schema boundary" ==> ntx
+
+    subgraph panelfn ["us_panel()"]
+        direction TB
+        ntx["us_normalize_transactions()"] --> naw["us_normalize_awards()"]
+        ntx --> ledger["us_ledger()"]
+        ledger --> net["us_net_by_year()"]
+        nsb["us_normalize_subawards()"] --> sby["us_subaward_by_year()"]
+        net --> asm(["assemble: org × award × year"])
+        sby --> asm
+        naw --> asm
+    end
+
+    asm --> recon["us_reconcile()<br/>us_audit()"]
+    asm --> orgyr["us_org_year()"]
+    asm --> roll["us_rollup()"]
+    roll --> infl["us_adjust_inflation()"]
+    orgyr --> infl
+</pre>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "neutral" });
+</script>
+<noscript><em>The diagram above requires JavaScript (and an internet
+connection for the mermaid renderer); the layer tables below carry the same
+information.</em></noscript>
+```
+
+In practice you call the top and the bottom of the diagram; `us_panel()`
+runs its interior for you:
+
+```{r, eval = FALSE}
+ex <- us_extract(ueis, years = 2008:2025, subawards = "out")
+p  <- us_panel(ex)
+us_reconcile(p)
+us_rollup(p, year = TRUE) |> us_adjust_inflation(target_year = 2025)
+```
+
+## Why the boundary matters
+
+The two acquisition paths return different raw files: the API path serves
+per-job CSVs named by USAspending's download service; the archive path serves
+whole-fiscal-year files with (nominally) the same columns.
+`us_harmonize_transactions()` and `us_harmonize_subawards()` map both onto
+one canonical schema (`us_schema()`), and **everything downstream is written
+against that schema only**. That is what makes the paths interchangeable —
+you can extract a pilot over the API today and re-extract at scale from the
+archives next month, and the accounting layer cannot tell the difference.
+The boundary is enforced by test, not by convention.
+
+## Function inventory, by layer
+
+**Planning**
+
+| function | role |
+|---|---|
+| `us_extract_plan()` | cost both paths from measured constants; recommend one |
+| `us_award_counts()` | pre-screen a UEI's award volume |
+| `us_validate_uei()` | shape-check UEIs |
+| `us_org_map()` | UEI → organization crosswalk |
+
+**Acquisition**
+
+| function | role |
+|---|---|
+| `us_extract()` | the single entry point; dispatches to a path |
+| `us_download_submit()` / `us_download_status()` / `us_download_fetch()` / `us_download_run()` | API bulk-download job machinery |
+| `us_archive_manifest()` / `us_archive_size()` / `us_archive_download()` / `us_archive_filter()` | annual-archive machinery (duckdb) |
+| `us_fetch_subawards_out()` / `us_fetch_subawards_batch()` / `us_fetch_award()` | outbound subawards, queried per prime award |
+| `us_cache_dir()` / `us_cache_status()` / `us_cache_clear()` | download cache |
+
+**Harmonization (the schema boundary)**
+
+| function | role |
+|---|---|
+| `us_harmonize_transactions()` / `us_harmonize_subawards()` | raw columns → canonical schema |
+| `us_schema()` / `us_empty()` | the canonical table definitions |
+
+**Normalization and accounting**
+
+| function | role |
+|---|---|
+| `us_normalize_transactions()` | de-duplicate; corrections and deletes; aggregate records; anomaly flags |
+| `us_normalize_awards()` | the award spine; latest-non-missing attributes |
+| `us_normalize_subawards()` | direction; de-duplicate FSRS restatements |
+| `us_classify_award_type()` / `us_classify_action()` / `us_award_type_codes()` | code tables (labels come from codes, never description strings) |
+| `us_ledger()` / `us_money_column()` | the signed ledger; which dollar column counts |
+| `us_net_by_year()` | net by year, under a chosen de-obligation policy |
+| `us_subaward_by_year()` | subaward flows by direction and year |
+
+**Assembly and analysis**
+
+| function | role |
+|---|---|
+| `us_panel()` | the deliverable: org × award × year |
+| `us_org_year()` | collapse to org × year |
+| `us_rollup()` | general aggregation, folding inbound subawards in |
+| `us_adjust_inflation()` / `us_price_index()` | constant dollars |
+| `us_reconcile()` / `us_audit()` | external and structural checks |
+| `us_sample_extract()` | the bundled offline fixture all documentation runs on |
+
+## Where the rules are written down
+
+Each normalization function's help page states *what* it does; the *why* — 
+with the measured evidence — lives in the project's `ACCOUNTING.md`
+(accounting rules, one numbered section per function) and `PLAN.md`
+(architecture and measured API behaviour), in the
+[package repository](https://github.com/Nonprofit-Open-Data-Collective/usaspend).

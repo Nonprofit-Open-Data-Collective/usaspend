@@ -21,7 +21,7 @@ Companion documents:
 
 ## 1. What the package produces
 
-Four tables, one canonical schema each (`us_schema()`):
+Four canonical tables (`us_schema()`), plus one derived org-level table:
 
 | table | grain | what it is |
 |---|---|---|
@@ -29,11 +29,18 @@ Four tables, one canonical schema each (`us_schema()`):
 | `awards` | prime award | the spine — agency, type, CFDA/NAICS, period of performance, lifetime totals |
 | `subawards` | FSRS report line | pass-through, in both directions |
 | **`panel`** | **org × award × year** | **the deliverable** |
+| `subawards_in` | org × year | subaward revenue *received* -- reported under other primes' award keys, so it cannot sit on this organization's award rows |
 
 The panel carries, per organization-award-year: the awarding agency and
 sub-agency, the award type category, gross positive and gross negative
 obligations and their net, dollars passed through as subawards, and
 `net_revenue = obligation_net − subaward_out_amount`.
+
+Above the panel sit the analysis helpers: `us_org_year()` collapses to
+org × year, `us_rollup()` aggregates to org/year/state grains with inbound
+subawards folded in (adding `total_net = obligation_net + subaward_in −
+subaward_out`), and `us_adjust_inflation()` restates any year-grained table
+into constant dollars via the bundled CPI-U series (`us_price_index()`).
 
 ### One thing the panel is not
 
@@ -75,8 +82,13 @@ visible; and the panel column is named `obligation_net`, never `revenue`.
               us_net_by_year()   us_subaward_by_year()
                          \          /
                        us_panel()  ->  panel + reconciliation
-                         |
-              us_reconcile()  us_audit()
+                        /          \
+         us_reconcile()              us_org_year()  us_rollup()
+         us_audit()                  org x year; org/year/state grains,
+                                     inbound subawards folded in
+                                            |
+                                     us_adjust_inflation()
+                                     constant dollars (bundled CPI-U)
 ```
 
 Everything above the canonical schema boundary is acquisition and knows about
@@ -208,11 +220,7 @@ non-recipients.
 
 ## 5. Normalization and accounting
 
-Specified in full in `ACCOUNTING.md`. Currently **documented placeholders**:
-each function validates its arguments and then stops with a pointer to its
-specification section.
-
-**All implemented and validated against the 50-nonprofit pilot** (302,025 prime
+Specified in full in `ACCOUNTING.md`. **All implemented and validated against the 50-nonprofit pilot** (302,025 prime
 transactions, 39,243 subaward rows; pulled 2026-08-27). The full pipeline runs
 the pilot end-to-end in ~1 minute and yields 168,362 org × award × year rows
 netting to $118.5bn.
@@ -256,26 +264,29 @@ actions; and an IDV with a $40,000,000 ceiling against $0 obligated.
 **Stage 1 — acquisition (done).** Client, job machinery, archive path, canonical
 schema, code tables, fixture, 90 tests passing.
 
-**Stage 2 — normalization (needs the 50-org pilot).** Implement §3, §4 and §6 of
+**Stage 2 — normalization (done).** Implement §3, §4 and §6 of
 `ACCOUNTING.md` against real volume. Deliverable: `us_normalize_*()` and a
 duplication/anomaly report over the pilot.
 
-**Stage 3 — accounting (needs stage 2).** Implement §5 and §7. Deliverable:
+**Stage 3 — accounting (done).** Implement §5 and §7. Deliverable:
 `us_panel()`, both de-obligation policies, and a comparison of what the choice
 costs on the pilot.
 
-**Stage 4 — reconciliation (needs stage 3).** Implement §8. Deliverable: the
+**Stage 4 — reconciliation (done).** Implement §8. Deliverable: the
 lifetime identity check at scale, the obligation-to-outlay gap distribution, and
 subaward coverage rates.
 
 **Stage 5 — scale.** Run the 1,364-UEI top-1000 sample on the API path. Verify
 the archive schema, then run the full crosswalk on the archive path.
 
-**Stage 6 — documentation.** Vignettes teaching the data model, the award-type
-taxonomy, subaward direction, and the accounting rules. Planned set and the
-measured material to build them from are in `VIGNETTES.md`; packaging needs only
-`VignetteBuilder: knitr` in `DESCRIPTION`, and vignettes must build offline off
-`us_sample_extract()`.
+**Stage 6 — documentation (in progress).** Vignettes teaching the data model,
+the award-type taxonomy, subaward direction, and the accounting rules. Planned
+set and the measured material to build them from are in `VIGNETTES.md`. Three
+are written and render offline off `us_sample_extract()`: `structure.Rmd`
+(architecture + workflow diagram), `acquisition.Rmd` (API vs archive path),
+`panel.Rmd` (reading the output; rollups; inflation adjustment).
+`VignetteBuilder: knitr` is in `DESCRIPTION`. Still to write: data model,
+award types, subaward direction, accounting rules, reconciliation.
 
 ### Open questions, in rough priority order
 

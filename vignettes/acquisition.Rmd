@@ -1,0 +1,153 @@
+---
+title: "Choosing an acquisition path: API jobs or annual archives"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Choosing an acquisition path: API jobs or annual archives}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+options(width = 90)
+```
+
+```{r setup, message = FALSE}
+library(usaspend)
+```
+
+`us_extract()` is the single entry point for acquisition, and it can fetch
+the same data two very different ways:
+
+```{r, eval = FALSE}
+# one organization -- the API path
+ex <- us_extract("CFFMYPABYAG3", years = 2015:2025)
+
+# thousands of organizations -- the archive path
+ex <- us_extract(ueis, years = 2008:2025, source = "archive")
+```
+
+Both paths land on the same canonical tables, so nothing downstream knows or
+cares which was used. But their costs scale on different axes, and picking
+wrong can turn minutes into days. This vignette explains the mechanics of
+each, and how `us_extract_plan()` chooses between them.
+
+Every constraint quoted below was **measured live** against
+`api.usaspending.gov`, not read off the documentation.
+
+## Path A — API download jobs: cost scales with the number of UEIs
+
+`us_extract(source = "api")` submits bulk-download jobs to
+`POST /api/v2/download/transactions/`, polls until the server has built the
+files, fetches and unzips them, and harmonizes the CSVs. Each job covers a
+small batch of UEIs and takes 9–85 seconds server-side.
+
+What the measurements say about how to drive it:
+
+- **`recipient_search_text` accepts about 20 values per job.** 20 succeeds,
+  25 fails — the cap is undocumented. In practice large recipients time out
+  server-side well below it, so the package's default batch is **5**, and a
+  failed batch is retried one UEI at a time so a single oversized recipient
+  cannot poison its whole batch.
+- **The job state machine is `ready → running → finished | failed`**, and
+  `ready` means *queued*, not done. (Treating anything other than `running`
+  as terminal — a natural mistake — reads a freshly-queued job as complete
+  and throws the download away.)
+- **The search endpoint (`spending_by_award`) silently caps at 10,000
+  records.** Extraction always uses the download endpoint, which has no cap.
+- **Sustained calls get rate-limited.** The client throttles to 2 requests/s
+  with exponential backoff, and failures are recorded explicitly in the job
+  manifest — a swallowed error looks exactly like a recipient with no awards.
+- **Search is floored at 2007-10-01.** Earlier fiscal years are not reachable
+  on either path.
+
+The by-product that matters: a recipient-filtered download also returns
+subaward rows **where the queried UEI is the subawardee** — inbound revenue
+you cannot get from the archives at all.
+
+## Path B — annual archives: cost is fixed in the number of fiscal years
+
+`us_extract(source = "archive")` downloads USAspending's whole-fiscal-year
+Award Data Archive files and filters them locally with duckdb:
+
+```{r, eval = FALSE}
+man <- us_archive_manifest(2008:2025) |> us_archive_download()
+tx  <- us_archive_filter(ueis, man$csv_dir[1], group = "assistance")
+```
+
+Two archives exist per fiscal year — `assistance` and `contracts` (direct
+payments, loans, and "other" are folded into assistance). A full-year
+assistance archive is ~1.4 GB compressed and unpacks to several CSV parts;
+the duckdb scan then filters on `recipient_uei` at roughly a gigabyte a
+minute. The whole-history cost is a few hours of downloading and scanning —
+**whether you want 100 UEIs or 100,000**.
+
+Two things the archives do not contain:
+
+- **Subawards, in either direction.** The archive files are prime
+  transactions only.
+- Nothing before FY2008 (the same floor as the API).
+
+One assumption to verify on first use: the archive CSVs are expected to carry
+the same column names as the download endpoint. `us_archive_verify_schema()`
+checks that in one call against a real archive and reports exactly which
+mapped columns are missing. Run it before trusting your first archive pull.
+
+## The crossover
+
+API cost grows with UEIs; archive cost is flat. They cross somewhere in the
+low thousands of UEIs. `us_extract_plan()` computes the comparison from the
+measured constants — it makes no network calls, so you can plan offline:
+
+```{r}
+# a batch of 40 organizations
+us_extract_plan(sprintf("DEMO%08d", 1:40), years = 2008:2025)
+```
+
+```{r}
+# the same question at 5,000 organizations
+us_extract_plan(sprintf("DEMO%08d", 1:5000), years = 2008:2025)
+```
+
+Measured order-of-magnitude timings at 18 fiscal years:
+
+| input | API path | archive path |
+|---|---|---|
+| 1 org (3 UEIs) | ~1 min | ~4 hours |
+| 1,364 UEIs | ~2 hours | ~4 hours |
+| 126,784 UEIs | ~6 days | ~4 hours |
+
+`us_extract(source = "auto")` runs the plan and follows its recommendation.
+
+## What neither path gives you: pass-through
+
+Netting out pass-through — computing
+`net_revenue = obligation_net − subaward_out_amount` — needs subawards where
+your organization is the **prime**. A recipient-filtered API pull never
+returns those (it matches on the subawardee), and the archives carry no
+subawards at all. Outbound subawards must be fetched per prime award:
+
+```{r, eval = FALSE}
+ex <- us_extract(ueis, years = 2008:2025, source = "archive", subawards = "out")
+```
+
+`subawards = "out"` walks the extracted award keys through
+`us_fetch_subawards_out()` — batched about 400 award ids per request, with a
+count-first screen so awards reporting no subawards are skipped. Budget
+roughly one extra API call per few hundred awards. Until that pass runs,
+`net_revenue` in the panel equals `obligation_net`, and the panel's `flags`
+column says so.
+
+## Choosing, in one table
+
+| situation | use |
+|---|---|
+| one organization, or a handful | `source = "api"` |
+| up to ~2,000 UEIs | `source = "api"` (check `us_extract_plan()`) |
+| thousands of UEIs or more | `source = "archive"` |
+| you need inbound subawards | the API path (archives have none) |
+| you need outbound subawards / true net revenue | either path **plus** `subawards = "out"` |
+| unsure | `source = "auto"` |
+
+Both paths cache downloads under `us_cache_dir()`, so re-runs skip completed
+work; `us_cache_status()` shows what is already on disk.
