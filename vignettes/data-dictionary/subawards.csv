@@ -1,0 +1,25 @@
+field,type,source,definition
+subaward_key,character,derived,Composite prime_award_key | subaward_number | action_date. The de-duplication key across FSRS restatements (keep the latest report_last_modified).
+prime_award_key,character,raw,Generated unique id of the prime award the subaward sits under. For inbound rows this award usually belongs to ANOTHER organization.
+prime_award_id,character,raw,FAIN or PIID of the prime award. Agencies reuse these.
+prime_uei,character,raw,UEI of the prime recipient - the pass-through entity. On search-fetched rows filled from the Prime Award Recipient UEI field.
+prime_name,character,raw,Legal name of the prime recipient.
+prime_parent_uei,character,raw,UEI of the prime's parent registration.
+subawardee_uei,character,raw/stamped,UEI of the first-tier subrecipient. Often null for government subawardees in bulk files; on search-fetched rows stamped from the query because the search view returns it null.
+subawardee_name,character,raw,Legal name of the subrecipient.
+subawardee_parent_uei,character,raw,UEI of the subrecipient's parent registration.
+subaward_number,character,raw,The prime's own identifier for the subaward. Format can differ between USAspending views.
+subaward_type,character,raw,sub-grant or sub-contract.
+subaward_amount,numeric,raw,Committed subaward dollars. A commitment not a disbursement; subawards under the 30k USD FSRS threshold are unreported so totals are a floor.
+subaward_action_date,date,raw,When the subaward was committed. The date flows are booked on.
+subaward_year,integer,derived,Calendar year of subaward_action_date.
+subaward_fiscal_year,integer,derived,Federal fiscal year of subaward_action_date. Recomputed.
+report_year,integer,raw,FSRS reporting period year. Lags the action - sometimes across fiscal years. Bulk files only.
+report_month,integer,raw,FSRS reporting period month. Bulk files only.
+report_last_modified,date,raw,When the FSRS report was last restated. The restatement tiebreaker. Bulk files only.
+prime_award_amount,numeric,raw,The prime award's lifetime obligation - context for pass-through share.
+prime_award_total_outlayed,numeric,raw,The prime award's lifetime outlays.
+prime_awarding_agency_name,character,raw,Agency behind the prime award.
+prime_cfda_numbers,character,raw,Assistance listing(s) behind the prime award.
+direction,character,derived,in / out / internal / unrelated relative to the organization's UEI set. NA in a raw extract; assigned by us_normalize_subawards(). Only out is subtracted from revenue.
+source_file,character,derived,Provenance: bulk CSV name or api:spending_by_award:subawards[_in].

@@ -6,7 +6,7 @@ prime transactions, 39,243 subaward rows) unless marked otherwise.
 
 This is the content bank behind `vignettes/`: the facts a reader has to be
 told, in the order that makes them land, so the arguing is done before the
-user-facing text is written. All nine vignettes now exist; §1 tracks status.
+user-facing text is written. All ten vignettes now exist; §1 tracks status.
 
 Companion documents: `ACCOUNTING.md` (the rules), `PLAN.md` (the pipeline).
 
@@ -14,7 +14,7 @@ Companion documents: `ACCOUNTING.md` (the rules), `PLAN.md` (the pipeline).
 
 ## 1. The planned set
 
-Status as of 2026-08-28: **all nine vignettes are written** and render
+Status as of 2026-08-28: **all ten vignettes are written** and render
 offline from `us_sample_extract()`. `VignetteBuilder: knitr` is in
 `DESCRIPTION`; the pkgdown `articles` index groups them ("The data" /
 "The pipeline", with `usaspend.Rmd` as the Get-started page). This file
@@ -26,6 +26,7 @@ remains the content bank behind them.
 | `acquisition.Rmd` | **written** | API download jobs (cost scales with UEIs) vs annual archives (cost fixed in fiscal years); the measured constraints; `us_extract_plan()` and the ~2,900-UEI crossover; why outbound subawards always cost an extra pass | — |
 | `panel.Rmd` | **written** | reading the normalized output: obligations ≠ cash, `net_revenue = obligation_net − subaward_out_amount`, the not-fetched flag, negatives kept, loans/student aid separable, inbound subawards as a separate org-year table; demos of `us_org_year()`, `us_rollup()` (incl. `total_net`), and `us_adjust_inflation()` | — |
 | `usaspend.Rmd` (intro) | **written** | UEIs in, panel out — the ten-line path | nothing |
+| `data-dictionary.Rmd` | **written** | reference: ER diagrams of source / extract / panel, keys and cardinality, accounting-critical fields per table, code-value tables, pilot descriptives by award type; long dictionaries as CSVs in `vignettes/data-dictionary/` | — |
 | `data-model.Rmd` | **written** | **How USAspending is structured**: transaction vs award vs subaward, and why the annual panel can only be built from transactions | §2, §3 below |
 | `award-types.Rmd` | **written** | What is actually in the data: grants, contracts, IDVs, direct payments, loans — and which of them are revenue | §3 below, `ACCOUNTING.md` §2, §5.6 |
 | `subawards.Rmd` | **written** | What "subaward" means here, why direction is the whole problem, and what the data cannot see | §2 below, `ACCOUNTING.md` §6 |

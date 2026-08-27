@@ -1,0 +1,357 @@
+---
+title: "Data dictionary: tables, keys, and relationships"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Data dictionary: tables, keys, and relationships}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+options(width = 90)
+```
+
+```{r setup, message = FALSE, warning = FALSE}
+library(usaspend)
+```
+
+This is the reference companion to `vignette("data-model")`: what the
+package queries at USAspending, what the extract and panel objects contain,
+which fields drive the accounting, and what the code values mean. Short
+tables here carry only keys and accounting-critical fields; every table
+links to its **full dictionary as CSV** in
+[`vignettes/data-dictionary/`](https://github.com/Nonprofit-Open-Data-Collective/usaspend/tree/main/vignettes/data-dictionary).
+
+## 1. The source side: what the package actually queries
+
+It is *not* one query per table. The package touches **four server
+interfaces**, and they map onto the extract's tables asymmetrically — one
+bulk-download job returns both prime transactions *and* subawards; the
+archives return transactions only; subawards at scale need their own search
+queries.
+
+| # | interface | what one request covers | populates |
+|---|---|---|---|
+| 1 | `POST /api/v2/download/transactions/` (bulk job) | up to ~20 UEIs × a date range → a zip of 4 CSVs: assistance + contract prime transactions, **plus** FSRS subawards where a queried UEI is the *subawardee* | `transactions` **and** `subawards` (inbound) |
+| 2 | Award Data Archive files (`files.usaspending.gov`) | one fiscal year × one family, *all recipients* → filtered locally with duckdb | `transactions` only |
+| 3 | `POST /api/v2/search/spending_by_award/` with `subawards = true` | FSRS lines filtered by prime `award_ids` (→ *outbound*) or by `recipient_search_text` (→ *inbound*) | `subawards` |
+| 4 | `GET /api/v2/awards/{award_key}/` | one prime award's summary (`subaward_count`, lifetime totals) | the pass-through screen; `awards` enrichment |
+
+Behind those endpoints, USAspending's warehouse — as far as these queries
+can see it — looks like this. Two transaction systems (FABS for assistance,
+FPDS for contracts) hang off a derived award summary; FSRS subaward reports
+reference a prime award and *two* recipients:
+
+```{=html}
+<pre class="mermaid" style="text-align: center; background: transparent;">
+erDiagram
+    RECIPIENT ||--o{ AWARD : "holds (current)"
+    AWARD ||--o{ FABS_TRANSACTION : "assistance actions"
+    AWARD ||--o{ FPDS_TRANSACTION : "contract actions"
+    AWARD ||--o{ FSRS_SUBAWARD : "prime side"
+    RECIPIENT ||--o{ FSRS_SUBAWARD : "subawardee side"
+    AWARD |o--o{ AWARD : "parent IDV"
+    RECIPIENT {
+        string uei PK
+        string parent_uei FK
+        string name
+    }
+    AWARD {
+        string award_key PK "generated_unique_award_id"
+        string award_id "FAIN or PIID -- reused, not unique"
+        string recipient_uei FK "as of latest action"
+        numeric total_obligated "lifetime, recomputed per pull"
+    }
+    FABS_TRANSACTION {
+        string transaction_key PK
+        string award_key FK
+        date action_date
+        numeric federal_action_obligation
+        string correction_delete_code
+    }
+    FPDS_TRANSACTION {
+        string transaction_key PK
+        string award_key FK
+        date action_date
+        numeric federal_action_obligation
+    }
+    FSRS_SUBAWARD {
+        string subaward_number "unique per prime only"
+        string prime_award_key FK
+        string subawardee_uei FK "often null"
+        numeric subaward_amount
+        date subaward_action_date
+    }
+</pre>
+```
+
+Two source facts worth reading off the diagram: `award_id` (FAIN/PIID) is
+**not** unique — agencies reuse it, which is why every join in the package
+runs on the generated `award_key`; and an FSRS line has *two* recipient
+edges, which is why subaward **direction** exists only relative to an
+organization's UEI set.
+
+## 2. The extract object — `us_extract()` / `us_sample_extract()`
+
+Four elements: two data tables plus the acquisition manifest (`jobs`) and
+provenance (`meta`). The tables are **harmonized but not normalized** —
+duplicates, `D`-flagged deletes, and aggregate records are still present,
+which is why `us_panel()` re-normalizes.
+
+```{=html}
+<pre class="mermaid" style="text-align: center; background: transparent;">
+erDiagram
+    AWARD ||--o{ TRANSACTIONS : "award_key (implicit -- spine built later)"
+    AWARD |o--o{ SUBAWARDS : "prime_award_key (inbound rows point OUTSIDE the extract)"
+    TRANSACTIONS {
+        string transaction_key PK
+        string award_key FK
+        date action_date
+        numeric federal_action_obligation
+    }
+    SUBAWARDS {
+        string subaward_key PK "prime|number|date"
+        string prime_award_key FK
+        string prime_uei
+        string subawardee_uei
+        numeric subaward_amount
+    }
+</pre>
+```
+
+Note the second edge: for *inbound* subaward rows the prime award belongs to
+**another organization**, so `prime_award_key` usually matches nothing in
+your own `transactions`. That is by design — inbound rows are revenue that
+prime data cannot see.
+
+**`$transactions`** — one row per award action
+([full dictionary, 48 fields](https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/transactions.csv)):
+
+| field | role in the accounting |
+|---|---|
+| `transaction_key` | **PK**; the de-duplication key |
+| `award_key` | **FK** to the award; every join runs on it |
+| `action_date` | the date money is booked on; years recomputed from it |
+| `federal_action_obligation` | **the revenue measure**; sign = truth |
+| `pragmatic_obligation` | loan-aware variant (subsidy cost for loans) |
+| `loan_face_value` / `loan_subsidy_cost` | carried separately; never revenue |
+| `award_total_obligated` | award-*lifetime* stamp; the reconciliation target |
+| `recipient_uei` | who held the award *at this action* (can change) |
+| `award_group` / `award_family` / `award_type_code` | the include/exclude switches |
+| `action_type_code` / `action_class` | what kind of action (context only — see §5) |
+| `correction_delete_code` | `C` kept, `D` dropped in normalization |
+| `record_type_code` | `1` = aggregate record, dropped |
+| `last_modified_date` | de-duplication tiebreaker; vintage marker |
+
+**`$subawards`** — one row per FSRS report line
+([full dictionary, 24 fields](https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/subawards.csv)):
+
+| field | role in the accounting |
+|---|---|
+| `subaward_key` | **PK**: `prime_award_key \| subaward_number \| action_date`; restatement de-dup key |
+| `prime_award_key` | **FK** to the prime award |
+| `prime_uei` / `subawardee_uei` | the two sides; direction is computed from them |
+| `subaward_amount` | committed dollars (≥ \$30k only; a floor) |
+| `subaward_action_date` | the booking date (report dates lag) |
+| `report_last_modified` | restatement tiebreaker |
+| `direction` | `NA` until `us_normalize_subawards()` assigns it |
+
+**`$jobs`** is the acquisition manifest (download jobs or archive files);
+**`$meta`** records `uei`, `years`, `source`, and `subawards` — which
+directions were fetched, so a zero can never pass as a measured zero.
+
+## 3. The panel object — `us_panel()`
+
+Five tables plus `meta`. The panel is keyed **org × award × year**;
+organization-level inbound revenue lives in its own table because it cannot
+sit on another organization's award rows.
+
+```{=html}
+<pre class="mermaid" style="text-align: center; background: transparent;">
+erDiagram
+    ORG ||--o{ PANEL : "org_id"
+    AWARDS ||--o{ PANEL : "award_key"
+    AWARDS ||--o{ TRANSACTIONS : "award_key"
+    AWARDS |o--o{ SUBAWARDS : "prime_award_key (outbound)"
+    ORG ||--o{ SUBAWARDS_IN : "org_id x year"
+    ORG {
+        string org_id PK "from us_org_map()"
+    }
+    AWARDS {
+        string award_key PK
+        string recipient_uei "as of latest action"
+        numeric total_obligated "reconciliation target"
+        int n_recipients "gt 1 = PI transfer"
+    }
+    TRANSACTIONS {
+        string transaction_key PK
+        string award_key FK
+    }
+    PANEL {
+        string org_id PK
+        string award_key PK
+        int year PK
+        numeric obligation_net
+        numeric subaward_out_amount
+        numeric net_revenue
+    }
+    SUBAWARDS {
+        string subaward_key PK
+        string prime_award_key FK
+        string direction
+    }
+    SUBAWARDS_IN {
+        string org_id PK
+        int year PK
+        numeric subaward_in_amount
+    }
+</pre>
+```
+
+**`$panel`** — the deliverable
+([full dictionary, 30 fields](https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/panel.csv)):
+
+| field | role |
+|---|---|
+| `org_id` + `award_key` + `year` | **composite PK** (grain asserted by `us_audit()`) |
+| `obligation_positive` / `obligation_negative` | gross components — never dropped |
+| `obligation_net` | their sum; a commitment, not cash; can be negative |
+| `subaward_out_amount` | pass-through paid onward |
+| **`net_revenue`** | `obligation_net − subaward_out_amount` |
+| `loan_face_value` | carried separately, never in `net_revenue` |
+| `award_family` | the include/exclude switch (loans, student aid) |
+| `flags` | `subawards_out_not_fetched` ⇒ `net_revenue = obligation_net` |
+
+**`$awards`** — the spine
+([full dictionary, 33 fields](https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/awards.csv)): attributes as of
+the latest action, `total_obligated` (the reconciliation target),
+`obligated_in_extract` (what this window saw), and `n_recipients` (> 1
+flags PI-transfer awards).
+
+**`$transactions` / `$subawards`** — the normalized inputs, same shapes as
+§2 plus normalization flags (`is_zero_dollar`, `is_deobligation`,
+`is_stray_uei`, …) and assigned `direction`.
+
+**`$subawards_in`** — org × year inbound revenue
+([dictionary](https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/subawards_in.csv)): `subaward_in_amount`,
+`n_subawards_in`. Folded into totals by `us_rollup()` as
+`total_net = obligation_net + subaward_in − subaward_out`.
+
+## 4. Code values: award types and families
+
+The full award-type taxonomy, classified live from the package
+(`us_classify_award_type()` over every code), with each type's footprint in
+the 50-nonprofit pilot. A zero is informative: loan guarantees (08) and
+insurance (09) exist in the taxonomy but never appear in this population.
+
+```{r}
+codes <- us_classify_award_type(us_award_type_codes())
+d <- read.csv("data-dictionary/pilot-descriptives.csv")
+n <- aggregate(cbind(actions = n_transactions, awards = n_awards) ~ award_type_code,
+               data = d, sum)
+tab <- merge(codes, n, by = "award_type_code", all.x = TRUE)
+tab[is.na(tab)] <- 0
+tab <- tab[order(tab$award_group, tab$award_family, tab$award_type_code),
+           c("award_group", "award_family", "award_type_code", "award_type_label",
+             "actions", "awards")]
+names(tab) <- c("group", "family", "code", "label", "pilot actions", "pilot awards")
+tab$`pilot actions` <- format(tab$`pilot actions`, big.mark = ",")
+tab$`pilot awards`  <- format(tab$`pilot awards`,  big.mark = ",")
+knitr::kable(tab, row.names = FALSE, align = c("l", "l", "l", "l", "r", "r"))
+```
+
+The families are the revenue-treatment switch:
+
+| `award_family` | treatment |
+|---|---|
+| `grant` | revenue |
+| `contract` | revenue |
+| `other` | revenue-like (cooperative R&D) |
+| `direct_payment` | usually excluded — student aid flowing *through* the institution |
+| `loan` | obligation is \$0 by design; face value never touches revenue |
+| `idv` | a vehicle: obligations only, never ceilings; money is on the delivery orders |
+
+## 5. Code values: action types and classes
+
+Action codes **collide across families** — the same letter means different
+things — so classification always takes the family:
+
+```{r}
+knitr::kable(us_classify_action(c("A", "B", "C", "D"), "assistance"))
+knitr::kable(us_classify_action(c("A", "B", "C", "D", "G", "K", "M"), "contract"))
+```
+
+`action_class` describes *intent*, never sign: a `continuation` can carry a
+negative amount and a `termination` can carry zero. De-obligations are
+identified from the amount's sign alone.
+
+## 6. Code values: subaward direction
+
+Direction exists only relative to an organization's UEI set, which is why
+`us_normalize_subawards()` requires one:
+
+| `direction` | meaning | panel treatment |
+|---|---|---|
+| `out` | the org is the prime — pass-through it owes onward | **subtracted**: `net_revenue = obligation_net − subaward_out` |
+| `in` | the org is the subawardee — revenue invisible in prime data | added, in `subawards_in` (org × year) |
+| `internal` | both sides belong to the org (e.g. NYU → NYU School of Medicine) | excluded from both flows |
+| `unrelated` | neither side is the org (multi-recipient award now held elsewhere) | excluded |
+
+## 7. The pilot, summarized at this grain
+
+The 50-nonprofit pilot (FY2008–FY2025; 302,025 transactions; outbound
+pass-through fetched per prime award), by award group, family, and type.
+Static snapshot computed by
+[`data-raw/make-pilot-descriptives.R`](https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/data-raw/make-pilot-descriptives.R);
+also available as [CSV](https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/pilot-descriptives.csv).
+
+```{r}
+d <- read.csv("data-dictionary/pilot-descriptives.csv")
+## dollars in billions; "\\$" keeps pandoc from pairing the dollar signs
+## across cells and reading the span between them as math
+usd <- function(x) {
+  s <- sprintf("\\$%.2f", abs(x) / 1e9)
+  ifelse(x < 0 & round(abs(x) / 1e9, 2) > 0, paste0("-", s), s)
+}
+short <- c("Direct Payment for Specified Use"     = "Direct Payment (Specified)",
+           "Direct Payment with Unrestricted Use" = "Direct Payment (Unrestricted)",
+           "Other Financial Assistance"           = "Other Assistance",
+           "IDC Indefinite Quantity"              = "IDC (Indef. Qty)",
+           "Definitive Contract"                  = "Definitive")
+type <- ifelse(d$award_type_label %in% names(short),
+               short[d$award_type_label], d$award_type_label)
+row <- function(fam, ty, x) data.frame(
+  family = fam, type = ty,
+  actions = format(x$n_transactions, big.mark = ","),
+  awards  = format(x$n_awards, big.mark = ","),
+  positive = usd(x$obligation_positive), negative = usd(x$obligation_negative),
+  net = usd(x$obligation_net), passthrough = usd(x$subaward_out),
+  `net revenue` = usd(x$net_revenue), check.names = FALSE)
+tab <- rbind(
+  row(d$award_family, type, d),
+  row("", "**TOTAL**", as.data.frame(t(colSums(
+    d[, c("n_transactions", "n_awards", "obligation_positive", "obligation_negative",
+          "obligation_net", "subaward_out", "net_revenue")])))))
+knitr::kable(tab, align = c("l", "l", rep("r", 7)))
+```
+
+Dollar figures are billions. The `family` column implies the award group:
+`grant`, `direct_payment`, `loan`, and `other` are assistance awards;
+`contract` and `idv` are contracts. (`awards` in the TOTAL row slightly
+overcounts distinct awards, since a few span families.)
+
+The table is the whole accounting argument in one place: project grants and
+cooperative agreements carry both the dollars and nearly all the
+pass-through; direct payments are student aid; loans net to zero obligations
+by design; IDVs hold no money of their own. Total net revenue:
+**\$`r format(round(sum(d$net_revenue) / 1e9, 1), nsmall = 1)`bn** on
+\$`r format(round(sum(d$obligation_net) / 1e9, 1), nsmall = 1)`bn of net
+obligations.
+
+```{=html}
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "neutral" });
+</script>
+```

@@ -107,6 +107,14 @@ award's life. Two consequences, both measured:
   year, and why a UEI-filtered extract legitimately fails the lifetime
   identity on such awards (`vignette("reconciliation")`).
 
+## Where to find every field
+
+The reference companion to this vignette is `vignette("data-dictionary")`:
+entity-relationship diagrams of the source database, the extract, and the
+panel; keys and cardinality; the accounting-critical fields of every table;
+the award-type, action-class, and direction code tables; and links to full
+per-table dictionaries as CSV.
+
 ## Transactions come dirty
 
 The raw ledger needs cleaning before it can be netted — duplicates from

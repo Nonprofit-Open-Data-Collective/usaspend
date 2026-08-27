@@ -1,0 +1,31 @@
+field,type,source,definition
+org_id,character,derived,Organization id from the UEI crosswalk (us_org_map()). Without a crosswalk each UEI is its own organization. Part of the primary key.
+award_key,character,raw,The prime award. Part of the primary key.
+year,integer,derived,Calendar or fiscal year (see year_basis). Part of the primary key.
+year_basis,character,derived,calendar or fiscal - which year definition the panel was built on.
+award_group,character,spine,assistance or contract (from the award spine).
+award_family,character,spine,grant / contract / idv / direct_payment / loan / other. The include/exclude switch for revenue analyses.
+award_type_code,character,spine,Award type code.
+award_type_label,character,spine,Stable award type label.
+awarding_agency_code,character,spine,Awarding toptier agency code.
+awarding_agency_name,character,spine,Awarding toptier agency name.
+awarding_sub_agency_name,character,spine,Awarding sub-agency name.
+funding_agency_name,character,spine,Funding agency name.
+cfda_number,character,spine,Assistance listing number.
+naics_code,character,spine,Industry code (contracts).
+recipient_state,character,spine,Recipient state (basis of the state rollup).
+n_transactions,integer,derived,Actions booked to this org-award-year.
+n_actions_positive,integer,derived,Actions with positive obligations.
+n_actions_negative,integer,derived,Actions with negative obligations (de-obligations).
+obligation_positive,numeric,derived,Sum of positive obligations. Gross inflow of commitments.
+obligation_negative,numeric,derived,Sum of negative obligations (a negative number). Gross de-obligations.
+obligation_net,numeric,derived,obligation_positive + obligation_negative. A commitment measure - not cash. Can legitimately be negative.
+deobligation_prior_year,numeric,derived,Under deobligation_policy = restate: dollars moved into this year from later-posted reversals. Zero under as_posted.
+loan_face_value,numeric,derived,Loan face value booked to this cell. Carried separately; never part of net_revenue.
+loan_subsidy_cost,numeric,derived,Loan subsidy cost booked to this cell. Carried separately.
+subaward_out_amount,numeric,derived,Pass-through: subaward dollars this org committed onward in this award-year. Zero when outbound subawards were not fetched - see flags.
+n_subawards_out,integer,derived,Count of outbound subawards booked to this cell.
+subaward_in_amount,numeric,derived,Inbound subawards joined onto this award row - rare (requires the org to be prime and subawardee on the same award). Org-level inbound lives in the separate subawards_in table.
+n_subawards_in,integer,derived,Count of inbound subawards on this award row.
+net_revenue,numeric,derived,obligation_net - subaward_out_amount. What the organization commits to keeping. Equals obligation_net when outbound was not fetched.
+flags,character,derived,Data-quality flags. subawards_out_not_fetched marks that zeros in subaward_out_amount are unmeasured - not measured zeros.

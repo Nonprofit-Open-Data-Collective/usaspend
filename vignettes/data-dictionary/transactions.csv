@@ -1,0 +1,49 @@
+field,type,source,family,definition
+transaction_key,character,raw,both,Globally unique id for this action (assistance_transaction_unique_key / contract_transaction_unique_key). The de-duplication key.
+award_key,character,raw,both,Generated unique id of the parent award (*_award_unique_key). The join key to everything award-level.
+parent_award_id,character,raw,contract,PIID of the parent IDV for delivery orders placed under a vehicle.
+award_group,character,derived,both,assistance or contract - which of USAspending's two file layouts the row came from. Required context for action codes.
+award_family,character,derived,both,grant / contract / idv / direct_payment / loan / other - the revenue-treatment grouping.
+award_type_code,character,raw+derived,both,Type code (04; A; IDV_B; ...). Blank on contract IDV rows in the raw data; filled from idv_type_code with an IDV_ prefix.
+award_type_label,character,derived,both,Stable label from the code via us_classify_award_type(). Never taken from source description strings; those are unstable.
+award_id,character,raw,both,Human-facing award number: FAIN (assistance) or PIID (contracts). Agencies reuse these - never join on it alone.
+award_id_uri,character,raw,assistance,Alternative assistance identifier. Its numeric suffix is regenerated per system and is not stable across sources - never key on it.
+modification_number,character,raw,both,The action's modification number (0 or blank = the base action).
+action_date,date,raw,both,When the action was signed. The date the panel books money on.
+action_year,integer,derived,both,Calendar year of action_date.
+action_fiscal_year,integer,derived,both,Federal fiscal year of action_date (starts 1 October). Recomputed; the source's fiscal-year column is never trusted.
+action_type_code,character,raw,both,What kind of action. Codes collide across families (B = Continuation for assistance; Supplemental Agreement for contracts).
+action_type_label,character,derived,both,Stable label from the code and family via us_classify_action().
+action_class,character,derived,both,Economic intent: origination / continuation / revision / funding_only / adjustment / termination / closeout / administrative / unclassified. Intent - never infer a de-obligation from it; use the sign of the amount.
+correction_delete_code,character,raw,assistance,FABS correction/delete indicator: C = this row IS the current correction (kept); D = record withdrawn (dropped in normalization). Legacy values L and _ are kept and flagged.
+record_type_code,character,raw,assistance,2/3 = entity-level record. 1 = county-level aggregate with no identified recipient (dropped in normalization).
+federal_action_obligation,numeric,raw,both,Signed dollars committed by this action. The revenue measure. Negative = de-obligation.
+pragmatic_obligation,numeric,raw(A)/derived(C),both,USAspending's loan-aware variant (generated_pragmatic_obligations): equals the obligation except for loans where it is the subsidy cost. Contracts have no such column; filled from the obligation.
+non_federal_funding_amount,numeric,raw,assistance,Cost share from non-federal parties. Not federal revenue.
+loan_face_value,numeric,raw,assistance,Face value of a direct or guaranteed loan - the borrower's liability. Never revenue.
+loan_subsidy_cost,numeric,raw,assistance,The government's expected loss on the loan. Not a payment to the recipient.
+award_total_obligated,numeric,raw,both,Award-LIFETIME obligation stamped as of file generation. The reconciliation target; a property of the pull date not of the transaction.
+award_total_outlayed,numeric,raw,both,Award-lifetime outlays to date. Blank on most rows; no annual version exists anywhere in award data.
+recipient_uei,character,raw,both,SAM.gov UEI of the recipient at the time of this action (cleaned and uppercased). Can change over an award's life - NIH awards follow the PI between institutions.
+recipient_name,character,raw,both,Recipient legal name as registered.
+recipient_parent_uei,character,raw,both,UEI of the recipient's parent registration in SAM.
+recipient_state,character,raw,both,Recipient state code.
+awarding_agency_code,character,raw,both,Toptier code of the agency that made the award.
+awarding_agency_name,character,raw,both,Name of the awarding toptier agency.
+awarding_sub_agency_code,character,raw,both,Code of the awarding sub-agency (e.g. NIH under HHS).
+awarding_sub_agency_name,character,raw,both,Name of the awarding sub-agency.
+funding_agency_code,character,raw,both,Code of the agency whose money it is when different from the awarding agency.
+funding_agency_name,character,raw,both,Name of the funding agency.
+cfda_number,character,raw,assistance,Assistance listing (program) number - e.g. 84.268 = Federal Direct Student Loans.
+cfda_title,character,raw,assistance,Assistance listing title.
+naics_code,character,raw,contract,Industry code of the contracted work.
+psc_code,character,raw,contract,Product/service code of the contracted work.
+pop_start_date,date,raw,both,Period of performance start.
+pop_end_date,date,raw,both,Period of performance current end.
+last_modified_date,date,raw,both,When USAspending last touched the record. The de-duplication tiebreaker and the vintage marker.
+source_file,character,derived,both,Provenance: which raw file (or archive: scan) the row came from.
+is_zero_dollar,logical,normalize,both,Flag: this action carries a zero obligation (majority of modifications). Added by us_normalize_transactions(); absent from a raw extract.
+is_deobligation,logical,normalize,both,Flag: negative obligation. Added by us_normalize_transactions().
+is_legacy_cdi,logical,normalize,assistance,Flag: undocumented legacy correction_delete_code value (L or _) - kept. Added by us_normalize_transactions().
+is_stray_uei,logical,normalize,both,Flag: recipient_uei was not in the requested set (the API matches on text). Added by us_normalize_transactions().
+flags,character,normalize,both,Pipe-separated anomaly flags (non-zero administrative action; action outside period of performance; impossible date). Added by us_normalize_transactions().

@@ -1,0 +1,33 @@
+field,type,source,definition
+award_key,character,raw,Generated unique award id. Primary key of the spine.
+award_group,character,derived,assistance or contract.
+award_family,character,derived,grant / contract / idv / direct_payment / loan / other.
+award_type_code,character,derived,Award type code as of the latest action (IDV codes prefixed).
+award_type_label,character,derived,Stable label from the code.
+award_id,character,raw,FAIN or PIID.
+parent_award_id,character,raw,Parent IDV PIID for delivery orders.
+recipient_uei,character,latest,Recipient UEI AS OF THE LATEST ACTION. Awards can change recipients (PI transfers); earlier slices may belong to other organizations.
+recipient_name,character,latest,Recipient name as of the latest action.
+recipient_parent_uei,character,latest,Parent registration UEI as of the latest action.
+recipient_state,character,latest,Recipient state as of the latest action.
+awarding_agency_code,character,latest,Awarding toptier agency code.
+awarding_agency_name,character,latest,Awarding toptier agency name.
+awarding_sub_agency_name,character,latest,Awarding sub-agency name.
+funding_agency_name,character,latest,Funding agency name.
+cfda_number,character,latest,Assistance listing number (assistance awards).
+cfda_title,character,latest,Assistance listing title.
+naics_code,character,latest,Industry code (contract awards).
+psc_code,character,latest,Product/service code (contract awards).
+base_action_date,date,derived,Date of the earliest action in the extract window.
+latest_action_date,date,derived,Date of the latest action in the extract window.
+pop_start_date,date,latest,Period of performance start.
+pop_end_date,date,latest,Period of performance current end.
+total_obligated,numeric,latest,Award-lifetime obligation from the latest row carrying one. The reconciliation target checked by us_reconcile().
+total_outlayed,numeric,latest,Award-lifetime outlays from the latest row carrying one. Basis of the obligation-to-outlay gap.
+potential_value,numeric,latest,Ceiling (potential total value). Capacity - never summed into revenue.
+subaward_count,numeric,api,Number of subawards USAspending reports under this prime (from GET /awards/{key}/ when fetched).
+subaward_total,numeric,api,Total subaward dollars USAspending reports under this prime.
+n_transactions,integer,derived,Number of actions on this award inside the extract window.
+n_years,integer,derived,Number of distinct years with actions inside the window.
+n_recipients,integer,derived,Distinct recipient UEIs seen on this award's transactions in the window. Greater than 1 flags multi-recipient awards (PI transfers) whose slices belong to different organizations.
+obligated_in_extract,numeric,derived,Sum of this award's obligations inside the extract window. Compared with total_obligated by us_reconcile(); differs legitimately when the award's history extends beyond the window.

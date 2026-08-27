@@ -489,79 +489,218 @@ into totals by <code><a href="../reference/us_rollup.html">us_rollup()</a></code
 <div class="section level2">
 <h2 id="code-values-award-types-and-families">4. Code values: award types and families<a class="anchor" aria-label="anchor" href="#code-values-award-types-and-families"></a>
 </h2>
-<p>The full award-type table, live from the package:</p>
+<p>The full award-type taxonomy, classified live from the package
+(<code><a href="../reference/us_classify_award_type.html">us_classify_award_type()</a></code> over every code), with each
+type’s footprint in the 50-nonprofit pilot. A zero is informative: loan
+guarantees (08) and insurance (09) exist in the taxonomy but never
+appear in this population.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="../reference/us_award_type_codes.html">us_award_type_codes</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">codes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_classify_award_type.html">us_classify_award_type</a></span><span class="op">(</span><span class="fu"><a href="../reference/us_award_type_codes.html">us_award_type_codes</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"data-dictionary/pilot-descriptives.csv"</span><span class="op">)</span></span>
+<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span>actions <span class="op">=</span> <span class="va">n_transactions</span>, awards <span class="op">=</span> <span class="va">n_awards</span><span class="op">)</span> <span class="op">~</span> <span class="va">award_type_code</span>,</span>
+<span>               data <span class="op">=</span> <span class="va">d</span>, <span class="va">sum</span><span class="op">)</span></span>
+<span><span class="va">tab</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/merge.html" class="external-link">merge</a></span><span class="op">(</span><span class="va">codes</span>, <span class="va">n</span>, by <span class="op">=</span> <span class="st">"award_type_code"</span>, all.x <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">tab</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">tab</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span><span class="va">tab</span> <span class="op">&lt;-</span> <span class="va">tab</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">tab</span><span class="op">$</span><span class="va">award_group</span>, <span class="va">tab</span><span class="op">$</span><span class="va">award_family</span>, <span class="va">tab</span><span class="op">$</span><span class="va">award_type_code</span><span class="op">)</span>,</span>
+<span>           <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"award_group"</span>, <span class="st">"award_family"</span>, <span class="st">"award_type_code"</span>, <span class="st">"award_type_label"</span>,</span>
+<span>             <span class="st">"actions"</span>, <span class="st">"awards"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">tab</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"group"</span>, <span class="st">"family"</span>, <span class="st">"code"</span>, <span class="st">"label"</span>, <span class="st">"pilot actions"</span>, <span class="st">"pilot awards"</span><span class="op">)</span></span>
+<span><span class="va">tab</span><span class="op">$</span><span class="va">`pilot actions`</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">tab</span><span class="op">$</span><span class="va">`pilot actions`</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span></span>
+<span><span class="va">tab</span><span class="op">$</span><span class="va">`pilot awards`</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">tab</span><span class="op">$</span><span class="va">`pilot awards`</span>,  big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">tab</span>, row.names <span class="op">=</span> <span class="cn">FALSE</span>, align <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"l"</span>, <span class="st">"l"</span>, <span class="st">"l"</span>, <span class="st">"l"</span>, <span class="st">"r"</span>, <span class="st">"r"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
+<colgroup>
+<col width="11%">
+<col width="15%">
+<col width="8%">
+<col width="37%">
+<col width="14%">
+<col width="13%">
+</colgroup>
 <thead><tr class="header">
-<th align="left">x</th>
+<th align="left">group</th>
+<th align="left">family</th>
+<th align="left">code</th>
+<th align="left">label</th>
+<th align="right">pilot actions</th>
+<th align="right">pilot awards</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td align="left">A</td>
-</tr>
-<tr class="even">
-<td align="left">B</td>
-</tr>
-<tr class="odd">
-<td align="left">C</td>
-</tr>
-<tr class="even">
-<td align="left">D</td>
-</tr>
-<tr class="odd">
-<td align="left">IDV_A</td>
-</tr>
-<tr class="even">
-<td align="left">IDV_B</td>
-</tr>
-<tr class="odd">
-<td align="left">IDV_B_A</td>
-</tr>
-<tr class="even">
-<td align="left">IDV_B_B</td>
-</tr>
-<tr class="odd">
-<td align="left">IDV_B_C</td>
-</tr>
-<tr class="even">
-<td align="left">IDV_C</td>
-</tr>
-<tr class="odd">
-<td align="left">IDV_D</td>
-</tr>
-<tr class="even">
-<td align="left">IDV_E</td>
-</tr>
-<tr class="odd">
-<td align="left">02</td>
-</tr>
-<tr class="even">
-<td align="left">03</td>
-</tr>
-<tr class="odd">
-<td align="left">04</td>
-</tr>
-<tr class="even">
-<td align="left">05</td>
-</tr>
-<tr class="odd">
+<td align="left">assistance</td>
+<td align="left">direct_payment</td>
 <td align="left">06</td>
+<td align="left">Direct Payment for Specified Use</td>
+<td align="right">16,746</td>
+<td align="right">607</td>
 </tr>
 <tr class="even">
+<td align="left">assistance</td>
+<td align="left">direct_payment</td>
 <td align="left">10</td>
+<td align="left">Direct Payment with Unrestricted Use</td>
+<td align="right">0</td>
+<td align="right">0</td>
 </tr>
 <tr class="odd">
+<td align="left">assistance</td>
+<td align="left">grant</td>
+<td align="left">02</td>
+<td align="left">Block Grant</td>
+<td align="right">188</td>
+<td align="right">130</td>
+</tr>
+<tr class="even">
+<td align="left">assistance</td>
+<td align="left">grant</td>
+<td align="left">03</td>
+<td align="left">Formula Grant</td>
+<td align="right">740</td>
+<td align="right">307</td>
+</tr>
+<tr class="odd">
+<td align="left">assistance</td>
+<td align="left">grant</td>
+<td align="left">04</td>
+<td align="left">Project Grant</td>
+<td align="right">165,271</td>
+<td align="right">40,771</td>
+</tr>
+<tr class="even">
+<td align="left">assistance</td>
+<td align="left">grant</td>
+<td align="left">05</td>
+<td align="left">Cooperative Agreement</td>
+<td align="right">29,866</td>
+<td align="right">4,408</td>
+</tr>
+<tr class="odd">
+<td align="left">assistance</td>
+<td align="left">loan</td>
 <td align="left">07</td>
+<td align="left">Direct Loan</td>
+<td align="right">5,998</td>
+<td align="right">176</td>
 </tr>
 <tr class="even">
+<td align="left">assistance</td>
+<td align="left">loan</td>
 <td align="left">08</td>
+<td align="left">Guaranteed/Insured Loan</td>
+<td align="right">0</td>
+<td align="right">0</td>
 </tr>
 <tr class="odd">
+<td align="left">assistance</td>
+<td align="left">other</td>
 <td align="left">09</td>
+<td align="left">Insurance</td>
+<td align="right">0</td>
+<td align="right">0</td>
 </tr>
 <tr class="even">
+<td align="left">assistance</td>
+<td align="left">other</td>
 <td align="left">11</td>
+<td align="left">Other Financial Assistance</td>
+<td align="right">727</td>
+<td align="right">507</td>
+</tr>
+<tr class="odd">
+<td align="left">contract</td>
+<td align="left">contract</td>
+<td align="left">A</td>
+<td align="left">BPA Call</td>
+<td align="right">1,116</td>
+<td align="right">307</td>
+</tr>
+<tr class="even">
+<td align="left">contract</td>
+<td align="left">contract</td>
+<td align="left">B</td>
+<td align="left">Purchase Order</td>
+<td align="right">4,865</td>
+<td align="right">2,697</td>
+</tr>
+<tr class="odd">
+<td align="left">contract</td>
+<td align="left">contract</td>
+<td align="left">C</td>
+<td align="left">Delivery Order</td>
+<td align="right">34,934</td>
+<td align="right">7,772</td>
+</tr>
+<tr class="even">
+<td align="left">contract</td>
+<td align="left">contract</td>
+<td align="left">D</td>
+<td align="left">Definitive Contract</td>
+<td align="right">9,907</td>
+<td align="right">1,155</td>
+</tr>
+<tr class="odd">
+<td align="left">contract</td>
+<td align="left">idv</td>
+<td align="left">IDV_A</td>
+<td align="left">GWAC</td>
+<td align="right">8</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">contract</td>
+<td align="left">idv</td>
+<td align="left">IDV_B</td>
+<td align="left">IDC</td>
+<td align="right">2,879</td>
+<td align="right">503</td>
+</tr>
+<tr class="odd">
+<td align="left">contract</td>
+<td align="left">idv</td>
+<td align="left">IDV_B_A</td>
+<td align="left">IDC Requirements</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">contract</td>
+<td align="left">idv</td>
+<td align="left">IDV_B_B</td>
+<td align="left">IDC Indefinite Quantity</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">contract</td>
+<td align="left">idv</td>
+<td align="left">IDV_B_C</td>
+<td align="left">IDC Definite Quantity</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">contract</td>
+<td align="left">idv</td>
+<td align="left">IDV_C</td>
+<td align="left">FSS</td>
+<td align="right">407</td>
+<td align="right">12</td>
+</tr>
+<tr class="odd">
+<td align="left">contract</td>
+<td align="left">idv</td>
+<td align="left">IDV_D</td>
+<td align="left">BOA</td>
+<td align="right">105</td>
+<td align="right">42</td>
+</tr>
+<tr class="even">
+<td align="left">contract</td>
+<td align="left">idv</td>
+<td align="left">IDV_E</td>
+<td align="left">BPA</td>
+<td align="right">257</td>
+<td align="right">69</td>
 </tr>
 </tbody>
 </table>
@@ -772,241 +911,251 @@ Static snapshot computed by <a href="https://github.com/Nonprofit-Open-Data-Coll
 also available as <a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/pilot-descriptives.csv" class="external-link">CSV</a>.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"data-dictionary/pilot-descriptives.csv"</span><span class="op">)</span></span>
-<span><span class="va">bn</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span> <span class="op">/</span> <span class="fl">1e9</span>, <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>    group  <span class="op">=</span> <span class="va">d</span><span class="op">$</span><span class="va">award_group</span>, family <span class="op">=</span> <span class="va">d</span><span class="op">$</span><span class="va">award_family</span>, type <span class="op">=</span> <span class="va">d</span><span class="op">$</span><span class="va">award_type_label</span>,</span>
-<span>    `transactions` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">n_transactions</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span>,</span>
-<span>    `awards` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">n_awards</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span>,</span>
-<span>    `positive ($bn)` <span class="op">=</span> <span class="fu">bn</span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">obligation_positive</span><span class="op">)</span>,</span>
-<span>    `negative ($bn)` <span class="op">=</span> <span class="fu">bn</span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">obligation_negative</span><span class="op">)</span>,</span>
-<span>    `net ($bn)` <span class="op">=</span> <span class="fu">bn</span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">obligation_net</span><span class="op">)</span>,</span>
-<span>    `passthrough ($bn)` <span class="op">=</span> <span class="fu">bn</span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">subaward_out</span><span class="op">)</span>,</span>
-<span>    `net revenue ($bn)` <span class="op">=</span> <span class="fu">bn</span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">net_revenue</span><span class="op">)</span>,</span>
-<span>    check.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
-<span>  align <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"l"</span>, <span class="st">"l"</span>, <span class="st">"l"</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="st">"r"</span>, <span class="fl">7</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<table class="table">
+<span><span class="co">## dollars in billions; "\\$" keeps pandoc from pairing the dollar signs</span></span>
+<span><span class="co">## across cells and reading the span between them as math</span></span>
+<span><span class="va">usd</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"\\$%.2f"</span>, <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">/</span> <span class="fl">1e9</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">x</span> <span class="op">&lt;</span> <span class="fl">0</span> <span class="op">&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">/</span> <span class="fl">1e9</span>, <span class="fl">2</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"-"</span>, <span class="va">s</span><span class="op">)</span>, <span class="va">s</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">short</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Direct Payment for Specified Use"</span>     <span class="op">=</span> <span class="st">"Direct Payment (Specified)"</span>,</span>
+<span>           <span class="st">"Direct Payment with Unrestricted Use"</span> <span class="op">=</span> <span class="st">"Direct Payment (Unrestricted)"</span>,</span>
+<span>           <span class="st">"Other Financial Assistance"</span>           <span class="op">=</span> <span class="st">"Other Assistance"</span>,</span>
+<span>           <span class="st">"IDC Indefinite Quantity"</span>              <span class="op">=</span> <span class="st">"IDC (Indef. Qty)"</span>,</span>
+<span>           <span class="st">"Definitive Contract"</span>                  <span class="op">=</span> <span class="st">"Definitive"</span><span class="op">)</span></span>
+<span><span class="va">type</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">award_type_label</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">short</span><span class="op">)</span>,</span>
+<span>               <span class="va">short</span><span class="op">[</span><span class="va">d</span><span class="op">$</span><span class="va">award_type_label</span><span class="op">]</span>, <span class="va">d</span><span class="op">$</span><span class="va">award_type_label</span><span class="op">)</span></span>
+<span><span class="va">row</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">fam</span>, <span class="va">ty</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  family <span class="op">=</span> <span class="va">fam</span>, type <span class="op">=</span> <span class="va">ty</span>,</span>
+<span>  actions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">n_transactions</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span>,</span>
+<span>  awards  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">n_awards</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span>,</span>
+<span>  positive <span class="op">=</span> <span class="fu">usd</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">obligation_positive</span><span class="op">)</span>, negative <span class="op">=</span> <span class="fu">usd</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">obligation_negative</span><span class="op">)</span>,</span>
+<span>  net <span class="op">=</span> <span class="fu">usd</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">obligation_net</span><span class="op">)</span>, passthrough <span class="op">=</span> <span class="fu">usd</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">subaward_out</span><span class="op">)</span>,</span>
+<span>  `net revenue` <span class="op">=</span> <span class="fu">usd</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">net_revenue</span><span class="op">)</span>, check.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">tab</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/row.html" class="external-link">row</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">award_family</span>, <span class="va">type</span>, <span class="va">d</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/row.html" class="external-link">row</a></span><span class="op">(</span><span class="st">""</span>, <span class="st">"**TOTAL**"</span>, <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span></span>
+<span>    <span class="va">d</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"n_transactions"</span>, <span class="st">"n_awards"</span>, <span class="st">"obligation_positive"</span>, <span class="st">"obligation_negative"</span>,</span>
+<span>          <span class="st">"obligation_net"</span>, <span class="st">"subaward_out"</span>, <span class="st">"net_revenue"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">tab</span>, align <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"l"</span>, <span class="st">"l"</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="st">"r"</span>, <span class="fl">7</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<table style="width:100%;" class="table">
 <colgroup>
+<col width="13%">
+<col width="24%">
 <col width="7%">
-<col width="9%">
-<col width="21%">
-<col width="8%">
-<col width="4%">
-<col width="9%">
-<col width="9%">
 <col width="6%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
 <col width="11%">
 <col width="11%">
 </colgroup>
 <thead><tr class="header">
-<th align="left">group</th>
 <th align="left">family</th>
 <th align="left">type</th>
-<th align="right">transactions</th>
+<th align="right">actions</th>
 <th align="right">awards</th>
-<th align="right">positive
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mi>n</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">|</mo><mi>n</mi><mi>e</mi><mi>g</mi><mi>a</mi><mi>t</mi><mi>i</mi><mi>v</mi><mi>e</mi><mo stretchy="false" form="prefix">(</mo></mrow><annotation encoding="application/x-tex">bn)| negative (</annotation></semantics></math>bn)</th>
-<th align="right">net
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mi>n</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">|</mo><mi>p</mi><mi>a</mi><mi>s</mi><mi>s</mi><mi>t</mi><mi>h</mi><mi>r</mi><mi>o</mi><mi>u</mi><mi>g</mi><mi>h</mi><mo stretchy="false" form="prefix">(</mo></mrow><annotation encoding="application/x-tex">bn)| passthrough (</annotation></semantics></math>bn)</th>
-<th align="right">net revenue ($bn)</th>
-<th align="right"></th>
-<th align="right"></th>
+<th align="right">positive</th>
+<th align="right">negative</th>
+<th align="right">net</th>
+<th align="right">passthrough</th>
+<th align="right">net revenue</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td align="left">assistance</td>
 <td align="left">direct_payment</td>
-<td align="left">Direct Payment for Specified Use</td>
+<td align="left">Direct Payment (Specified)</td>
 <td align="right">16,746</td>
 <td align="right">607</td>
-<td align="right">2.84</td>
-<td align="right">-0.10</td>
-<td align="right">2.74</td>
-<td align="right">0.09</td>
-<td align="right">2.65</td>
+<td align="right">$2.84</td>
+<td align="right">-$0.10</td>
+<td align="right">$2.74</td>
+<td align="right">$0.09</td>
+<td align="right">$2.65</td>
 </tr>
 <tr class="even">
-<td align="left">assistance</td>
 <td align="left">grant</td>
 <td align="left">Block Grant</td>
 <td align="right">188</td>
 <td align="right">130</td>
-<td align="right">0.05</td>
-<td align="right">0.00</td>
-<td align="right">0.05</td>
-<td align="right">0.00</td>
-<td align="right">0.04</td>
+<td align="right">$0.05</td>
+<td align="right">$0.00</td>
+<td align="right">$0.05</td>
+<td align="right">$0.00</td>
+<td align="right">$0.04</td>
 </tr>
 <tr class="odd">
-<td align="left">assistance</td>
 <td align="left">grant</td>
 <td align="left">Formula Grant</td>
 <td align="right">740</td>
 <td align="right">307</td>
-<td align="right">0.84</td>
-<td align="right">-0.02</td>
-<td align="right">0.83</td>
-<td align="right">0.00</td>
-<td align="right">0.83</td>
+<td align="right">$0.84</td>
+<td align="right">-$0.02</td>
+<td align="right">$0.83</td>
+<td align="right">$0.00</td>
+<td align="right">$0.83</td>
 </tr>
 <tr class="even">
-<td align="left">assistance</td>
 <td align="left">grant</td>
 <td align="left">Project Grant</td>
 <td align="right">165,271</td>
 <td align="right">40,771</td>
-<td align="right">42.30</td>
-<td align="right">-1.14</td>
-<td align="right">41.17</td>
-<td align="right">4.19</td>
-<td align="right">36.97</td>
+<td align="right">$42.30</td>
+<td align="right">-$1.14</td>
+<td align="right">$41.17</td>
+<td align="right">$4.19</td>
+<td align="right">$36.97</td>
 </tr>
 <tr class="odd">
-<td align="left">assistance</td>
 <td align="left">grant</td>
 <td align="left">Cooperative Agreement</td>
 <td align="right">29,866</td>
 <td align="right">4,408</td>
-<td align="right">17.82</td>
-<td align="right">-0.58</td>
-<td align="right">17.24</td>
-<td align="right">5.16</td>
-<td align="right">12.08</td>
+<td align="right">$17.82</td>
+<td align="right">-$0.58</td>
+<td align="right">$17.24</td>
+<td align="right">$5.16</td>
+<td align="right">$12.08</td>
 </tr>
 <tr class="even">
-<td align="left">assistance</td>
 <td align="left">loan</td>
 <td align="left">Direct Loan</td>
 <td align="right">5,998</td>
 <td align="right">176</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
 </tr>
 <tr class="odd">
-<td align="left">assistance</td>
 <td align="left">other</td>
-<td align="left">Other Financial Assistance</td>
+<td align="left">Other Assistance</td>
 <td align="right">727</td>
 <td align="right">507</td>
-<td align="right">0.32</td>
-<td align="right">-0.01</td>
-<td align="right">0.31</td>
-<td align="right">0.00</td>
-<td align="right">0.30</td>
+<td align="right">$0.32</td>
+<td align="right">-$0.01</td>
+<td align="right">$0.31</td>
+<td align="right">$0.00</td>
+<td align="right">$0.30</td>
 </tr>
 <tr class="even">
-<td align="left">contract</td>
 <td align="left">contract</td>
 <td align="left">BPA Call</td>
 <td align="right">1,116</td>
 <td align="right">307</td>
-<td align="right">0.41</td>
-<td align="right">-0.02</td>
-<td align="right">0.39</td>
-<td align="right">0.07</td>
-<td align="right">0.32</td>
+<td align="right">$0.41</td>
+<td align="right">-$0.02</td>
+<td align="right">$0.39</td>
+<td align="right">$0.07</td>
+<td align="right">$0.32</td>
 </tr>
 <tr class="odd">
-<td align="left">contract</td>
 <td align="left">contract</td>
 <td align="left">Purchase Order</td>
 <td align="right">4,865</td>
 <td align="right">2,697</td>
-<td align="right">0.19</td>
-<td align="right">-0.01</td>
-<td align="right">0.18</td>
-<td align="right">0.00</td>
-<td align="right">0.17</td>
+<td align="right">$0.19</td>
+<td align="right">-$0.01</td>
+<td align="right">$0.18</td>
+<td align="right">$0.00</td>
+<td align="right">$0.17</td>
 </tr>
 <tr class="even">
-<td align="left">contract</td>
 <td align="left">contract</td>
 <td align="left">Delivery Order</td>
 <td align="right">34,934</td>
 <td align="right">7,772</td>
-<td align="right">25.01</td>
-<td align="right">-1.20</td>
-<td align="right">23.81</td>
-<td align="right">2.18</td>
-<td align="right">21.62</td>
+<td align="right">$25.01</td>
+<td align="right">-$1.20</td>
+<td align="right">$23.81</td>
+<td align="right">$2.18</td>
+<td align="right">$21.62</td>
 </tr>
 <tr class="odd">
 <td align="left">contract</td>
-<td align="left">contract</td>
-<td align="left">Definitive Contract</td>
+<td align="left">Definitive</td>
 <td align="right">9,907</td>
 <td align="right">1,155</td>
-<td align="right">32.34</td>
-<td align="right">-0.77</td>
-<td align="right">31.57</td>
-<td align="right">0.91</td>
-<td align="right">30.66</td>
+<td align="right">$32.34</td>
+<td align="right">-$0.77</td>
+<td align="right">$31.57</td>
+<td align="right">$0.91</td>
+<td align="right">$30.66</td>
 </tr>
 <tr class="even">
-<td align="left">contract</td>
 <td align="left">idv</td>
 <td align="left">GWAC</td>
 <td align="right">8</td>
 <td align="right">1</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
 </tr>
 <tr class="odd">
-<td align="left">contract</td>
 <td align="left">idv</td>
 <td align="left">IDC</td>
 <td align="right">2,879</td>
 <td align="right">503</td>
-<td align="right">0.28</td>
-<td align="right">-0.02</td>
-<td align="right">0.25</td>
-<td align="right">0.02</td>
-<td align="right">0.23</td>
+<td align="right">$0.28</td>
+<td align="right">-$0.02</td>
+<td align="right">$0.25</td>
+<td align="right">$0.02</td>
+<td align="right">$0.23</td>
 </tr>
 <tr class="even">
-<td align="left">contract</td>
 <td align="left">idv</td>
 <td align="left">FSS</td>
 <td align="right">407</td>
 <td align="right">12</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
 </tr>
 <tr class="odd">
-<td align="left">contract</td>
 <td align="left">idv</td>
 <td align="left">BOA</td>
 <td align="right">105</td>
 <td align="right">42</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
 </tr>
 <tr class="even">
-<td align="left">contract</td>
 <td align="left">idv</td>
 <td align="left">BPA</td>
 <td align="right">257</td>
 <td align="right">69</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+<td align="right">$0.00</td>
+</tr>
+<tr class="odd">
+<td align="left"></td>
+<td align="left"><strong>TOTAL</strong></td>
+<td align="right">274,014</td>
+<td align="right">59,464</td>
+<td align="right">$122.39</td>
+<td align="right">-$3.87</td>
+<td align="right">$118.52</td>
+<td align="right">$12.64</td>
+<td align="right">$105.88</td>
 </tr>
 </tbody>
 </table>
+<p>Dollar figures are billions. The <code>family</code> column implies
+the award group: <code>grant</code>, <code>direct_payment</code>,
+<code>loan</code>, and <code>other</code> are assistance awards;
+<code>contract</code> and <code>idv</code> are contracts.
+(<code>awards</code> in the TOTAL row slightly overcounts distinct
+awards, since a few span families.)</p>
 <p>The table is the whole accounting argument in one place: project
 grants and cooperative agreements carry both the dollars and nearly all
 the pass-through; direct payments are student aid; loans net to zero

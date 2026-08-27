@@ -1,0 +1,5 @@
+field,type,source,definition
+org_id,character,derived,Organization id (via us_org_map()). Part of the key.
+year,integer,derived,Year of the subaward action date (panel's year basis). Part of the key.
+subaward_in_amount,numeric,derived,Subaward dollars received as a subrecipient in this org-year. Revenue invisible in prime award data.
+n_subawards_in,integer,derived,Count of inbound subawards in this org-year.

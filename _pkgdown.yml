@@ -117,6 +117,7 @@ articles:
   navbar: The data
   contents:
   - data-model
+  - data-dictionary
   - award-types
   - subawards
 - title: The pipeline
