@@ -89,9 +89,10 @@ tables, so downstream normalization does not know or care which was used.</p>
 
 <dt id="arg-subawards">subawards<a class="anchor" aria-label="anchor" href="#arg-subawards"></a></dt>
 <dd><p><code>"none"</code>, <code>"in"</code> (subawards received: free by-product on
-the API path; on the archive path appended through API download jobs via
-<code><a href="us_fetch_subawards_in.html">us_fetch_subawards_in()</a></code>, at the API path's cost), <code>"out"</code> (pass-through
-paid: queried by prime award from either path), or <code>"both"</code>.</p></dd>
+the API path; on the archive path appended via <code><a href="us_fetch_subawards_in.html">us_fetch_subawards_in()</a></code>,
+which count-screens each UEI batch and fetches only where inbound rows
+exist), <code>"out"</code> (pass-through paid: queried by prime award from either
+path), or <code>"both"</code>.</p></dd>
 
 
 <dt id="arg-dest">dest<a class="anchor" aria-label="anchor" href="#arg-dest"></a></dt>

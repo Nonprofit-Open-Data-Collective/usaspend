@@ -121,3 +121,319 @@ the dates.
 (`vignette("subawards")`), with every rule above checkable after the fact:
 `us_reconcile()` tests each award's summed actions against USAspending's
 independently computed lifetime total (`vignette("reconciliation")`).
+
+## 7. Inside the object `us_panel()` returns
+
+`us_panel()` returns a list of class `usaspend_panel` holding six elements.
+The first five are tables; `meta` records the choices the build was made
+under (year basis, money measure, de-obligation policy, whether outbound
+subawards were fetched).
+
+| element | grain | what it is |
+|---|---|---|
+| `panel` | org × award × year | **the deliverable** — net dollars per award per year |
+| `awards` | award | the spine: one row per award with its attributes and lifetime totals |
+| `transactions` | award action | the normalized ledger the panel was aggregated from |
+| `subawards` | FSRS report line | subaward rows with `direction` assigned (`in`/`out`/`internal`/`unrelated`) |
+| `subawards_in` | org × year | subaward revenue *received* — money invisible in prime data |
+| `meta` | — | build parameters and provenance |
+
+The previews below use the packaged Vanderbilt University Medical Center
+data (`?vumc_transactions`), rebuilt into a full panel object:
+
+```{r vumc-build, message = FALSE, warning = FALSE}
+library(data.table)
+data(vumc_transactions); data(vumc_subawards)
+ueis <- unique(vumc_transactions$recipient_uei)
+
+ex_v <- structure(
+  list(transactions = vumc_transactions, subawards = vumc_subawards,
+       jobs = NULL,
+       meta = list(uei = ueis, years = 2008:2025, source = "api",
+                   subawards = "both", extracted_at = Sys.time())),
+  class = "usaspend_extract")
+
+p <- us_panel(ex_v, org_map = data.frame(uei = ueis, org_id = "35-2528741"),
+              fill_gaps = TRUE)
+```
+
+```{r kable-helper, include = FALSE}
+show10 <- function(d, height = "300px") {
+  kableExtra::kbl(head(d, 10), format = "html", row.names = FALSE) |>
+    kableExtra::kable_styling(font_size = 11, bootstrap_options =
+                                c("striped", "condensed")) |>
+    kableExtra::scroll_box(width = "100%", height = height)
+}
+dict <- function(...) {
+  x <- matrix(c(...), ncol = 2, byrow = TRUE)
+  kableExtra::kbl(data.frame(field = x[, 1], meaning = x[, 2]),
+                  format = "html", row.names = FALSE) |>
+    kableExtra::kable_styling(font_size = 11, bootstrap_options =
+                                c("striped", "condensed")) |>
+    kableExtra::scroll_box(width = "100%", height = "260px")
+}
+```
+
+### 7.1 `panel` — org × award × year
+
+```{r}
+dim(p$panel)
+```
+
+```{r echo = FALSE}
+dict(
+  "org_id",                  "Organization id from your crosswalk (EIN here); the unit of analysis.",
+  "award_key",               "Generated unique award id (stable, unlike FAIN/PIID).",
+  "year / year_basis",       "Calendar or federal fiscal year, recomputed from action_date.",
+  "award_group / award_family / award_type_code / award_type_label", "Contract vs assistance, and the finer type.",
+  "awarding_agency_code / awarding_agency_name / awarding_sub_agency_name / funding_agency_name", "Who awarded and who funded.",
+  "cfda_number / naics_code / recipient_state", "Program, industry, registered state.",
+  "n_transactions / n_actions_positive / n_actions_negative", "Activity counts. n_transactions = 0 marks a fill-gaps placeholder row.",
+  "obligation_positive / obligation_negative / obligation_net", "Gross new money, gross claw-backs, and their sum. Never carried as net alone.",
+  "deobligation_prior_year", "Reversals pushed back by the restate policy (zero under as_posted).",
+  "loan_face_value / loan_subsidy_cost", "Loan amounts; never revenue.",
+  "subaward_out_amount / n_subawards_out", "Pass-through paid onward under this award-year.",
+  "subaward_in_amount / n_subawards_in", "Subawards received under this award (rare at award grain; see subawards_in).",
+  "net_revenue",             "obligation_net - subaward_out_amount.",
+  "flags",                   "Anomaly markers carried from normalization.")
+```
+
+```{r echo = FALSE}
+show10(p$panel[order(-obligation_net)])
+```
+
+### 7.2 `awards` — the spine
+
+One row per award, each attribute taken from the latest action that reports
+it (award-level fields are sparse across modifications).
+
+```{r}
+dim(p$awards)
+```
+
+```{r echo = FALSE}
+dict(
+  "award_key / award_id / parent_award_id", "Generated key, the human FAIN/PIID, and the parent IDV where present.",
+  "award_group / award_family / award_type_code / award_type_label", "What kind of award.",
+  "recipient_uei / recipient_name / recipient_parent_uei / recipient_state", "Recipient as of the latest action.",
+  "awarding_agency_code / awarding_agency_name / awarding_sub_agency_name / funding_agency_name", "Agencies, as of the latest action.",
+  "cfda_number / cfda_title / naics_code / psc_code", "Program and industry classifiers.",
+  "base_action_date / latest_action_date", "First and last observed actions.",
+  "pop_start_date / pop_end_date", "Period of performance.",
+  "total_obligated / total_outlayed", "USAspending's own lifetime totals — the reconciliation reference (outlays mostly missing pre-2017).",
+  "potential_value", "Ceiling, not money; never summed as revenue.",
+  "subaward_count / subaward_total", "From the award overview endpoint when enriched.",
+  "n_transactions / n_years / n_recipients", "Ledger footprint. n_recipients > 1 marks awards that moved between institutions.")
+```
+
+```{r echo = FALSE}
+show10(p$awards[order(-total_obligated)])
+```
+
+### 7.3 `transactions` — the normalized ledger
+
+Same schema as `vumc_transactions` (see `?vumc_transactions` for the full
+field dictionary) plus the normalization columns:
+
+```{r echo = FALSE}
+dict(
+  "is_zero_dollar",  "TRUE on $0 actions — kept, because they carry period-of-performance changes and activity counts.",
+  "is_deobligation", "TRUE where the obligation is negative.",
+  "is_legacy_cdi",   "Undocumented correction/delete codes (kept, flagged).",
+  "is_stray_uei",    "Recipient UEI was never requested (API text-matching stray).",
+  "flags",           "Semicolon-joined anomaly markers (money on an admin action, action after period of performance, ...).")
+```
+
+```{r echo = FALSE}
+show10(p$transactions[order(federal_action_obligation)])
+```
+
+### 7.4 `subawards` — with direction
+
+```{r}
+p$subawards[, .(rows = .N,
+                dollars_m = round(sum(subaward_amount, na.rm = TRUE) / 1e6)),
+            by = direction]
+```
+
+`in` rows are revenue (VUMC as subawardee); `out` rows are pass-through
+(VUMC as prime); `internal` rows move money between an organization's own
+UEIs and are excluded from both flows; `unrelated` rows sit on
+multi-recipient awards whose current holder is someone else.
+
+```{r echo = FALSE}
+show10(p$subawards[direction == "out"][order(-subaward_amount)])
+```
+
+### 7.5 `subawards_in` — inbound revenue by org-year
+
+Money received as a subrecipient never appears in prime award data — an
+organization funded purely this way looks like a non-recipient. It is
+therefore kept as its own org × year table rather than being forced onto
+award rows.
+
+```{r echo = FALSE}
+show10(p$subawards_in[order(-subaward_in_amount)], height = "220px")
+```
+
+### 7.6 `meta`
+
+```{r}
+str(p$meta)
+```
+
+## 8. One organization end to end: Vanderbilt University Medical Center
+
+VUMC (EIN 35-2528741) is the packaged example because it exercises every
+rule at once: the highest pass-through share in the 50-org pilot, claw-backs
+in every year, and both subaward directions at scale.
+
+### 8.1 The raw ledger
+
+```{r}
+nrow(vumc_transactions)
+vumc_transactions[, .N,
+  by = .(sign = fcase(federal_action_obligation > 0, "positive",
+                      federal_action_obligation < 0, "negative",
+                      default = "zero"))]
+```
+
+Of `r nrow(vumc_transactions)` raw transactions, about a quarter are
+zero-dollar administrative actions and
+`r vumc_transactions[federal_action_obligation < 0, .N]` are de-obligations —
+real claw-backs, arriving under every action-type label. On the subaward
+side (after normalization assigns direction):
+
+```{r}
+p$subawards[direction %in% c("in", "out"),
+            .(rows = .N,
+              dollars_m = round(sum(subaward_amount, na.rm = TRUE) / 1e6)),
+            by = direction]
+```
+
+### 8.2 What a claw-back looks like
+
+Award `ASST_NON_U54CA280915_075` (an NIH cooperative agreement) obligates
+across several years and then loses $3.8M in a single action. Note that the
+sign carries the truth: the claw-back arrives as an ordinary `REVISION`, not
+under any special cancellation type.
+
+```{r echo = FALSE}
+show10(vumc_transactions[award_key == "ASST_NON_U54CA280915_075"][
+  order(action_date),
+  .(modification_number, action_date, action_type_label, action_class,
+    federal_action_obligation, award_total_obligated)], height = "220px")
+```
+
+Summed, the transactions still reconcile to the award's reported lifetime
+total — the claw-back is part of the award's true value, not noise:
+
+```{r}
+vumc_transactions[award_key == "ASST_NON_U54CA280915_075",
+                  .(tx_sum = sum(federal_action_obligation),
+                    reported = unique(award_total_obligated))]
+```
+
+### 8.3 How pass-through is structured
+
+Pass-through is not on the transaction rows at all. It arrives as separate
+FSRS report lines keyed to the *prime award*, each naming a subawardee, an
+amount, and a commitment date. VUMC's largest conduit is
+`ASST_NON_NU2GGH001943_075` — a CDC global-health cooperative agreement
+under which VUMC passes onward far more than it keeps:
+
+```{r echo = FALSE}
+show10(p$subawards[direction == "out" &
+                     prime_award_key == "ASST_NON_NU2GGH001943_075"][
+  order(-subaward_amount),
+  .(subaward_number, subawardee_name, subaward_amount, subaward_action_date,
+    subaward_year)], height = "220px")
+```
+
+### 8.4 When a placeholder is created
+
+FSRS reports trail the obligations they draw on, so pass-through often lands
+in an award-year with no prime activity. With `fill_gaps = TRUE`, such years
+get a zero-obligation placeholder row (`n_transactions = 0`) so the dollars
+have somewhere to land instead of being dropped:
+
+```{r}
+p$panel[n_transactions == 0, .N]                      # placeholder rows
+p$panel[n_transactions == 0 & subaward_out_amount > 0][
+  order(-subaward_out_amount)][1:3,
+  .(award_key, year, obligation_net, subaward_out_amount, net_revenue)]
+```
+
+### 8.5 The normalized panel
+
+```{r}
+dim(p$panel)
+p$panel[, .(awards = uniqueN(award_key)), by = award_group]
+```
+
+`r data.table::uniqueN(p$panel$award_key)` awards collapse to
+`r nrow(p$panel)` org-award-year rows, funded by
+`r data.table::uniqueN(p$panel$awarding_agency_name)` federal agencies:
+
+```{r}
+p$panel[, .(awards = uniqueN(award_key),
+            net_m = round(sum(obligation_net) / 1e6)),
+        by = awarding_agency_name][order(-net_m)]
+```
+
+### 8.6 Six awards over their lives
+
+```{r fig-awards, fig.width = 7.5, fig.height = 4.5, echo = FALSE, message = FALSE}
+library(ggplot2)
+top6 <- p$panel[, .(m = sum(obligation_net)),
+                by = award_key][order(-m)][1:6, award_key]
+d6 <- p$panel[award_key %in% top6]
+d6[, award := sub("^ASST_NON_|^CONT_AWD_", "", award_key)]
+ggplot(d6, aes(year, obligation_net / 1e6)) +
+  geom_col(fill = "#1a5276") +
+  geom_hline(yintercept = 0, linewidth = 0.3) +
+  facet_wrap(~award, ncol = 3, scales = "free_y") +
+  labs(x = NULL, y = "net obligations ($M)",
+       title = "VUMC's six largest awards, year by year",
+       subtitle = "Bars below zero are claw-backs booked as posted") +
+  theme_minimal(base_size = 10)
+```
+
+### 8.7 The top 20 awards
+
+```{r fig-top20, fig.width = 7.5, fig.height = 5, echo = FALSE}
+top20 <- p$panel[, .(m = sum(obligation_net) / 1e6,
+                     agency = awarding_agency_name[1]),
+                 by = award_key][order(-m)][1:20]
+top20[, award := sub("^ASST_NON_|^CONT_AWD_", "", award_key)]
+ggplot(top20, aes(reorder(award, m), m, fill = agency)) +
+  geom_col() +
+  coord_flip() +
+  labs(x = NULL, y = "lifetime net obligations ($M)", fill = NULL,
+       title = "Top 20 VUMC awards by lifetime net obligation") +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 7))
+```
+
+### 8.8 The trend, and what pass-through does to it
+
+```{r fig-trend, fig.width = 7.5, fig.height = 4, echo = FALSE}
+tr <- p$panel[, .(`net obligations` = sum(obligation_net) / 1e6,
+                  `net revenue (after pass-through)` = sum(net_revenue) / 1e6),
+              by = year][order(year)]
+trl <- data.table::melt(tr, id.vars = "year")
+ggplot(trl[year <= 2025], aes(year, value, colour = variable)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 1.6) +
+  scale_colour_manual(values = c("#1a5276", "#c0392b")) +
+  labs(x = NULL, y = "$M per year", colour = NULL,
+       title = "VUMC federal funding, 2008-2025",
+       subtitle = "The gap between the lines is pass-through: money VUMC is obliged to pay onward") +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "bottom")
+```
+
+The two lines are the whole argument for fetching outbound subawards: by
+obligations alone, VUMC looks roughly twice as large as the revenue it
+actually retains. The finished versions of these tables ship in the package:
+`data(vumc_transactions)`, `data(vumc_subawards)`, `data(vumc_panel)`.

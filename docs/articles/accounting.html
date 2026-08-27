@@ -63,7 +63,7 @@
 
 
 
-
+<script src="accounting_files/kePrint-0.0.1/kePrint.js"></script><link href="accounting_files/lightable-0.0.1/lightable.css" rel="stylesheet">
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
@@ -256,6 +256,5585 @@ where fetched (<code><a href="../articles/subawards.html">vignette("subawards")<
 above checkable after the fact: <code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> tests each
 award’s summed actions against USAspending’s independently computed
 lifetime total (<code><a href="../articles/reconciliation.html">vignette("reconciliation")</a></code>).</p>
+</div>
+<div class="section level2">
+<h2 id="inside-the-object-us_panel-returns">7. Inside the object <code>us_panel()</code> returns<a class="anchor" aria-label="anchor" href="#inside-the-object-us_panel-returns"></a>
+</h2>
+<p><code><a href="../reference/us_panel.html">us_panel()</a></code> returns a list of class
+<code>usaspend_panel</code> holding six elements. The first five are
+tables; <code>meta</code> records the choices the build was made under
+(year basis, money measure, de-obligation policy, whether outbound
+subawards were fetched).</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>element</th>
+<th>grain</th>
+<th>what it is</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>panel</code></td>
+<td>org × award × year</td>
+<td>
+<strong>the deliverable</strong> — net dollars per award per
+year</td>
+</tr>
+<tr class="even">
+<td><code>awards</code></td>
+<td>award</td>
+<td>the spine: one row per award with its attributes and lifetime
+totals</td>
+</tr>
+<tr class="odd">
+<td><code>transactions</code></td>
+<td>award action</td>
+<td>the normalized ledger the panel was aggregated from</td>
+</tr>
+<tr class="even">
+<td><code>subawards</code></td>
+<td>FSRS report line</td>
+<td>subaward rows with <code>direction</code> assigned
+(<code>in</code>/<code>out</code>/<code>internal</code>/<code>unrelated</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>subawards_in</code></td>
+<td>org × year</td>
+<td>subaward revenue <em>received</em> — money invisible in prime
+data</td>
+</tr>
+<tr class="even">
+<td><code>meta</code></td>
+<td>—</td>
+<td>build parameters and provenance</td>
+</tr>
+</tbody>
+</table>
+<p>The previews below use the packaged Vanderbilt University Medical
+Center data (<code><a href="../reference/vumc_transactions.html">?vumc_transactions</a></code>), rebuilt into a full panel
+object:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-datatable.com" class="external-link">data.table</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vumc_transactions</span><span class="op">)</span>; <span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vumc_subawards</span><span class="op">)</span></span>
+<span><span class="va">ueis</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">vumc_transactions</span><span class="op">$</span><span class="va">recipient_uei</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ex_v</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/structure.html" class="external-link">structure</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>transactions <span class="op">=</span> <span class="va">vumc_transactions</span>, subawards <span class="op">=</span> <span class="va">vumc_subawards</span>,</span>
+<span>       jobs <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>       meta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>uei <span class="op">=</span> <span class="va">ueis</span>, years <span class="op">=</span> <span class="fl">2008</span><span class="op">:</span><span class="fl">2025</span>, source <span class="op">=</span> <span class="st">"api"</span>,</span>
+<span>                   subawards <span class="op">=</span> <span class="st">"both"</span>, extracted_at <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  class <span class="op">=</span> <span class="st">"usaspend_extract"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_panel.html">us_panel</a></span><span class="op">(</span><span class="va">ex_v</span>, org_map <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>uei <span class="op">=</span> <span class="va">ueis</span>, org_id <span class="op">=</span> <span class="st">"35-2528741"</span><span class="op">)</span>,</span>
+<span>              fill_gaps <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="panel-org-award-year">7.1 <code>panel</code> — org × award × year<a class="anchor" aria-label="anchor" href="#panel-org-award-year"></a>
+</h3>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">p</span><span class="op">$</span><span class="va">panel</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 9290   30</span></span></code></pre></div>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:260px; overflow-x: scroll; width:100%; ">
+<table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+field
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+meaning
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+org_id
+</td>
+<td style="text-align:left;">
+Organization id from your crosswalk (EIN here); the unit of analysis.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+award_key
+</td>
+<td style="text-align:left;">
+Generated unique award id (stable, unlike FAIN/PIID).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+year / year_basis
+</td>
+<td style="text-align:left;">
+Calendar or federal fiscal year, recomputed from action_date.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+award_group / award_family / award_type_code / award_type_label
+</td>
+<td style="text-align:left;">
+Contract vs assistance, and the finer type.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+awarding_agency_code / awarding_agency_name / awarding_sub_agency_name /
+funding_agency_name
+</td>
+<td style="text-align:left;">
+Who awarded and who funded.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+cfda_number / naics_code / recipient_state
+</td>
+<td style="text-align:left;">
+Program, industry, registered state.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+n_transactions / n_actions_positive / n_actions_negative
+</td>
+<td style="text-align:left;">
+Activity counts. n_transactions = 0 marks a fill-gaps placeholder row.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+obligation_positive / obligation_negative / obligation_net
+</td>
+<td style="text-align:left;">
+Gross new money, gross claw-backs, and their sum. Never carried as net
+alone.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+deobligation_prior_year
+</td>
+<td style="text-align:left;">
+Reversals pushed back by the restate policy (zero under as_posted).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+loan_face_value / loan_subsidy_cost
+</td>
+<td style="text-align:left;">
+Loan amounts; never revenue.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+subaward_out_amount / n_subawards_out
+</td>
+<td style="text-align:left;">
+Pass-through paid onward under this award-year.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+subaward_in_amount / n_subawards_in
+</td>
+<td style="text-align:left;">
+Subawards received under this award (rare at award grain; see
+subawards_in).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+net_revenue
+</td>
+<td style="text-align:left;">
+obligation_net - subaward_out_amount.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+flags
+</td>
+<td style="text-align:left;">
+Anomaly markers carried from normalization.
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:300px; overflow-x: scroll; width:100%; ">
+<table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+org_id
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_key
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+year
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+year_basis
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_group
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_family
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_type_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_type_label
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+awarding_agency_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+awarding_agency_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+awarding_sub_agency_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+funding_agency_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+cfda_number
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+naics_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+recipient_state
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+n_transactions
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+n_actions_positive
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+n_actions_negative
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+obligation_positive
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+obligation_negative
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+obligation_net
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+deobligation_prior_year
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+loan_face_value
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+loan_subsidy_cost
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_out_amount
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+n_subawards_out
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_in_amount
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+n_subawards_in
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+net_revenue
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+flags
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:left;">
+ASST_NON_OT2OD035404_075
+</td>
+<td style="text-align:right;">
+2025
+</td>
+<td style="text-align:left;">
+calendar
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+direct_payment
+</td>
+<td style="text-align:left;">
+06
+</td>
+<td style="text-align:left;">
+Direct Payment for Specified Use
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.310
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:right;">
+18
+</td>
+<td style="text-align:right;">
+14
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+104298454
+</td>
+<td style="text-align:right;">
+-22000000
+</td>
+<td style="text-align:right;">
+82298454
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+2085963
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+80212491
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:left;">
+ASST_NON_OT2OD035404_075
+</td>
+<td style="text-align:right;">
+2023
+</td>
+<td style="text-align:left;">
+calendar
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+direct_payment
+</td>
+<td style="text-align:left;">
+06
+</td>
+<td style="text-align:left;">
+Direct Payment for Specified Use
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.310
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+73179965
+</td>
+<td style="text-align:right;">
+-29284800
+</td>
+<td style="text-align:right;">
+43895165
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+43895165
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:left;">
+ASST_NON_UL1TR002243_075
+</td>
+<td style="text-align:right;">
+2020
+</td>
+<td style="text-align:left;">
+calendar
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.350
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+42851596
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+42851596
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+2880056
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+39971540
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:left;">
+ASST_NON_OT2OD035404_075
+</td>
+<td style="text-align:right;">
+2024
+</td>
+<td style="text-align:left;">
+calendar
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+direct_payment
+</td>
+<td style="text-align:left;">
+06
+</td>
+<td style="text-align:left;">
+Direct Payment for Specified Use
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.310
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:right;">
+25
+</td>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+42748874
+</td>
+<td style="text-align:right;">
+-3637874
+</td>
+<td style="text-align:right;">
+39111000
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+39111000
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:left;">
+ASST_NON_U19AI181979_075
+</td>
+<td style="text-align:right;">
+2024
+</td>
+<td style="text-align:left;">
+calendar
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.855
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+38056004
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+38056004
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+27457065
+</td>
+<td style="text-align:right;">
+19
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+10598939
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075
+</td>
+<td style="text-align:right;">
+2019
+</td>
+<td style="text-align:left;">
+calendar
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+Centers for Disease Control and Prevention
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.067
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:right;">
+20
+</td>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+37954626
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+37954626
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+115136146
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+-77181520
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:left;">
+ASST_NON_NU2GGH002367_075
+</td>
+<td style="text-align:right;">
+2021
+</td>
+<td style="text-align:left;">
+calendar
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+Centers for Disease Control and Prevention
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.067
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+37234393
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+37234393
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+3769378
+</td>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+33465015
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:left;">
+ASST_NON_U2COD023196_075
+</td>
+<td style="text-align:right;">
+2020
+</td>
+<td style="text-align:left;">
+calendar
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.310
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+35500635
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+35500635
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+47315084
+</td>
+<td style="text-align:right;">
+8
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+-11814449
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:left;">
+ASST_NON_NU2GGH002367_075
+</td>
+<td style="text-align:right;">
+2023
+</td>
+<td style="text-align:left;">
+calendar
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+Centers for Disease Control and Prevention
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.067
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:right;">
+39
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+35465787
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+35465787
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+7280569
+</td>
+<td style="text-align:right;">
+24
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+28185218
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075
+</td>
+<td style="text-align:right;">
+2020
+</td>
+<td style="text-align:left;">
+calendar
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+Centers for Disease Control and Prevention
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.067
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+34180573
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+34180573
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+108801400
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+-74620827
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section level3">
+<h3 id="awards-the-spine">7.2 <code>awards</code> — the spine<a class="anchor" aria-label="anchor" href="#awards-the-spine"></a>
+</h3>
+<p>One row per award, each attribute taken from the latest action that
+reports it (award-level fields are sparse across modifications).</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">p</span><span class="op">$</span><span class="va">awards</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 2166   32</span></span></code></pre></div>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:260px; overflow-x: scroll; width:100%; ">
+<table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+field
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+meaning
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+award_key / award_id / parent_award_id
+</td>
+<td style="text-align:left;">
+Generated key, the human FAIN/PIID, and the parent IDV where present.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+award_group / award_family / award_type_code / award_type_label
+</td>
+<td style="text-align:left;">
+What kind of award.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+recipient_uei / recipient_name / recipient_parent_uei / recipient_state
+</td>
+<td style="text-align:left;">
+Recipient as of the latest action.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+awarding_agency_code / awarding_agency_name / awarding_sub_agency_name /
+funding_agency_name
+</td>
+<td style="text-align:left;">
+Agencies, as of the latest action.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+cfda_number / cfda_title / naics_code / psc_code
+</td>
+<td style="text-align:left;">
+Program and industry classifiers.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+base_action_date / latest_action_date
+</td>
+<td style="text-align:left;">
+First and last observed actions.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+pop_start_date / pop_end_date
+</td>
+<td style="text-align:left;">
+Period of performance.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+total_obligated / total_outlayed
+</td>
+<td style="text-align:left;">
+USAspending’s own lifetime totals — the reconciliation reference
+(outlays mostly missing pre-2017).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+potential_value
+</td>
+<td style="text-align:left;">
+Ceiling, not money; never summed as revenue.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+subaward_count / subaward_total
+</td>
+<td style="text-align:left;">
+From the award overview endpoint when enriched.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+n_transactions / n_years / n_recipients
+</td>
+<td style="text-align:left;">
+Ledger footprint. n_recipients &gt; 1 marks awards that moved between
+institutions.
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:300px; overflow-x: scroll; width:100%; ">
+<table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_key
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_group
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_family
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_type_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_type_label
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_id
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+parent_award_id
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+recipient_uei
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+recipient_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+recipient_parent_uei
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+recipient_state
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+awarding_agency_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+awarding_agency_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+awarding_sub_agency_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+funding_agency_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+cfda_number
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+cfda_title
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+naics_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+psc_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+base_action_date
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+latest_action_date
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+pop_start_date
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+pop_end_date
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+total_obligated
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+total_outlayed
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+potential_value
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_count
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_total
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+n_transactions
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+n_years
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+n_recipients
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+obligated_in_extract
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+ASST_NON_OT2OD035404_075
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+direct_payment
+</td>
+<td style="text-align:left;">
+06
+</td>
+<td style="text-align:left;">
+Direct Payment for Specified Use
+</td>
+<td style="text-align:left;">
+OT2OD035404
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.310
+</td>
+<td style="text-align:left;">
+TRANS-NIH RESEARCH SUPPORT
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2022-11-01
+</td>
+<td style="text-align:left;">
+2025-09-26
+</td>
+<td style="text-align:left;">
+2025-11-01
+</td>
+<td style="text-align:left;">
+2026-10-31
+</td>
+<td style="text-align:right;">
+194155882
+</td>
+<td style="text-align:right;">
+135808269
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+55
+</td>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+188304619
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_U2COD023196_075
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+U2COD023196
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.310
+</td>
+<td style="text-align:left;">
+TRANS-NIH RESEARCH SUPPORT
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2016-07-06
+</td>
+<td style="text-align:left;">
+2023-10-17
+</td>
+<td style="text-align:left;">
+2016-07-06
+</td>
+<td style="text-align:left;">
+2022-12-31
+</td>
+<td style="text-align:right;">
+143679156
+</td>
+<td style="text-align:right;">
+41281524
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+28
+</td>
+<td style="text-align:right;">
+8
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+143679156
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_NU2GGH002367_075
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+NU2GGH002367
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+Centers for Disease Control and Prevention
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.067
+</td>
+<td style="text-align:left;">
+GLOBAL AIDS
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2021-08-31
+</td>
+<td style="text-align:left;">
+2025-09-24
+</td>
+<td style="text-align:left;">
+2021-09-30
+</td>
+<td style="text-align:left;">
+2026-09-29
+</td>
+<td style="text-align:right;">
+141454389
+</td>
+<td style="text-align:right;">
+140281374
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+156
+</td>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+141454389
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_P30CA068485_075
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+04
+</td>
+<td style="text-align:left;">
+Project Grant
+</td>
+<td style="text-align:left;">
+P30CA068485
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.397
+</td>
+<td style="text-align:left;">
+CANCER CENTERS SUPPORT GRANTS
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2016-06-07
+</td>
+<td style="text-align:left;">
+2025-09-19
+</td>
+<td style="text-align:left;">
+1998-09-01
+</td>
+<td style="text-align:left;">
+2025-08-31
+</td>
+<td style="text-align:right;">
+122762660
+</td>
+<td style="text-align:right;">
+34220750
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+57
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+77080095
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+NU2GGH001943
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+Centers for Disease Control and Prevention
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.067
+</td>
+<td style="text-align:left;">
+GLOBAL AIDS
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2016-08-31
+</td>
+<td style="text-align:left;">
+2022-02-25
+</td>
+<td style="text-align:left;">
+2016-09-30
+</td>
+<td style="text-align:left;">
+2021-09-29
+</td>
+<td style="text-align:right;">
+122688213
+</td>
+<td style="text-align:right;">
+2071992
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+60
+</td>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+122688213
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_UL1TR002243_075
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+UL1TR002243
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.350
+</td>
+<td style="text-align:left;">
+NATIONAL CENTER FOR ADVANCING TRANSLATIONAL SCIENCES
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2017-05-25
+</td>
+<td style="text-align:left;">
+2025-08-29
+</td>
+<td style="text-align:left;">
+2017-06-01
+</td>
+<td style="text-align:left;">
+2027-02-28
+</td>
+<td style="text-align:right;">
+118592298
+</td>
+<td style="text-align:right;">
+70979675
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+33
+</td>
+<td style="text-align:right;">
+9
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+107693015
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CONT_AWD_75D30122C14944_7523_-NONE-_-NONE-
+</td>
+<td style="text-align:left;">
+contract
+</td>
+<td style="text-align:left;">
+contract
+</td>
+<td style="text-align:left;">
+D
+</td>
+<td style="text-align:left;">
+Definitive Contract
+</td>
+<td style="text-align:left;">
+75D30122C14944
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+Centers for Disease Control and Prevention
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+541715
+</td>
+<td style="text-align:left;">
+AN42
+</td>
+<td style="text-align:left;">
+2022-08-30
+</td>
+<td style="text-align:left;">
+2023-12-14
+</td>
+<td style="text-align:left;">
+2022-08-30
+</td>
+<td style="text-align:left;">
+2025-08-31
+</td>
+<td style="text-align:right;">
+49995944
+</td>
+<td style="text-align:right;">
+43154785
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+49995944
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_UM1AI148452_075
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+UM1AI148452
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.855
+</td>
+<td style="text-align:left;">
+ALLERGY AND INFECTIOUS DISEASES RESEARCH
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2019-12-11
+</td>
+<td style="text-align:left;">
+2025-08-21
+</td>
+<td style="text-align:left;">
+2019-12-11
+</td>
+<td style="text-align:left;">
+2026-11-30
+</td>
+<td style="text-align:right;">
+42990046
+</td>
+<td style="text-align:right;">
+32568590
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+60
+</td>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+42376789
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_R01CA092447_075
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+R01CA092447
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+93.393
+</td>
+<td style="text-align:left;">
+CANCER CAUSE AND PREVENTION RESEARCH
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2016-05-13
+</td>
+<td style="text-align:left;">
+2017-08-18
+</td>
+<td style="text-align:left;">
+2001-09-30
+</td>
+<td style="text-align:left;">
+2017-03-31
+</td>
+<td style="text-align:right;">
+42852940
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+952482
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_UL1TR000445_075
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+UL1TR000445
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+DWH7MSXKA2A8
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+93.350
+</td>
+<td style="text-align:left;">
+NATIONAL CENTER FOR ADVANCING TRANSLATIONAL SCIENCES
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2016-06-22
+</td>
+<td style="text-align:left;">
+2018-01-12
+</td>
+<td style="text-align:left;">
+2012-06-27
+</td>
+<td style="text-align:left;">
+2017-05-31
+</td>
+<td style="text-align:right;">
+40362265
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+8233388
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section level3">
+<h3 id="transactions-the-normalized-ledger">7.3 <code>transactions</code> — the normalized ledger<a class="anchor" aria-label="anchor" href="#transactions-the-normalized-ledger"></a>
+</h3>
+<p>Same schema as <code>vumc_transactions</code> (see
+<code><a href="../reference/vumc_transactions.html">?vumc_transactions</a></code> for the full field dictionary) plus the
+normalization columns:</p>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:260px; overflow-x: scroll; width:100%; ">
+<table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+field
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+meaning
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+is_zero_dollar
+</td>
+<td style="text-align:left;">
+TRUE on $0 actions — kept, because they carry period-of-performance
+changes and activity counts.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+is_deobligation
+</td>
+<td style="text-align:left;">
+TRUE where the obligation is negative.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+is_legacy_cdi
+</td>
+<td style="text-align:left;">
+Undocumented correction/delete codes (kept, flagged).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+is_stray_uei
+</td>
+<td style="text-align:left;">
+Recipient UEI was never requested (API text-matching stray).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+flags
+</td>
+<td style="text-align:left;">
+Semicolon-joined anomaly markers (money on an admin action, action after
+period of performance, …).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:300px; overflow-x: scroll; width:100%; ">
+<table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+transaction_key
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_key
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+parent_award_id
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_group
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_family
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_type_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_type_label
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_id
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+award_id_uri
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+modification_number
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+action_date
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+action_year
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+action_fiscal_year
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+action_type_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+action_type_label
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+action_class
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+correction_delete_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+record_type_code
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+federal_action_obligation
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+pragmatic_obligation
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+non_federal_funding_amount
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+loan_face_value
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+loan_subsidy_cost
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+award_total_obligated
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+award_total_outlayed
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+recipient_uei
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+recipient_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+recipient_parent_uei
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+recipient_state
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+awarding_agency_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+awarding_agency_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+awarding_sub_agency_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+awarding_sub_agency_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+funding_agency_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+funding_agency_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+cfda_number
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+cfda_title
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+naics_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+psc_code
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+pop_start_date
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+pop_end_date
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+last_modified_date
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+source_file
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+is_zero_dollar
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+is_deobligation
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+is_legacy_cdi
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+is_stray_uei
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+flags
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+7529_OT2OD035404_OT2OD035404-1318346011_93.368_004
+</td>
+<td style="text-align:left;">
+ASST_NON_OT2OD035404_075
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+direct_payment
+</td>
+<td style="text-align:left;">
+06
+</td>
+<td style="text-align:left;">
+Direct Payment for Specified Use
+</td>
+<td style="text-align:left;">
+OT2OD035404
+</td>
+<td style="text-align:left;">
+OT2OD035404-3868273592
+</td>
+<td style="text-align:left;">
+004
+</td>
+<td style="text-align:left;">
+2023-08-03
+</td>
+<td style="text-align:right;">
+2023
+</td>
+<td style="text-align:right;">
+2023
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+Revision
+</td>
+<td style="text-align:left;">
+revision
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:right;">
+-28995165
+</td>
+<td style="text-align:right;">
+-28995165
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+194155882.0
+</td>
+<td style="text-align:right;">
+135808269
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+7529
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.368
+</td>
+<td style="text-align:left;">
+21ST CENTURY CURES ACT - PRECISION MEDICINE INITIATIVE
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2022-11-01
+</td>
+<td style="text-align:left;">
+2024-10-31
+</td>
+<td style="text-align:left;">
+2023-12-18
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+7529_OT2OD035404_OT2OD035404-381067569_93.368_007
+</td>
+<td style="text-align:left;">
+ASST_NON_OT2OD035404_075
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+direct_payment
+</td>
+<td style="text-align:left;">
+06
+</td>
+<td style="text-align:left;">
+Direct Payment for Specified Use
+</td>
+<td style="text-align:left;">
+OT2OD035404
+</td>
+<td style="text-align:left;">
+OT2OD035404-3868273592
+</td>
+<td style="text-align:left;">
+007
+</td>
+<td style="text-align:left;">
+2025-04-17
+</td>
+<td style="text-align:right;">
+2025
+</td>
+<td style="text-align:right;">
+2025
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+Revision
+</td>
+<td style="text-align:left;">
+revision
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:right;">
+-19000000
+</td>
+<td style="text-align:right;">
+-19000000
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+194155882.0
+</td>
+<td style="text-align:right;">
+135808269
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+7529
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.368
+</td>
+<td style="text-align:left;">
+21ST CENTURY CURES ACT - PRECISION MEDICINE INITIATIVE
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2025-11-01
+</td>
+<td style="text-align:left;">
+2026-10-31
+</td>
+<td style="text-align:left;">
+2026-02-09
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+7529_UL1TR002243_UL1TR002243-3268941090_93.855_003
+</td>
+<td style="text-align:left;">
+ASST_NON_UL1TR002243_075
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+UL1TR002243
+</td>
+<td style="text-align:left;">
+UL1TR002243-3099625403
+</td>
+<td style="text-align:left;">
+003
+</td>
+<td style="text-align:left;">
+2024-08-14
+</td>
+<td style="text-align:right;">
+2024
+</td>
+<td style="text-align:right;">
+2024
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+Revision
+</td>
+<td style="text-align:left;">
+revision
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:right;">
+-11850701
+</td>
+<td style="text-align:right;">
+-11850701
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+118592298.1
+</td>
+<td style="text-align:right;">
+70979675
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+7529
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.855
+</td>
+<td style="text-align:left;">
+ALLERGY AND INFECTIOUS DISEASES RESEARCH
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2017-06-01
+</td>
+<td style="text-align:left;">
+2027-02-28
+</td>
+<td style="text-align:left;">
+2024-12-16
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+7523_NU2GGH001943_7523-253-NU2GGH001943-01-1-2017-93067-19-1031-NON_93.067_01
+</td>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+04
+</td>
+<td style="text-align:left;">
+Project Grant
+</td>
+<td style="text-align:left;">
+NU2GGH001943
+</td>
+<td style="text-align:left;">
+NU2GGH001943-351105757
+</td>
+<td style="text-align:left;">
+01
+</td>
+<td style="text-align:left;">
+2017-01-13
+</td>
+<td style="text-align:right;">
+2017
+</td>
+<td style="text-align:right;">
+2017
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+Revision
+</td>
+<td style="text-align:left;">
+revision
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:right;">
+-8245876
+</td>
+<td style="text-align:right;">
+-8245876
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+122688212.7
+</td>
+<td style="text-align:right;">
+2071992
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+7523
+</td>
+<td style="text-align:left;">
+Centers for Disease Control and Prevention
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+93.067
+</td>
+<td style="text-align:left;">
+GLOBAL AIDS
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2016-09-30
+</td>
+<td style="text-align:left;">
+2021-09-29
+</td>
+<td style="text-align:left;">
+2017-06-20
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+7530_1L1CMS331549_1L1CMS331549-382587394_93.638_03
+</td>
+<td style="text-align:left;">
+ASST_NON_1L1CMS331549_075
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+04
+</td>
+<td style="text-align:left;">
+Project Grant
+</td>
+<td style="text-align:left;">
+1L1CMS331549
+</td>
+<td style="text-align:left;">
+1L1CMS331549-2839150505
+</td>
+<td style="text-align:left;">
+03
+</td>
+<td style="text-align:left;">
+2020-06-22
+</td>
+<td style="text-align:right;">
+2020
+</td>
+<td style="text-align:right;">
+2020
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+Revision
+</td>
+<td style="text-align:left;">
+revision
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:right;">
+-5597983
+</td>
+<td style="text-align:right;">
+-5597983
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+18873758.8
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+DWH7MSXKA2A8
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+7530
+</td>
+<td style="text-align:left;">
+Centers for Medicare and Medicaid Services
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.638
+</td>
+<td style="text-align:left;">
+ACA-TRANSFORMING CLINICAL PRACTICE INITIATIVE: PRACTICE TRANSFORMATION
+NETWORKS (PTNS)
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2015-09-29
+</td>
+<td style="text-align:left;">
+2019-12-28
+</td>
+<td style="text-align:left;">
+2020-07-06
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+7523_NU2GGH001943_NU2GGH001943-2296112135_93.067_12
+</td>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+NU2GGH001943
+</td>
+<td style="text-align:left;">
+NU2GGH001943-351105757
+</td>
+<td style="text-align:left;">
+12
+</td>
+<td style="text-align:left;">
+2022-02-25
+</td>
+<td style="text-align:right;">
+2022
+</td>
+<td style="text-align:right;">
+2022
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+Revision
+</td>
+<td style="text-align:left;">
+revision
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:right;">
+-5187772
+</td>
+<td style="text-align:right;">
+-5187772
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+122688212.7
+</td>
+<td style="text-align:right;">
+2071992
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+7523
+</td>
+<td style="text-align:left;">
+Centers for Disease Control and Prevention
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.067
+</td>
+<td style="text-align:left;">
+GLOBAL AIDS
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2016-09-30
+</td>
+<td style="text-align:left;">
+2021-09-29
+</td>
+<td style="text-align:left;">
+2022-04-07
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+7529_UM1AI148452_UM1AI148452-3034401298_93.855_006
+</td>
+<td style="text-align:left;">
+ASST_NON_UM1AI148452_075
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+UM1AI148452
+</td>
+<td style="text-align:left;">
+UM1AI148452-4116651125
+</td>
+<td style="text-align:left;">
+006
+</td>
+<td style="text-align:left;">
+2020-09-22
+</td>
+<td style="text-align:right;">
+2020
+</td>
+<td style="text-align:right;">
+2020
+</td>
+<td style="text-align:left;">
+B
+</td>
+<td style="text-align:left;">
+Continuation
+</td>
+<td style="text-align:left;">
+continuation
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:right;">
+-4883259
+</td>
+<td style="text-align:right;">
+-4883259
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+42990045.9
+</td>
+<td style="text-align:right;">
+32568590
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+7529
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.855
+</td>
+<td style="text-align:left;">
+ALLERGY AND INFECTIOUS DISEASES RESEARCH
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2020-07-14
+</td>
+<td style="text-align:left;">
+2022-11-30
+</td>
+<td style="text-align:left;">
+2021-01-23
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+7529_UM1AI148452_UM1AI148452-3690696324_93.855_002
+</td>
+<td style="text-align:left;">
+ASST_NON_UM1AI148452_075
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+assistance
+</td>
+<td style="text-align:left;">
+grant
+</td>
+<td style="text-align:left;">
+05
+</td>
+<td style="text-align:left;">
+Cooperative Agreement
+</td>
+<td style="text-align:left;">
+UM1AI148452
+</td>
+<td style="text-align:left;">
+UM1AI148452-4116651125
+</td>
+<td style="text-align:left;">
+002
+</td>
+<td style="text-align:left;">
+2025-06-30
+</td>
+<td style="text-align:right;">
+2025
+</td>
+<td style="text-align:right;">
+2025
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+Revision
+</td>
+<td style="text-align:left;">
+revision
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:right;">
+-4507320
+</td>
+<td style="text-align:right;">
+-4507320
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+42990045.9
+</td>
+<td style="text-align:right;">
+32568590
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+7529
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+93.855
+</td>
+<td style="text-align:left;">
+ALLERGY AND INFECTIOUS DISEASES RESEARCH
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+2019-12-11
+</td>
+<td style="text-align:left;">
+2026-11-30
+</td>
+<td style="text-align:left;">
+2026-02-09
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+7529_7529_HHSN27200004_3_HHSN272201300023I_0
+</td>
+<td style="text-align:left;">
+CONT_AWD_HHSN27200004_7529_HHSN272201300023I_7529
+</td>
+<td style="text-align:left;">
+HHSN272201300023I
+</td>
+<td style="text-align:left;">
+contract
+</td>
+<td style="text-align:left;">
+contract
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+Delivery Order
+</td>
+<td style="text-align:left;">
+HHSN27200004
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+3
+</td>
+<td style="text-align:left;">
+2017-07-07
+</td>
+<td style="text-align:right;">
+2017
+</td>
+<td style="text-align:right;">
+2017
+</td>
+<td style="text-align:left;">
+K
+</td>
+<td style="text-align:left;">
+Close Out
+</td>
+<td style="text-align:left;">
+closeout
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:right;">
+-4481786
+</td>
+<td style="text-align:right;">
+-4481786
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+455440.2
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+7529
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+541712
+</td>
+<td style="text-align:left;">
+AN12
+</td>
+<td style="text-align:left;">
+2017-07-07
+</td>
+<td style="text-align:left;">
+2018-09-30
+</td>
+<td style="text-align:left;">
+2019-04-25
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+7529_7529_HHSN27200005_3_HHSN272201300023I_0
+</td>
+<td style="text-align:left;">
+CONT_AWD_HHSN27200005_7529_HHSN272201300023I_7529
+</td>
+<td style="text-align:left;">
+HHSN272201300023I
+</td>
+<td style="text-align:left;">
+contract
+</td>
+<td style="text-align:left;">
+contract
+</td>
+<td style="text-align:left;">
+C
+</td>
+<td style="text-align:left;">
+Delivery Order
+</td>
+<td style="text-align:left;">
+HHSN27200005
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+3
+</td>
+<td style="text-align:left;">
+2017-06-21
+</td>
+<td style="text-align:right;">
+2017
+</td>
+<td style="text-align:right;">
+2017
+</td>
+<td style="text-align:left;">
+K
+</td>
+<td style="text-align:left;">
+Close Out
+</td>
+<td style="text-align:left;">
+closeout
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:right;">
+-3879262
+</td>
+<td style="text-align:right;">
+-3879262
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+242208.8
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+RYSWHDUU7Q36
+</td>
+<td style="text-align:left;">
+TN
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+7529
+</td>
+<td style="text-align:left;">
+National Institutes of Health
+</td>
+<td style="text-align:left;">
+075
+</td>
+<td style="text-align:left;">
+Department of Health and Human Services
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+541712
+</td>
+<td style="text-align:left;">
+AN12
+</td>
+<td style="text-align:left;">
+2017-06-21
+</td>
+<td style="text-align:left;">
+2019-12-01
+</td>
+<td style="text-align:left;">
+2019-04-25
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section level3">
+<h3 id="subawards-with-direction">7.4 <code>subawards</code> — with direction<a class="anchor" aria-label="anchor" href="#subawards-with-direction"></a>
+</h3>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">p</span><span class="op">$</span><span class="va">subawards</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span>rows <span class="op">=</span> <span class="va">.N</span>,</span>
+<span>                dollars_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">subaward_amount</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">/</span> <span class="fl">1e6</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>            by <span class="op">=</span> <span class="va">direction</span><span class="op">]</span></span>
+<span><span class="co">#&gt;    direction  rows dollars_m</span></span>
+<span><span class="co">#&gt;       &lt;char&gt; &lt;int&gt;     &lt;num&gt;</span></span>
+<span><span class="co">#&gt; 1:        in  2498       613</span></span>
+<span><span class="co">#&gt; 2:       out  7088      2156</span></span>
+<span><span class="co">#&gt; 3:  internal    17         4</span></span></code></pre></div>
+<p><code>in</code> rows are revenue (VUMC as subawardee);
+<code>out</code> rows are pass-through (VUMC as prime);
+<code>internal</code> rows move money between an organization’s own UEIs
+and are excluded from both flows; <code>unrelated</code> rows sit on
+multi-recipient awards whose current holder is someone else.</p>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:300px; overflow-x: scroll; width:100%; ">
+<table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_key
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+prime_award_key
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+prime_award_id
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+prime_uei
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+prime_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+prime_parent_uei
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+subawardee_uei
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+subawardee_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+subawardee_parent_uei
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_number
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_type
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_amount
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_action_date
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_year
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_fiscal_year
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+report_year
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+report_month
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+report_last_modified
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+prime_award_amount
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+prime_award_total_outlayed
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+prime_awarding_agency_name
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+prime_cfda_numbers
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+direction
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+source_file
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075|63382|2021-07-16
+</td>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075
+</td>
+<td style="text-align:left;">
+NU2GGH001943
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+sub-grant
+</td>
+<td style="text-align:right;">
+148088036
+</td>
+<td style="text-align:left;">
+2021-07-16
+</td>
+<td style="text-align:right;">
+2021
+</td>
+<td style="text-align:right;">
+2021
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+out
+</td>
+<td style="text-align:left;">
+api:spending_by_award:subawards
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075|63382|2020-09-30
+</td>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075
+</td>
+<td style="text-align:left;">
+NU2GGH001943
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+sub-grant
+</td>
+<td style="text-align:right;">
+108801400
+</td>
+<td style="text-align:left;">
+2020-09-30
+</td>
+<td style="text-align:right;">
+2020
+</td>
+<td style="text-align:right;">
+2020
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+out
+</td>
+<td style="text-align:left;">
+api:spending_by_award:subawards
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075|63382|2019-09-30
+</td>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075
+</td>
+<td style="text-align:left;">
+NU2GGH001943
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+sub-grant
+</td>
+<td style="text-align:right;">
+84085876
+</td>
+<td style="text-align:left;">
+2019-09-30
+</td>
+<td style="text-align:right;">
+2019
+</td>
+<td style="text-align:right;">
+2019
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+out
+</td>
+<td style="text-align:left;">
+api:spending_by_award:subawards
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075|63382|2016-09-30
+</td>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075
+</td>
+<td style="text-align:left;">
+NU2GGH001943
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+sub-grant
+</td>
+<td style="text-align:right;">
+68993088
+</td>
+<td style="text-align:left;">
+2016-09-30
+</td>
+<td style="text-align:right;">
+2016
+</td>
+<td style="text-align:right;">
+2016
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+out
+</td>
+<td style="text-align:left;">
+api:spending_by_award:subawards
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_U2COD023196_075|59306|2022-07-18
+</td>
+<td style="text-align:left;">
+ASST_NON_U2COD023196_075
+</td>
+<td style="text-align:left;">
+U2COD023196
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+THE BROAD INSTITUTE, INC
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+59306
+</td>
+<td style="text-align:left;">
+sub-grant
+</td>
+<td style="text-align:right;">
+35437643
+</td>
+<td style="text-align:left;">
+2022-07-18
+</td>
+<td style="text-align:right;">
+2022
+</td>
+<td style="text-align:right;">
+2022
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+out
+</td>
+<td style="text-align:left;">
+api:spending_by_award:subawards
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075|63382|2019-05-14
+</td>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075
+</td>
+<td style="text-align:left;">
+NU2GGH001943
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+sub-grant
+</td>
+<td style="text-align:right;">
+31018370
+</td>
+<td style="text-align:left;">
+2019-05-14
+</td>
+<td style="text-align:right;">
+2019
+</td>
+<td style="text-align:right;">
+2019
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+out
+</td>
+<td style="text-align:left;">
+api:spending_by_award:subawards
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_U2COD023196_075|59306|2022-12-01
+</td>
+<td style="text-align:left;">
+ASST_NON_U2COD023196_075
+</td>
+<td style="text-align:left;">
+U2COD023196
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+THE BROAD INSTITUTE, INC
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+59306
+</td>
+<td style="text-align:left;">
+sub-grant
+</td>
+<td style="text-align:right;">
+28646499
+</td>
+<td style="text-align:left;">
+2022-12-01
+</td>
+<td style="text-align:right;">
+2022
+</td>
+<td style="text-align:right;">
+2023
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+out
+</td>
+<td style="text-align:left;">
+api:spending_by_award:subawards
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_U2COD023196_075|59306|2022-03-10
+</td>
+<td style="text-align:left;">
+ASST_NON_U2COD023196_075
+</td>
+<td style="text-align:left;">
+U2COD023196
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+THE BROAD INSTITUTE, INC
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+59306
+</td>
+<td style="text-align:left;">
+sub-grant
+</td>
+<td style="text-align:right;">
+28020677
+</td>
+<td style="text-align:left;">
+2022-03-10
+</td>
+<td style="text-align:right;">
+2022
+</td>
+<td style="text-align:right;">
+2022
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+out
+</td>
+<td style="text-align:left;">
+api:spending_by_award:subawards
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_U2COD023196_075|59306|2021-04-15
+</td>
+<td style="text-align:left;">
+ASST_NON_U2COD023196_075
+</td>
+<td style="text-align:left;">
+U2COD023196
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+THE BROAD INSTITUTE, INC
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+59306
+</td>
+<td style="text-align:left;">
+sub-grant
+</td>
+<td style="text-align:right;">
+27378266
+</td>
+<td style="text-align:left;">
+2021-04-15
+</td>
+<td style="text-align:right;">
+2021
+</td>
+<td style="text-align:right;">
+2021
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+out
+</td>
+<td style="text-align:left;">
+api:spending_by_award:subawards
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075|63382|2018-03-29
+</td>
+<td style="text-align:left;">
+ASST_NON_NU2GGH001943_075
+</td>
+<td style="text-align:left;">
+NU2GGH001943
+</td>
+<td style="text-align:left;">
+GYLUH9UXHDX5
+</td>
+<td style="text-align:left;">
+VANDERBILT UNIVERSITY MEDICAL CENTER
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+sub-grant
+</td>
+<td style="text-align:right;">
+25133078
+</td>
+<td style="text-align:left;">
+2018-03-29
+</td>
+<td style="text-align:right;">
+2018
+</td>
+<td style="text-align:right;">
+2018
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+out
+</td>
+<td style="text-align:left;">
+api:spending_by_award:subawards
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section level3">
+<h3 id="subawards_in-inbound-revenue-by-org-year">7.5 <code>subawards_in</code> — inbound revenue by org-year<a class="anchor" aria-label="anchor" href="#subawards_in-inbound-revenue-by-org-year"></a>
+</h3>
+<p>Money received as a subrecipient never appears in prime award data —
+an organization funded purely this way looks like a non-recipient. It is
+therefore kept as its own org × year table rather than being forced onto
+award rows.</p>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:220px; overflow-x: scroll; width:100%; ">
+<table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+org_id
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+year
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_in_amount
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+n_subawards_in
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:right;">
+2023
+</td>
+<td style="text-align:right;">
+85199179
+</td>
+<td style="text-align:right;">
+333
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:right;">
+2021
+</td>
+<td style="text-align:right;">
+73491523
+</td>
+<td style="text-align:right;">
+306
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:right;">
+2024
+</td>
+<td style="text-align:right;">
+72820979
+</td>
+<td style="text-align:right;">
+340
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:right;">
+2019
+</td>
+<td style="text-align:right;">
+61161059
+</td>
+<td style="text-align:right;">
+260
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:right;">
+2025
+</td>
+<td style="text-align:right;">
+57006467
+</td>
+<td style="text-align:right;">
+211
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:right;">
+2022
+</td>
+<td style="text-align:right;">
+52164807
+</td>
+<td style="text-align:right;">
+323
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:right;">
+2020
+</td>
+<td style="text-align:right;">
+51714450
+</td>
+<td style="text-align:right;">
+256
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:right;">
+2018
+</td>
+<td style="text-align:right;">
+47194092
+</td>
+<td style="text-align:right;">
+188
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:right;">
+2014
+</td>
+<td style="text-align:right;">
+44745600
+</td>
+<td style="text-align:right;">
+1
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+35-2528741
+</td>
+<td style="text-align:right;">
+2017
+</td>
+<td style="text-align:right;">
+40117765
+</td>
+<td style="text-align:right;">
+186
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section level3">
+<h3 id="meta">7.6 <code>meta</code><a class="anchor" aria-label="anchor" href="#meta"></a>
+</h3>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">p</span><span class="op">$</span><span class="va">meta</span><span class="op">)</span></span>
+<span><span class="co">#&gt; List of 6</span></span>
+<span><span class="co">#&gt;  $ period               : chr "calendar"</span></span>
+<span><span class="co">#&gt;  $ measure              : chr "obligation"</span></span>
+<span><span class="co">#&gt;  $ deobligation_policy  : chr "as_posted"</span></span>
+<span><span class="co">#&gt;  $ subawards_out_fetched: logi TRUE</span></span>
+<span><span class="co">#&gt;  $ n_orgs               : int 1</span></span>
+<span><span class="co">#&gt;  $ built_at             : POSIXct[1:1], format: "2026-08-27 10:10:03"</span></span></code></pre></div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="one-organization-end-to-end-vanderbilt-university-medical-center">8. One organization end to end: Vanderbilt University Medical
+Center<a class="anchor" aria-label="anchor" href="#one-organization-end-to-end-vanderbilt-university-medical-center"></a>
+</h2>
+<p>VUMC (EIN 35-2528741) is the packaged example because it exercises
+every rule at once: the highest pass-through share in the 50-org pilot,
+claw-backs in every year, and both subaward directions at scale.</p>
+<div class="section level3">
+<h3 id="the-raw-ledger">8.1 The raw ledger<a class="anchor" aria-label="anchor" href="#the-raw-ledger"></a>
+</h3>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">vumc_transactions</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 12085</span></span>
+<span><span class="va">vumc_transactions</span><span class="op">[</span>, <span class="va">.N</span>,</span>
+<span>  by <span class="op">=</span> <span class="fu">.</span><span class="op">(</span>sign <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/data.table/man/fcase.html" class="external-link">fcase</a></span><span class="op">(</span><span class="va">federal_action_obligation</span> <span class="op">&gt;</span> <span class="fl">0</span>, <span class="st">"positive"</span>,</span>
+<span>                      <span class="va">federal_action_obligation</span> <span class="op">&lt;</span> <span class="fl">0</span>, <span class="st">"negative"</span>,</span>
+<span>                      default <span class="op">=</span> <span class="st">"zero"</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;        sign     N</span></span>
+<span><span class="co">#&gt;      &lt;char&gt; &lt;int&gt;</span></span>
+<span><span class="co">#&gt; 1:     zero  2816</span></span>
+<span><span class="co">#&gt; 2: positive  7847</span></span>
+<span><span class="co">#&gt; 3: negative  1422</span></span></code></pre></div>
+<p>Of 12085 raw transactions, about a quarter are zero-dollar
+administrative actions and 1422 are de-obligations — real claw-backs,
+arriving under every action-type label. On the subaward side (after
+normalization assigns direction):</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">p</span><span class="op">$</span><span class="va">subawards</span><span class="op">[</span><span class="va">direction</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"in"</span>, <span class="st">"out"</span><span class="op">)</span>,</span>
+<span>            <span class="fu">.</span><span class="op">(</span>rows <span class="op">=</span> <span class="va">.N</span>,</span>
+<span>              dollars_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">subaward_amount</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">/</span> <span class="fl">1e6</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>            by <span class="op">=</span> <span class="va">direction</span><span class="op">]</span></span>
+<span><span class="co">#&gt;    direction  rows dollars_m</span></span>
+<span><span class="co">#&gt;       &lt;char&gt; &lt;int&gt;     &lt;num&gt;</span></span>
+<span><span class="co">#&gt; 1:        in  2498       613</span></span>
+<span><span class="co">#&gt; 2:       out  7088      2156</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="what-a-claw-back-looks-like">8.2 What a claw-back looks like<a class="anchor" aria-label="anchor" href="#what-a-claw-back-looks-like"></a>
+</h3>
+<p>Award <code>ASST_NON_U54CA280915_075</code> (an NIH cooperative
+agreement) obligates across several years and then loses $3.8M in a
+single action. Note that the sign carries the truth: the claw-back
+arrives as an ordinary <code>REVISION</code>, not under any special
+cancellation type.</p>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:220px; overflow-x: scroll; width:100%; ">
+<table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+modification_number
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+action_date
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+action_type_label
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+action_class
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+federal_action_obligation
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+award_total_obligated
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+000
+</td>
+<td style="text-align:left;">
+2023-06-01
+</td>
+<td style="text-align:left;">
+New
+</td>
+<td style="text-align:left;">
+origination
+</td>
+<td style="text-align:right;">
+517353
+</td>
+<td style="text-align:right;">
+2214328
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+000
+</td>
+<td style="text-align:left;">
+2024-05-21
+</td>
+<td style="text-align:left;">
+Continuation
+</td>
+<td style="text-align:left;">
+continuation
+</td>
+<td style="text-align:right;">
+5475798
+</td>
+<td style="text-align:right;">
+2214328
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+001
+</td>
+<td style="text-align:left;">
+2024-09-24
+</td>
+<td style="text-align:left;">
+Revision
+</td>
+<td style="text-align:left;">
+revision
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+2214328
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+000
+</td>
+<td style="text-align:left;">
+2024-12-09
+</td>
+<td style="text-align:left;">
+Revision
+</td>
+<td style="text-align:left;">
+revision
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+2214328
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+001
+</td>
+<td style="text-align:left;">
+2025-03-24
+</td>
+<td style="text-align:left;">
+Revision
+</td>
+<td style="text-align:left;">
+revision
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+2214328
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+002
+</td>
+<td style="text-align:left;">
+2025-06-23
+</td>
+<td style="text-align:left;">
+Revision
+</td>
+<td style="text-align:left;">
+revision
+</td>
+<td style="text-align:right;">
+-3778823
+</td>
+<td style="text-align:right;">
+2214328
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Summed, the transactions still reconcile to the award’s reported
+lifetime total — the claw-back is part of the award’s true value, not
+noise:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">vumc_transactions</span><span class="op">[</span><span class="va">award_key</span> <span class="op">==</span> <span class="st">"ASST_NON_U54CA280915_075"</span>,</span>
+<span>                  <span class="fu">.</span><span class="op">(</span>tx_sum <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">federal_action_obligation</span><span class="op">)</span>,</span>
+<span>                    reported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">award_total_obligated</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;     tx_sum reported</span></span>
+<span><span class="co">#&gt;      &lt;num&gt;    &lt;num&gt;</span></span>
+<span><span class="co">#&gt; 1: 2214328  2214328</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="how-pass-through-is-structured">8.3 How pass-through is structured<a class="anchor" aria-label="anchor" href="#how-pass-through-is-structured"></a>
+</h3>
+<p>Pass-through is not on the transaction rows at all. It arrives as
+separate FSRS report lines keyed to the <em>prime award</em>, each
+naming a subawardee, an amount, and a commitment date. VUMC’s largest
+conduit is <code>ASST_NON_NU2GGH001943_075</code> — a CDC global-health
+cooperative agreement under which VUMC passes onward far more than it
+keeps:</p>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:220px; overflow-x: scroll; width:100%; ">
+<table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_number
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+subawardee_name
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_amount
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_action_date
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+subaward_year
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:right;">
+148088036
+</td>
+<td style="text-align:left;">
+2021-07-16
+</td>
+<td style="text-align:right;">
+2021
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:right;">
+108801400
+</td>
+<td style="text-align:left;">
+2020-09-30
+</td>
+<td style="text-align:right;">
+2020
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:right;">
+84085876
+</td>
+<td style="text-align:left;">
+2019-09-30
+</td>
+<td style="text-align:right;">
+2019
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:right;">
+68993088
+</td>
+<td style="text-align:left;">
+2016-09-30
+</td>
+<td style="text-align:right;">
+2016
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:right;">
+31018370
+</td>
+<td style="text-align:left;">
+2019-05-14
+</td>
+<td style="text-align:right;">
+2019
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:right;">
+25133078
+</td>
+<td style="text-align:left;">
+2018-03-29
+</td>
+<td style="text-align:right;">
+2018
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+63382
+</td>
+<td style="text-align:left;">
+FRIENDS IN GLOBAL HEALTH, LLC
+</td>
+<td style="text-align:right;">
+7766605
+</td>
+<td style="text-align:left;">
+2017-10-04
+</td>
+<td style="text-align:right;">
+2017
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+GH001943-05-15
+</td>
+<td style="text-align:left;">
+SERVICO DISTRITAL DE SAUDE MULHER E ACCAO SOCIAL DE QUELIMANE
+</td>
+<td style="text-align:right;">
+584268
+</td>
+<td style="text-align:left;">
+2021-08-09
+</td>
+<td style="text-align:right;">
+2021
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+GH001943-05-14
+</td>
+<td style="text-align:left;">
+SERVICO DISTRITAL DE SAUDE MULHER ACCAO SOCIAL DE PEBANE
+</td>
+<td style="text-align:right;">
+205903
+</td>
+<td style="text-align:left;">
+2021-08-09
+</td>
+<td style="text-align:right;">
+2021
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+GH001943-05-12
+</td>
+<td style="text-align:left;">
+SERVICO DISTRITAL DE SAUDE MULHER ACCAO SOCIAL DE NAMACURRA
+</td>
+<td style="text-align:right;">
+205189
+</td>
+<td style="text-align:left;">
+2021-08-09
+</td>
+<td style="text-align:right;">
+2021
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section level3">
+<h3 id="when-a-placeholder-is-created">8.4 When a placeholder is created<a class="anchor" aria-label="anchor" href="#when-a-placeholder-is-created"></a>
+</h3>
+<p>FSRS reports trail the obligations they draw on, so pass-through
+often lands in an award-year with no prime activity. With
+<code>fill_gaps = TRUE</code>, such years get a zero-obligation
+placeholder row (<code>n_transactions = 0</code>) so the dollars have
+somewhere to land instead of being dropped:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">p</span><span class="op">$</span><span class="va">panel</span><span class="op">[</span><span class="va">n_transactions</span> <span class="op">==</span> <span class="fl">0</span>, <span class="va">.N</span><span class="op">]</span>                      <span class="co"># placeholder rows</span></span>
+<span><span class="co">#&gt; [1] 1630</span></span>
+<span><span class="va">p</span><span class="op">$</span><span class="va">panel</span><span class="op">[</span><span class="va">n_transactions</span> <span class="op">==</span> <span class="fl">0</span> <span class="op">&amp;</span> <span class="va">subaward_out_amount</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">]</span><span class="op">[</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">subaward_out_amount</span><span class="op">)</span><span class="op">]</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>,</span>
+<span>  <span class="fu">.</span><span class="op">(</span><span class="va">award_key</span>, <span class="va">year</span>, <span class="va">obligation_net</span>, <span class="va">subaward_out_amount</span>, <span class="va">net_revenue</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;                  award_key  year obligation_net subaward_out_amount net_revenue</span></span>
+<span><span class="co">#&gt;                     &lt;char&gt; &lt;int&gt;          &lt;num&gt;               &lt;num&gt;       &lt;num&gt;</span></span>
+<span><span class="co">#&gt; 1: ASST_NON_U1OHA30535_075  2022              0            28774870   -28774870</span></span>
+<span><span class="co">#&gt; 2: ASST_NON_U1OHA30535_075  2021              0            23555440   -23555440</span></span>
+<span><span class="co">#&gt; 3: ASST_NON_U1OHA30535_075  2020              0            19394827   -19394827</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="the-normalized-panel">8.5 The normalized panel<a class="anchor" aria-label="anchor" href="#the-normalized-panel"></a>
+</h3>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">p</span><span class="op">$</span><span class="va">panel</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 9290   30</span></span>
+<span><span class="va">p</span><span class="op">$</span><span class="va">panel</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span>awards <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/data.table/man/duplicated.html" class="external-link">uniqueN</a></span><span class="op">(</span><span class="va">award_key</span><span class="op">)</span><span class="op">)</span>, by <span class="op">=</span> <span class="va">award_group</span><span class="op">]</span></span>
+<span><span class="co">#&gt;    award_group awards</span></span>
+<span><span class="co">#&gt;         &lt;char&gt;  &lt;int&gt;</span></span>
+<span><span class="co">#&gt; 1:  assistance   1845</span></span>
+<span><span class="co">#&gt; 2:    contract    321</span></span></code></pre></div>
+<p>2166 awards collapse to 9290 org-award-year rows, funded by 11
+federal agencies:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">p</span><span class="op">$</span><span class="va">panel</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span>awards <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/data.table/man/duplicated.html" class="external-link">uniqueN</a></span><span class="op">(</span><span class="va">award_key</span><span class="op">)</span>,</span>
+<span>            net_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">obligation_net</span><span class="op">)</span> <span class="op">/</span> <span class="fl">1e6</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>        by <span class="op">=</span> <span class="va">awarding_agency_name</span><span class="op">]</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">net_m</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;                        awarding_agency_name awards net_m</span></span>
+<span><span class="co">#&gt;                                      &lt;char&gt;  &lt;int&gt; &lt;num&gt;</span></span>
+<span><span class="co">#&gt;  1: Department of Health and Human Services   1801  4154</span></span>
+<span><span class="co">#&gt;  2:                   Department of Defense     98   146</span></span>
+<span><span class="co">#&gt;  3:          Department of Veterans Affairs    204   124</span></span>
+<span><span class="co">#&gt;  4:                 Department of Education     14    12</span></span>
+<span><span class="co">#&gt;  5:             National Science Foundation     21     5</span></span>
+<span><span class="co">#&gt;  6:              Department of the Interior      1     4</span></span>
+<span><span class="co">#&gt;  7:                   Department of Justice     19     2</span></span>
+<span><span class="co">#&gt;  8:         National Endowment for the Arts      4     1</span></span>
+<span><span class="co">#&gt;  9:               Department of Agriculture      2     1</span></span>
+<span><span class="co">#&gt; 10:    Agency for International Development      1     1</span></span>
+<span><span class="co">#&gt; 11:         Environmental Protection Agency      1     1</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="six-awards-over-their-lives">8.6 Six awards over their lives<a class="anchor" aria-label="anchor" href="#six-awards-over-their-lives"></a>
+</h3>
+<pre><code><span><span class="co">#&gt; Warning: package 'ggplot2' was built under R version 4.4.3</span></span></code></pre>
+<p><img src="accounting_files/figure-html/fig-awards-1.png" alt="" width="720"></p>
+</div>
+<div class="section level3">
+<h3 id="the-top-20-awards">8.7 The top 20 awards<a class="anchor" aria-label="anchor" href="#the-top-20-awards"></a>
+</h3>
+<p><img src="accounting_files/figure-html/fig-top20-1.png" alt="" width="720"></p>
+</div>
+<div class="section level3">
+<h3 id="the-trend-and-what-pass-through-does-to-it">8.8 The trend, and what pass-through does to it<a class="anchor" aria-label="anchor" href="#the-trend-and-what-pass-through-does-to-it"></a>
+</h3>
+<p><img src="accounting_files/figure-html/fig-trend-1.png" alt="" width="720"></p>
+<p>The two lines are the whole argument for fetching outbound subawards:
+by obligations alone, VUMC looks roughly twice as large as the revenue
+it actually retains. The finished versions of these tables ship in the
+package: <code>data(vumc_transactions)</code>,
+<code>data(vumc_subawards)</code>, <code>data(vumc_panel)</code>.</p>
+</div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

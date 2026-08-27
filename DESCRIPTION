@@ -31,12 +31,16 @@ Imports:
     tools,
     utils
 Suggests:
+    ggplot2,
+    kableExtra,
+    scales,
     knitr,
     rmarkdown,
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3
 VignetteBuilder: knitr
+LazyData: true
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2

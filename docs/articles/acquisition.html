@@ -334,11 +334,23 @@ says so.</p>
 by-product on the API path but absent from an archive extract. Passing
 <code>subawards = "in"</code> (or <code>"both"</code>) with
 <code>source = "archive"</code> appends them through
-<code><a href="../reference/us_fetch_subawards_in.html">us_fetch_subawards_in()</a></code>, which runs the standard API
-download jobs and harvests only the subaward files. There is no cheaper
-route — a subaward-only custom download job exists but builds far slower
-server-side than the standard job — so this costs what the API path
-costs, and is only worth it below the crossover scale.</p>
+<code><a href="../reference/us_fetch_subawards_in.html">us_fetch_subawards_in()</a></code>, which searches the subaward
+endpoint by subawardee UEI: each batch of UEIs is <strong>counted
+first</strong>, so an organization with no inbound subawards — the
+common case at crosswalk scale — costs one cheap request, and only the
+organizations with hits pay for a full fetch. Measured constraints it
+absorbs: the ~20-UEI filter cap, server-side timeouts on batches of very
+large organizations (batches split recursively, then by time period;
+transient failures retry once automatically), the required
+one-pass-per-family rule, and the 10k result cap. UEIs that cannot be
+resolved are reported in a <code>failures</code> attribute — a failure
+is never allowed to read as zero. Validated against the 130-UEI pilot
+bulk pull: <strong>100.00% of FSRS lines recovered</strong> (21,759 of
+21,760), amounts matching to the cent on 97.2% of lines with the
+remainder being FSRS restatements between the two pulls’ vintages — the
+search route is the fresher source. (A download-job route survives as
+<code>via = "download"</code>, the only route that carries FSRS
+report-period columns.)</p>
 <p>The full append matrix:</p>
 <table class="table">
 <colgroup>
@@ -361,7 +373,7 @@ costs, and is only worth it below the crossover scale.</p>
 <tr class="even">
 <td>archive</td>
 <td>
-<code><a href="../reference/us_fetch_subawards_in.html">us_fetch_subawards_in()</a></code> — API-job cost</td>
+<code><a href="../reference/us_fetch_subawards_in.html">us_fetch_subawards_in()</a></code> — count-screened search</td>
 <td>
 <code><a href="../reference/us_fetch_subawards_out.html">us_fetch_subawards_out()</a></code> per award</td>
 </tr>

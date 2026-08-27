@@ -92,6 +92,16 @@ reference:
   - us_reconcile
   - us_audit
 
+- title: Example data
+  desc: >
+    Vanderbilt University Medical Center, FY2008-FY2025 - a complete
+    single-organization example shipped with the package: raw transactions,
+    subawards in both directions, and the finished panel.
+  contents:
+  - vumc_transactions
+  - vumc_subawards
+  - vumc_panel
+
 - title: Reference data and infrastructure
   contents:
   - us_price_index
