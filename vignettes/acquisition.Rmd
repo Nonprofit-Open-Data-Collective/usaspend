@@ -194,18 +194,28 @@ column says so.
 Inbound subawards — revenue received as a subrecipient — are a free
 by-product on the API path but absent from an archive extract. Passing
 `subawards = "in"` (or `"both"`) with `source = "archive"` appends them
-through `us_fetch_subawards_in()`, which runs the standard API download jobs
-and harvests only the subaward files. There is no cheaper route — a
-subaward-only custom download job exists but builds far slower server-side
-than the standard job — so this costs what the API path costs, and is only
-worth it below the crossover scale.
+through `us_fetch_subawards_in()`, which searches the subaward endpoint by
+subawardee UEI: each batch of UEIs is **counted first**, so an organization
+with no inbound subawards — the common case at crosswalk scale — costs one
+cheap request, and only the organizations with hits pay for a full fetch.
+Measured constraints it absorbs: the ~20-UEI filter cap, server-side
+timeouts on batches of very large organizations (batches split recursively,
+then by time period; transient failures retry once automatically), the
+required one-pass-per-family rule, and the 10k result cap. UEIs that cannot
+be resolved are reported in a `failures` attribute — a failure is never
+allowed to read as zero. Validated against the 130-UEI pilot bulk pull:
+**100.00% of FSRS lines recovered** (21,759 of 21,760), amounts matching to
+the cent on 97.2% of lines with the remainder being FSRS restatements
+between the two pulls' vintages — the search route is the fresher source.
+(A download-job route survives as `via = "download"`, the only route that
+carries FSRS report-period columns.)
 
 The full append matrix:
 
 | you extracted via | inbound (`"in"`) | outbound (`"out"`) |
 |---|---|---|
 | API | already in the extract | `us_fetch_subawards_out()` per award |
-| archive | `us_fetch_subawards_in()` — API-job cost | `us_fetch_subawards_out()` per award |
+| archive | `us_fetch_subawards_in()` — count-screened search | `us_fetch_subawards_out()` per award |
 
 ## Choosing, in one table
 

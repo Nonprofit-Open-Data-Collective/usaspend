@@ -272,13 +272,35 @@ non-recipients.
 
 Append options, from either acquisition path: `subawards = "out"` fetches
 pass-through by prime award (`us_fetch_subawards_out()` /
-`us_fetch_subawards_batch()`); on the archive path, `subawards = "in"`
-appends inbound rows through `us_fetch_subawards_in()`, which runs the
-standard API download jobs and harvests only their subaward files. A
-subaward-only custom download (`bulk_download/awards/` with
-`sub_award_types`) was probed live on 2026-08-27: the endpoint accepts
-`recipient_search_text` and creates the job, but the build ran far longer
-than a standard transactions job, so it is not the package route.
+`us_fetch_subawards_batch()`); `subawards = "in"` appends inbound rows
+through `us_fetch_subawards_in()`. **[measured 2026-08-28]** The inbound
+fetch searches `spending_by_award` with `subawards = true` on
+`recipient_search_text`, which matches the **subawardee** -- so a cheap
+count screens each UEI batch and only organizations with inbound rows pay
+for a fetch. Its constraints, all hit live: ~20 UEIs per filter (50 =
+HTTP 503); batches of giant orgs time out and must split; `award_type_codes`
+is required and cannot mix families (422); the prime UEI arrives in the
+`Prime Award Recipient UEI` field. Unresolved UEIs surface in a `failures`
+attribute, never as silent zeros -- and failures are retried once
+automatically, which the validation showed clears them (5 transient
+failures out of 130 orgs; all 5 clean on retry).
+
+**Validated against the pilot bulk pull (130 UEIs, the worst case -- every
+org is giant):** 100.00% key coverage (21,759 of 21,760 FSRS lines; the
+miss is a quotation-mark mangling), 10.6 minutes for the first pass.
+Amounts match to the cent on 97.2% of lines; the rest are FSRS
+restatements between the two pulls' vintages (concentrated in FEMA
+disaster awards), where the search route is the *fresher* source. It also
+returned $670m of rows the bulk pull predates -- reports filed since.
+One structural quirk found: the search view returns `Sub-Awardee UEI` as
+NULL even on rows matched by that UEI, so fetches run one UEI at a time
+and stamp attribution from the query (counts stay batched).
+
+Two dead ends, also probed live: a subaward-only custom download job
+(`bulk_download/awards/` + `sub_award_types`) builds impractically slowly,
+and download-job harvesting (`via = "download"`) costs the full API-path
+price -- it survives as the fallback and as the only route carrying FSRS
+report-period columns.
 
 ---
 

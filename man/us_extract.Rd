@@ -23,9 +23,10 @@ us_extract(
 \item{source}{\code{"auto"}, \code{"api"}, or \code{"archive"}.}
 
 \item{subawards}{\code{"none"}, \code{"in"} (subawards received: free by-product on
-the API path; on the archive path appended through API download jobs via
-\code{\link[=us_fetch_subawards_in]{us_fetch_subawards_in()}}, at the API path's cost), \code{"out"} (pass-through
-paid: queried by prime award from either path), or \code{"both"}.}
+the API path; on the archive path appended via \code{\link[=us_fetch_subawards_in]{us_fetch_subawards_in()}},
+which count-screens each UEI batch and fetches only where inbound rows
+exist), \code{"out"} (pass-through paid: queried by prime award from either
+path), or \code{"both"}.}
 
 \item{dest}{Directory for intermediate files. Defaults to the package cache.}
 }

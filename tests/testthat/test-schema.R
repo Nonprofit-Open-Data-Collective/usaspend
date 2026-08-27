@@ -129,3 +129,11 @@ test_that("archive-layout contract files with transposed code pairs harmonize id
   expect_equal(b$award_type_code[3], "IDV_B")
   expect_equal(b$award_family[3], "idv")
 })
+
+test_that("us_fetch_subawards_in validates input without touching the network", {
+  out <- us_fetch_subawards_in(character(0))
+  expect_s3_class(out, "data.table")
+  expect_equal(nrow(out), 0L)
+  expect_identical(names(out), us_schema("subawards")$field)
+  expect_error(us_fetch_subawards_in("NOT-A-UEI"), class = "usaspend_bad_uei")
+})
