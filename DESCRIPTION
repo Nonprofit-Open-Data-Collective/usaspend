@@ -17,7 +17,7 @@ Description: Takes a list of SAM.gov Unique Entity Identifiers (UEIs) and
     the awarding agency, award type, net federal obligation received, and
     dollars passed through as subawards.
 License: MIT + file LICENSE
-URL: https://github.com/Nonprofit-Open-Data-Collective/usaspend
+URL: https://nonprofit-open-data-collective.github.io/usaspend/, https://github.com/Nonprofit-Open-Data-Collective/usaspend
 BugReports: https://github.com/Nonprofit-Open-Data-Collective/usaspend/issues
 Depends:
     R (>= 4.1)

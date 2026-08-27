@@ -1,0 +1,102 @@
+url: https://nonprofit-open-data-collective.github.io/usaspend/
+
+template:
+  bootstrap: 5
+  bslib:
+    primary: "#1a5276"
+
+home:
+  title: "usaspend: Normalized Federal Award Panels from USAspending"
+
+navbar:
+  structure:
+    left: [intro, reference, articles]
+    right: [search, github]
+
+reference:
+- title: The pipeline
+  desc: >
+    From a list of UEIs to an ORG x AWARD x YEAR panel of net federal
+    revenue. `us_extract()` acquires, `us_panel()` normalizes and nets,
+    `us_rollup()` aggregates.
+  contents:
+  - us_extract
+  - us_panel
+  - us_rollup
+  - us_adjust_inflation
+  - us_org_year
+
+- title: Planning an extraction
+  desc: Cost the API path against the annual-archive path before pulling.
+  contents:
+  - us_extract_plan
+  - us_award_counts
+  - us_validate_uei
+  - us_org_map
+
+- title: "Acquisition: REST API"
+  desc: Bulk transaction download jobs, for one organization or a small batch.
+  contents:
+  - us_download_run
+  - us_download_submit
+  - us_download_status
+  - us_download_fetch
+  - us_api
+
+- title: "Acquisition: annual archives"
+  desc: >
+    Whole-fiscal-year files filtered locally with duckdb, for large batches.
+  contents:
+  - us_archive_manifest
+  - us_archive_size
+  - us_archive_download
+  - us_archive_filter
+  - us_archive_verify_schema
+
+- title: Subawards
+  desc: >
+    Pass-through paid (fetched by prime award) and subawards received
+    (a by-product of recipient-filtered pulls). Direction matters.
+  contents:
+  - us_fetch_subawards_batch
+  - us_fetch_subawards_out
+  - us_fetch_award
+  - us_subaward_by_year
+
+- title: Normalization and accounting
+  desc: >
+    The rules that turn a raw modification ledger into clean signed
+    transactions, specified in ACCOUNTING.md.
+  contents:
+  - us_normalize_transactions
+  - us_normalize_awards
+  - us_normalize_subawards
+  - us_ledger
+  - us_net_by_year
+  - us_money_column
+
+- title: Schema and code tables
+  contents:
+  - us_schema
+  - us_empty
+  - us_harmonize_transactions
+  - us_harmonize_subawards
+  - us_classify_award_type
+  - us_classify_action
+  - us_award_type_codes
+
+- title: Reconciliation and audit
+  desc: External and structural checks, run on every rebuild.
+  contents:
+  - us_reconcile
+  - us_audit
+
+- title: Reference data and infrastructure
+  contents:
+  - us_price_index
+  - us_sample_extract
+  - us_cache_dir
+  - us_cache_clear
+  - us_cache_status
+  - usaspend-options
+  - usaspend-package
