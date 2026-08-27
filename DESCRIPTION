@@ -1,0 +1,42 @@
+Package: usaspend
+Title: Normalized Federal Award Panels from USAspending
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Jesse", "Lecy", , "jdlecy@gmail.com", role = c("aut", "cre")),
+    person("Nonprofit Open Data Collective", role = "cph")
+  )
+Description: Takes a list of SAM.gov Unique Entity Identifiers (UEIs) and
+    returns a clean, normalized panel of federal award activity from
+    USAspending.gov. Acquisition runs either through the REST API (best for
+    one organization or a small batch) or through the bulk Award Data Archive
+    (best for large batches), with both paths landing on one canonical
+    transaction schema. Normalization applies accounting rules to the raw
+    transaction ledger -- de-duplication, correction and delete handling,
+    action-type classification, de-obligation netting, and subaward
+    pass-through -- to produce organization x award x year records carrying
+    the awarding agency, award type, net federal obligation received, and
+    dollars passed through as subawards.
+License: MIT + file LICENSE
+URL: https://github.com/Nonprofit-Open-Data-Collective/usaspend
+BugReports: https://github.com/Nonprofit-Open-Data-Collective/usaspend/issues
+Depends:
+    R (>= 4.1)
+Imports:
+    cli,
+    data.table,
+    DBI,
+    duckdb,
+    httr2 (>= 1.0.0),
+    stats,
+    tools,
+    utils
+Suggests:
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+LazyData: true

@@ -1,0 +1,15 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.github$
+^data-raw$
+^PLAN\.md$
+^ACCOUNTING\.md$
+^VIGNETTES\.md$
+^README\.Rmd$
+^\.claude$
+^scratch$
+^LICENSE\.md$
+^VIGNETTES\.md$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
