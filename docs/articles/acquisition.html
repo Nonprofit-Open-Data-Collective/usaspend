@@ -29,13 +29,23 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
+<li class="nav-item"><a class="nav-link" href="../articles/usaspend.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>The data</h6></li>
+    <li><a class="dropdown-item" href="../articles/data-model.html">How USAspending data is structured</a></li>
+    <li><a class="dropdown-item" href="../articles/award-types.html">Award types: what is actually in the data</a></li>
+    <li><a class="dropdown-item" href="../articles/subawards.html">Subawards: pass-through, direction, and what FSRS cannot see</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
+    <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
+    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
   </ul>
 </li>
       </ul>
@@ -149,11 +159,101 @@ whole-history cost is a few hours of downloading and scanning —
 are prime transactions only.</li>
 <li>Nothing before FY2008 (the same floor as the API).</li>
 </ul>
-<p>One assumption to verify on first use: the archive CSVs are expected
-to carry the same column names as the download endpoint.
-<code><a href="../reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code> checks that in one call against
-a real archive and reports exactly which mapped columns are missing. Run
-it before trusting your first archive pull.</p>
+</div>
+<div class="section level2">
+<h2 id="do-the-two-paths-return-the-same-data-measured-yes-with-three-caveats">Do the two paths return the same data? Measured: yes, with three
+caveats<a class="anchor" aria-label="anchor" href="#do-the-two-paths-return-the-same-data-measured-yes-with-three-caveats"></a>
+</h2>
+<p>Because the paths draw from the same database through different
+generators, the package’s whole design rests on them being
+interchangeable. That was tested directly: real FY2015 and FY2024
+archives (generated 2026-08-06) were filtered to 130 pilot UEIs and
+compared row-by-row against the same-window slice of a same-month API
+pull (2026-08-27).</p>
+<p><strong>Where it matters, they are identical.</strong></p>
+<table class="table">
+<colgroup>
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+</colgroup>
+<thead><tr class="header">
+<th>cell</th>
+<th>rows (API vs archive)</th>
+<th>one-sided keys</th>
+<th>obligation difference</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>FY2015 assistance</td>
+<td>8,795 = 8,795</td>
+<td>0</td>
+<td>$0</td>
+</tr>
+<tr class="even">
+<td>FY2015 contracts</td>
+<td>2,947 = 2,947</td>
+<td>0</td>
+<td>$0</td>
+</tr>
+<tr class="odd">
+<td>FY2024 assistance</td>
+<td>17,225 vs 17,224</td>
+<td>1</td>
+<td>−$4,125.69</td>
+</tr>
+<tr class="even">
+<td>FY2024 contracts</td>
+<td>2,487 = 2,487</td>
+<td>0</td>
+<td>$0</td>
+</tr>
+</tbody>
+</table>
+<p>Settled years match key-for-key and dollar-for-dollar. Archive files
+partition time exactly like an API pull filtered on
+<code>action_date</code>: every row in an FY file has an action date
+inside that fiscal year. All mapped column names are present in
+both.</p>
+<p><strong>Caveat one: archive contract files transpose two column
+pairs.</strong> In the archives, <code>action_type_code</code> carries
+the <em>description</em> (<code>FUNDING ONLY ACTION</code>) and
+<code>action_type</code> carries the <em>code</em> (<code>C</code>);
+likewise <code>idv_type_code</code> holds the mnemonic
+(<code>IDC</code>) and <code>idv_type</code> the letter
+(<code>B</code>). The column names match perfectly, so a name-based
+check cannot see it — and before the package handled it, 78% of archive
+contract actions silently misclassified.
+<code><a href="../reference/us_harmonize_transactions.html">us_harmonize_transactions()</a></code> now detects the transposition
+from the value shapes and un-swaps it, so either layout classifies
+identically; <code><a href="../reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code> warns when it
+samples a transposed archive. Assistance files are unaffected.</p>
+<p><strong>Caveat two: award-level derived stamps drift between
+generation dates.</strong> Transaction facts (dates, amounts, parties)
+matched exactly. Two columns did not, on a handful of rows:
+<code>award_total_obligated</code> (an award-<em>lifetime</em> figure
+recomputed at file-generation time — the two files were generated three
+weeks apart, and the diffs were concentrated in NIH awards, whose
+lifetime totals move as awards continue elsewhere), and
+<code>award_id_uri</code>, whose numeric suffix is a generated
+identifier that is simply not stable across systems. Key on
+<code>award_key</code>, never on <code>award_id_uri</code>; treat
+award-lifetime columns as a property of the <em>pull date</em>, not of
+the transaction.</p>
+<p><strong>Caveat three: at the leading edge, the archive is up to a
+month stale.</strong> The archives regenerate monthly; corrections
+posted after generation reach the API first. Measured across the
+three-week gap, the entire divergence on FY2024 was <strong>one
+row</strong> — a NASA de-obligation of −$4,125.69 modified fifteen days
+after the archive was cut — plus re-corrected fields on six of 17,224
+common rows: 0.00008% of that year’s dollars. Settled years show zero.
+If the last few weeks matter for your analysis, refresh the leading
+fiscal year over the API (or apply the archive <code>Delta</code>
+files); for anything historical, the archive is exact.</p>
+<p><code><a href="../reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code> runs the name check and the
+transposition probe against any unpacked archive in one call — still
+worth running on a fiscal year the package has not seen before.</p>
 </div>
 <div class="section level2">
 <h2 id="the-crossover">The crossover<a class="anchor" aria-label="anchor" href="#the-crossover"></a>
@@ -230,6 +330,43 @@ skipped. Budget roughly one extra API call per few hundred awards. Until
 that pass runs, <code>net_revenue</code> in the panel equals
 <code>obligation_net</code>, and the panel’s <code>flags</code> column
 says so.</p>
+<p>Inbound subawards — revenue received as a subrecipient — are a free
+by-product on the API path but absent from an archive extract. Passing
+<code>subawards = "in"</code> (or <code>"both"</code>) with
+<code>source = "archive"</code> appends them through
+<code><a href="../reference/us_fetch_subawards_in.html">us_fetch_subawards_in()</a></code>, which runs the standard API
+download jobs and harvests only the subaward files. There is no cheaper
+route — a subaward-only custom download job exists but builds far slower
+server-side than the standard job — so this costs what the API path
+costs, and is only worth it below the crossover scale.</p>
+<p>The full append matrix:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>you extracted via</th>
+<th>inbound (<code>"in"</code>)</th>
+<th>outbound (<code>"out"</code>)</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>API</td>
+<td>already in the extract</td>
+<td>
+<code><a href="../reference/us_fetch_subawards_out.html">us_fetch_subawards_out()</a></code> per award</td>
+</tr>
+<tr class="even">
+<td>archive</td>
+<td>
+<code><a href="../reference/us_fetch_subawards_in.html">us_fetch_subawards_in()</a></code> — API-job cost</td>
+<td>
+<code><a href="../reference/us_fetch_subawards_out.html">us_fetch_subawards_out()</a></code> per award</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section level2">
 <h2 id="choosing-in-one-table">Choosing, in one table<a class="anchor" aria-label="anchor" href="#choosing-in-one-table"></a>

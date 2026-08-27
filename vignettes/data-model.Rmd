@@ -1,0 +1,116 @@
+---
+title: "How USAspending data is structured"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{How USAspending data is structured}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+options(width = 90)
+```
+
+```{r setup, message = FALSE, warning = FALSE}
+library(usaspend)
+ex <- us_sample_extract()
+p  <- us_panel(ex)
+```
+
+USAspending publishes award data at three grains, and almost every analytic
+mistake with this data comes from mixing them up.
+
+| grain | one row is | carries |
+|---|---|---|
+| **transaction** | one award *action* — a new award, a modification, a correction | a signed dollar amount and a date |
+| **award** | one prime award over its whole life | lifetime totals, current attributes, ceilings |
+| **subaward** | one FSRS report line | prime → subrecipient flows (see `vignette("subawards")`) |
+
+## An award is a ledger, not a payment
+
+The award grain looks like the natural unit, but an award is a *container*.
+Its life is written at the transaction grain — and most of that life is
+paperwork:
+
+```{r}
+tx <- p$transactions
+tx[award_key == "ASST_NON_HDTRA12310001_097",
+   .(modification_number, action_date, action_type_label,
+     federal_action_obligation)][order(action_date)]
+```
+
+Eight actions, four calendar years, three zero-dollar revisions. In the
+sample as a whole, `r round(mean(tx$federal_action_obligation == 0, na.rm = TRUE) * 100)`%
+of transactions carry $0 (in the contract-heavy sample; 23% in the 50-org
+pilot) — administrative actions and period-of-performance changes. They are
+the majority of *modifications* and they are how activity gets counted, so
+the package keeps them, flagged.
+
+**Only the transaction grain supports an annual panel.** The award grain has
+one lifetime total and no dates money moved; the transaction grain has a
+signed amount and a date on every action. That is the whole reason the
+package's pipeline is built on transactions.
+
+## The dozen dollar columns, in three groups
+
+USAspending rows carry many dollar columns. Only one group is money received.
+
+**Revenue — sum these.** `federal_action_obligation`, the signed amount
+committed by each action, is the default measure (with
+`pragmatic_obligation` as USAspending's loan-aware variant).
+
+**Ceilings — never sum these.** `potential_total_value_of_award`,
+`base_and_all_options_value`, `current_total_value_of_award`,
+`total_funding_amount`. These describe *capacity*. The sample carries the
+cautionary example — an indefinite-delivery vehicle with a $40,000,000
+potential value and **zero dollars obligated** across its modifications:
+
+```{r}
+tx[award_key == "CONT_IDV_HHSD200200720032I_7523",
+   .(action_date, award_type_label, federal_action_obligation)][order(action_date)][1:4]
+sum(tx[award_key == "CONT_IDV_HHSD200200720032I_7523"]$federal_action_obligation)
+```
+
+A ceiling-based panel would credit this organization with $40M it never
+received. (The money flows through the *delivery orders under* the vehicle,
+which are separate awards — see `vignette("award-types")`.)
+
+**Not revenue at all — separate columns.** `face_value_of_loan` (a
+liability of the borrower), `original_loan_subsidy_cost` (the government's
+expected loss), `non_federal_funding_amount` (someone else's cost share).
+
+## Obligations are promises; outlays are cash; only promises are annual
+
+`federal_action_obligation` is a *commitment*. The disbursement — the
+outlay — happens later, often across years. And the award data carries **no
+annual outlay figure at all**: `total_outlayed_amount_for_overall_award` is
+lifetime-to-date and blank on most rows (annual outlays live in
+account-level extracts the award endpoints do not expose). So an annual
+panel from this data measures obligations, and honest analysis says so.
+The package enforces the honesty: `us_money_column("outlay")` errors rather
+than substituting something close, and `us_reconcile()` reports each award's
+obligation-to-outlay ratio so the size of the gap stays visible.
+
+## Award attributes are a moving target
+
+Award-level fields — recipient, agency, even lifetime totals — are stamped
+onto every transaction row *as of file generation*, and they change over an
+award's life. Two consequences, both measured:
+
+- **Take attributes from the latest action**, never from an arbitrary row —
+  `us_normalize_awards()` does this. On many rows the award-level fields are
+  simply blank.
+- **The recipient itself can change.** NIH awards follow the principal
+  investigator between institutions, so one award's history can span
+  organizations. This is why the panel's grain is *organization* × award ×
+  year, and why a UEI-filtered extract legitimately fails the lifetime
+  identity on such awards (`vignette("reconciliation")`).
+
+## Transactions come dirty
+
+The raw ledger needs cleaning before it can be netted — duplicates from
+overlapping download batches, correction and delete indicator codes,
+county-level aggregate records with no identified recipient. The rules, each
+grounded in measured pilot data, are the subject of
+`vignette("accounting")`.

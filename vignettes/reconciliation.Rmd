@@ -1,0 +1,95 @@
+---
+title: "Reconciliation: why 72% is a good number"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Reconciliation: why 72% is a good number}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+options(width = 90)
+```
+
+```{r setup, message = FALSE, warning = FALSE}
+library(usaspend)
+p <- us_panel(us_sample_extract())
+```
+
+Every rule in this package is a choice, and a choice that cannot be checked
+against an independent figure is an assumption. USAspending happens to
+provide the independent figure: **award-lifetime totals computed by a
+different system than the transactions.** `us_reconcile()` tests, for every
+award, whether the summed transaction obligations come back to that total.
+
+```{r, warning = FALSE}
+r <- us_reconcile(p)
+r[, .(award_key = substr(award_key, 1, 34), total_obligated, tx_sum, gap, status)]
+```
+
+## Reading a break
+
+The sample reconciles 15 of 18 exactly. The classified exceptions teach the
+two lessons that matter:
+
+- **`no_reported_total`** — some awards simply publish no lifetime total to
+  check against. Not a failure; a coverage fact.
+- **`break`** — the interesting one. Here the claw-back award shows
+  `tx_sum = −$310,999` against a lifetime total of $1.39M, because this
+  extract's window holds only the reversal — the original obligations
+  predate it. The identity *should* fail: **a UEI-filtered extract is an
+  organization-eye view, not an award-eye view.** The panel measures what
+  this organization was obligated in these years, which legitimately differs
+  from the award's whole-life total whenever the award's history extends
+  beyond the window or the award moved between institutions.
+
+## The same check at scale
+
+On the full 50-org pilot (61,738 awards), after normalization:
+
+| status | awards | explanation |
+|---|---|---|
+| **ok — exact to the dollar** | 44,680 (72%) | the identity holds |
+| no reported total | 4,955 | nothing to check against |
+| recent/open award | 4,133 | corrections keep arriving after the pull (API-audited) |
+| window edge | 1,564 | pre-2008 history sits below the search floor |
+| multi-recipient | 129 | the award's other slice belongs to another organization |
+| unexplained | ~10% | API audit says: mostly the same mechanisms mid-window, dominated by NIH awards following a PI between institutions |
+
+72% exact — with every exception *classified* — is a strong result for a
+UEI-filtered extract, and the classification is the point: a falling "ok"
+share on a rebuild is the earliest sign of a broken rule, and an
+unclassified break is a real question, not noise.
+
+De-duplication is what makes the number possible at all: before the
+duplicate rule (`vignette("accounting")`), 5,754 additional pilot awards
+failed the identity.
+
+## The other checks — `us_audit()`
+
+Structural invariants, run on every rebuild:
+
+```{r, warning = FALSE}
+us_audit(p)
+```
+
+No transaction key twice, no award attributed to two organizations, one row
+per org-award-year — plus the descriptive counters worth watching over time
+(negative years, zero-dollar share, anomaly flags) and a warning whenever
+outbound subawards were never fetched, so `net_revenue = obligation_net`
+cannot pass silently as a netted figure.
+
+## The outlay gap
+
+`us_reconcile()` also reports `outlay_ratio` — lifetime outlays over
+lifetime obligations — where USAspending provides outlays (mostly
+post-FY2017 awards). This is the promise-versus-payment gap: the number that
+tells a reader how far an obligations panel is from a cash panel
+(`vignette("data-model")` explains why no annual cash figure exists).
+
+## Practice
+
+Run both checks on every rebuild and diff against the previous run, so a
+change in the data or in a rule shows up as a change in the audit rather
+than as a quietly different number.

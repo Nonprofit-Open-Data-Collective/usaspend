@@ -1,0 +1,123 @@
+---
+title: "Accounting: from a raw ledger to net dollars per year"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Accounting: from a raw ledger to net dollars per year}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+options(width = 90)
+```
+
+```{r setup, message = FALSE, warning = FALSE}
+library(usaspend)
+ex <- us_sample_extract()
+```
+
+`us_panel()` runs a fixed sequence of accounting rules between the raw
+transaction ledger and the org × award × year panel. This vignette walks the
+rules in order, with the measured pilot evidence behind each. (The full
+specification lives in the repository's `ACCOUNTING.md`.)
+
+## 1. Clean the ledger — `us_normalize_transactions()`
+
+```{r}
+tx <- us_normalize_transactions(ex$transactions)
+```
+
+Five rules, each grounded in the 50-org pilot (302,025 rows):
+
+1. **De-duplicate on the transaction key.** Download batches overlap and one
+   organization's several UEIs can appear in multiple jobs. The pilot carried
+   6.9% exact duplicates; removing them recovered 5,754 awards that had been
+   failing the lifetime reconciliation.
+2. **Corrections are kept; deletes are dropped.** Assistance rows carry
+   `correction_delete_indicator_code`: `D` withdraws a record; `C` marks the
+   row as *being* the current correction. **37.6% of pilot assistance rows
+   carry `C`** — a pipeline that misreads `C` as "superseded" throws away a
+   third of the ledger.
+3. **Drop county-level aggregate records** (assistance `record_type_code`
+   1) — they have no identified recipient and double-count entity-level money.
+4. **Keep zero-dollar actions, flagged.** They carry period-of-performance
+   changes and they are how activity is counted.
+5. **Flag anomalies, never silently repair** — a non-zero amount on an
+   administrative action, dates outside the period of performance, a
+   recipient UEI that was never requested.
+
+## 2. The sign is the truth
+
+Action-type labels describe *intent*; the amount's sign describes what
+happened. The sample shows both mismatches at once — a `CONTINUATION`
+carrying $0 and a `REVISION` carrying a claw-back:
+
+```{r}
+tx[award_key %in% c("ASST_NON_HDTRA12310001_097", "ASST_NON_D8732143_075") &
+   action_type_label %in% c("Continuation", "Revision"),
+   .(award_key, action_date, action_type_label, federal_action_obligation)][order(award_key, action_date)]
+```
+
+In the pilot, 8.6% of all transactions are negative, and de-obligations
+arrive under **every** action-type label. So the ledger (`us_ledger()`)
+classifies money by sign and keeps `action_class` as context — and negatives
+are *kept*: dropping them inflates every affected year.
+
+## 3. Net by year, keeping gross and net — `us_net_by_year()`
+
+Every org-award-year carries `obligation_positive`, `obligation_negative`,
+and `obligation_net`. A cell netting to $1M from +$5M and −$4M is a
+different fact from a clean $1M, and the panel never carries the net alone:
+
+```{r, warning = FALSE}
+p <- us_panel(ex)
+p$panel[award_key == "ASST_NON_HDTRA12310001_097",
+        .(year, obligation_positive, obligation_negative, obligation_net)]
+```
+
+## 4. Which year does a claw-back belong to?
+
+The hard question. The sample's claw-back — $310,999 reversed in 2024
+against money obligated years earlier — can be booked two defensible ways,
+and the package implements both rather than choosing silently:
+
+| policy | books the reversal in | character |
+|---|---|---|
+| `as_posted` (default) | the year it happened | cash-like; matches USAspending's own presentation; each year reproducible from that year's transactions |
+| `restate` | the year(s) that carried the money, latest-first | accrual-like; but rewrites history as new claw-backs arrive |
+| `drop` | nowhere | diagnostic only — measures the overstatement; warns |
+
+```{r, warning = FALSE}
+lg <- us_ledger(tx)
+om <- us_org_map(ex$meta$uei)
+for (pol in c("as_posted", "restate")) {
+  g <- us_net_by_year(lg, om, deobligation_policy = pol)
+  cat(pol, ":\n")
+  print(g[award_key == "ASST_NON_D8732143_075", .(year, obligation_net)])
+}
+```
+
+Here the two agree — the obligation being reversed predates this extract's
+window, so `restate` has nothing in-window to push the reversal onto and
+correctly leaves it where it was posted. **Measured on the pilot**
+($118.5bn, 2007–2025): `restate` moves most years by under 1%; the policies
+genuinely diverge only at the data's leading edge (2024 −$460m, 2025
++$646m), which is where the numbers are still moving anyway. `as_posted` is
+therefore a safe default for historical work. Under it, about 10% of pilot
+org-award-years net negative — real, and kept.
+
+## 5. Year basis
+
+`period = "calendar"` (default) books on the calendar year of `action_date`;
+`"fiscal"` uses the federal fiscal year (starting 1 October). Both are
+recomputed from `action_date` rather than trusting the source's fiscal-year
+column, so the two bases are guaranteed consistent with each other and with
+the dates.
+
+## 6. What the panel then is
+
+`obligation_net` per org-award-year, minus pass-through where fetched
+(`vignette("subawards")`), with every rule above checkable after the fact:
+`us_reconcile()` tests each award's summed actions against USAspending's
+independently computed lifetime total (`vignette("reconciliation")`).

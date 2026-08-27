@@ -6,7 +6,7 @@ prime transactions, 39,243 subaward rows) unless marked otherwise.
 
 This is the content bank behind `vignettes/`: the facts a reader has to be
 told, in the order that makes them land, so the arguing is done before the
-user-facing text is written. Three vignettes now exist; §1 tracks status.
+user-facing text is written. All nine vignettes now exist; §1 tracks status.
 
 Companion documents: `ACCOUNTING.md` (the rules), `PLAN.md` (the pipeline).
 
@@ -14,26 +14,27 @@ Companion documents: `ACCOUNTING.md` (the rules), `PLAN.md` (the pipeline).
 
 ## 1. The planned set
 
-Status as of 2026-08-27: three vignettes are **written** and render offline
-(`vignettes/`); the rest remain planned. `VignetteBuilder: knitr` is in
-`DESCRIPTION` and the pkgdown `articles` index orders them.
+Status as of 2026-08-28: **all nine vignettes are written** and render
+offline from `us_sample_extract()`. `VignetteBuilder: knitr` is in
+`DESCRIPTION`; the pkgdown `articles` index groups them ("The data" /
+"The pipeline", with `usaspend.Rmd` as the Get-started page). This file
+remains the content bank behind them.
 
 | vignette | status | question it answers | depends on |
 |---|---|---|---|
 | `structure.Rmd` | **written** | package architecture: the layers, the canonical schema boundary, and a mermaid diagram of the function-call workflow | — |
 | `acquisition.Rmd` | **written** | API download jobs (cost scales with UEIs) vs annual archives (cost fixed in fiscal years); the measured constraints; `us_extract_plan()` and the ~2,900-UEI crossover; why outbound subawards always cost an extra pass | — |
 | `panel.Rmd` | **written** | reading the normalized output: obligations ≠ cash, `net_revenue = obligation_net − subaward_out_amount`, the not-fetched flag, negatives kept, loans/student aid separable, inbound subawards as a separate org-year table; demos of `us_org_year()`, `us_rollup()` (incl. `total_net`), and `us_adjust_inflation()` | — |
-| `usaspend.Rmd` (intro) | planned | UEIs in, panel out — the ten-line path | nothing |
-| `data-model.Rmd` | planned | **How USAspending is structured**: transaction vs award vs subaward, and why the annual panel can only be built from transactions | §2, §3 below |
-| `award-types.Rmd` | planned | What is actually in the data: grants, contracts, IDVs, direct payments, loans — and which of them are revenue | §3 below, `ACCOUNTING.md` §2, §5.6 |
-| `subawards.Rmd` | planned | What "subaward" means here, why direction is the whole problem, and what the data cannot see | §2 below, `ACCOUNTING.md` §6 |
-| `accounting.Rmd` | planned | Modifications, de-obligations, the year a claw-back belongs to | `ACCOUNTING.md` §5 |
-| `reconciliation.Rmd` | planned | Why 72% is a good number, and how to read a break | `ACCOUNTING.md` §8 |
+| `usaspend.Rmd` (intro) | **written** | UEIs in, panel out — the ten-line path | nothing |
+| `data-model.Rmd` | **written** | **How USAspending is structured**: transaction vs award vs subaward, and why the annual panel can only be built from transactions | §2, §3 below |
+| `award-types.Rmd` | **written** | What is actually in the data: grants, contracts, IDVs, direct payments, loans — and which of them are revenue | §3 below, `ACCOUNTING.md` §2, §5.6 |
+| `subawards.Rmd` | **written** | What "subaward" means here, why direction is the whole problem, and what the data cannot see | §2 below, `ACCOUNTING.md` §6 |
+| `accounting.Rmd` | **written** | Modifications, de-obligations, the year a claw-back belongs to | `ACCOUNTING.md` §5 |
+| `reconciliation.Rmd` | **written** | Why 72% is a good number, and how to read a break | `ACCOUNTING.md` §8 |
 
-Of the planned set, `data-model.Rmd` and `accounting.Rmd` come first. The
-written three already cover pieces of the planned ones (`panel.Rmd` carries
-the loan/direct-payment treatment; `acquisition.Rmd` carries the outbound
-subaward asymmetry), so the planned vignettes should link rather than repeat.
+The set is complete. Overlaps are handled by linking: `panel.Rmd` carries
+the loan/direct-payment treatment in depth, `acquisition.Rmd` the measured
+path comparison, and the others cross-reference rather than repeat.
 
 Teaching order matters more than completeness. A reader who has not yet
 internalised "an award is a ledger of modifications, not a payment" will
@@ -84,20 +85,24 @@ as the population of pass-through is wrong by an unmeasured amount.
 
 Across all 39,243 pilot subaward rows, **every row is inbound or internal**:
 
-| direction | rows | meaning |
+| direction | rows (post-dedupe) | meaning |
 |---|---|---|
-| inbound | 36,746 | a pilot org is the subawardee |
+| inbound | 29,319 | a pilot org is the subawardee |
 | internal | 2,497 | both parties are pilot orgs (NYU → NYU School of Medicine and similar) |
 | outbound | **0** | — |
+
+(7,427 of the 39,243 raw rows were FSRS restatement duplicates.)
 
 The reason is mechanical, not accidental: the UEI-filtered bulk download matches
 on the **subawardee**, so a recipient-filtered pull can never return the rows
 where your org is the prime. Outbound pass-through — the flow that must be
 *subtracted* from revenue — has to be fetched per prime award via
-`us_fetch_subawards_out()` / `us_fetch_subawards_batch()`. That is a separate
-API pass, **still to be run for the pilot**.
+`us_fetch_subawards_out()` / `us_fetch_subawards_batch()`. That pass **has now
+run on the pilot** (2026-08-28, see `SUBAWARD-NOTES.md`): $12.6bn outbound,
+147 batches × 2 families, ~65 minutes, reconciling to the dollar with
+`us_panel(fill_gaps = TRUE)` — net revenue $105.9bn.
 
-Meanwhile the inbound rows are found money: **$13.97bn** of revenue against
+Meanwhile the inbound rows are found money: **$14.0bn** of revenue against
 $118.5bn of prime obligations — money that appears nowhere in prime award data.
 An organization funded purely as a subrecipient looks like a non-recipient.
 

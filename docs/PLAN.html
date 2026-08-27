@@ -15,12 +15,22 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/usaspend.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/structure.html">Package architecture</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>The data</h6></li>
+    <li><a class="dropdown-item" href="articles/data-model.html">How USAspending data is structured</a></li>
+    <li><a class="dropdown-item" href="articles/award-types.html">Award types: what is actually in the data</a></li>
+    <li><a class="dropdown-item" href="articles/subawards.html">Subawards: pass-through, direction, and what FSRS cannot see</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
+    <li><a class="dropdown-item" href="articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
+    <li><a class="dropdown-item" href="articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
@@ -157,8 +167,39 @@
 </tr></tbody></table><p>Crossover is around <strong>2,900 UEIs</strong> at 18 fiscal years. The top-1,000 sample (1,364 UEIs) sits below it, which is why <code>EXTRACT-PLAN.md</code> recommends the API for that run; extending to the full crosswalk flips the recommendation.</p>
 </div>
 <div class="section level3">
-<h3 id="one-assumption-still-open">One assumption still open<a class="anchor" aria-label="anchor" href="#one-assumption-still-open"></a></h3>
-<p>The archive CSVs are assumed to carry the same column names as the download endpoint. That is stated, not measured — the schema probe used the API path, and checking the archive means unpacking a gigabyte file. <code><a href="reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code> exists to settle it in one call against a real archive, and reports exactly which mapped columns are missing. <strong>Run it before trusting the first archive pull.</strong></p>
+<h3 id="api-vs-archive-the-measured-comparison--measured-2026-08-27">API vs archive: the measured comparison — <strong>[measured 2026-08-27]</strong>
+<a class="anchor" aria-label="anchor" href="#api-vs-archive-the-measured-comparison--measured-2026-08-27"></a></h3>
+<p>The schema assumption was settled by downloading real archives (FY2015, both types; archives generated 2026-08-06) and comparing them row-by-row against the same-window slice of the pilot’s API pull (2026-08-27), restricted to the same 130 UEIs. Results:</p>
+<ol style="list-style-type: decimal"><li><p><strong>Column names match exactly.</strong> All 32 mapped assistance columns and all 26 mapped contract columns are present in the archives. <code><a href="reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code> confirms this in one call.</p></li>
+<li>
+<p><strong>The row universes are identical, and vintage skew is measurably tiny.</strong> All four cells, archive vs same-window API slice:</p>
+<table class="table"><thead><tr class="header"><th>cell</th>
+<th>rows</th>
+<th>one-sided keys</th>
+<th>obligation diff</th>
+</tr></thead><tbody><tr class="odd"><td>FY2015 assistance</td>
+<td>8,795 = 8,795</td>
+<td>0</td>
+<td>$0</td>
+</tr><tr class="even"><td>FY2015 contracts</td>
+<td>2,947 = 2,947</td>
+<td>0</td>
+<td>$0</td>
+</tr><tr class="odd"><td>FY2024 assistance</td>
+<td>17,225 vs 17,224</td>
+<td>1</td>
+<td>−$4,125.69</td>
+</tr><tr class="even"><td>FY2024 contracts</td>
+<td>2,487 = 2,487</td>
+<td>0</td>
+<td>$0</td>
+</tr></tbody></table><p>The single one-sided row is the vintage mechanism caught in the act: a NASA de-obligation modified 2026-08-21, fifteen days <em>after</em> the archive was generated. Three weeks of skew at the leading edge amounts to one row in 17,000 and $4.1k in $4.9bn (0.00008%), plus re-corrected fields on six common rows. Settled years show zero. The annual <code>Delta</code> files exist for exactly this residual.</p>
+</li>
+<li><p><strong>But archive <em>contract</em> files transpose two (code, description) column pairs.</strong> In the archive layout, <code>action_type_code</code> carries the description (<code>FUNDING ONLY ACTION</code>) and <code>action_type</code> carries the code (<code>C</code>); likewise <code>idv_type_code</code> carries the mnemonic (<code>IDC</code>, <code>BPA</code>, <code>FSS</code>, <code>BOA</code>) and <code>idv_type</code> the letter (<code>B</code>, <code>E</code>, <code>C</code>, <code>D</code>). Column-name verification cannot see this — the names match; the values are swapped. Before the fix it silently misclassified 78% of contract actions and every IDV. <code><a href="reference/us_harmonize_transactions.html">us_harmonize_transactions()</a></code> now detects the transposition from the value shapes and un-swaps it (either layout harmonizes identically; regression test in <code>test-schema.R</code>), and <code><a href="reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code> warns when it samples a transposed archive. Assistance files are not affected.</p></li>
+<li><p><strong>Two benign field-level differences remain, both award-level derived stamps, not transaction facts.</strong> <code>award_total_obligated</code> differed on 17 of 8,795 assistance rows (15 awards, all NIH — the PI-transfer population whose lifetime totals keep moving; the two files were generated three weeks apart). <code>award_id_uri</code> differs wherever present: its numeric suffix is a generated identifier that is not stable across systems — never key on it. The package keys on <code>award_key</code>, which matched on every row.</p></li>
+<li><p><strong><code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">utils::download.file</a></code> truncates gigabyte archives at R’s default 60-second timeout</strong>, and a truncated zip then masquerades as a cache hit. <code><a href="reference/us_archive_download.html">us_archive_download()</a></code> now raises the timeout (<code>usaspend.download_timeout</code>, default 3600 s), validates every cached zip’s central directory before trusting it, and deletes failed partials.</p></li>
+<li><p><strong>Archive FY membership is by <code>action_date</code> fiscal year.</strong> Every row in the FY2015 files has an action date inside FY2015 — the same semantics as an API pull with an <code>action_date</code> time period, so the two paths partition time identically.</p></li>
+</ol><p>What the archives structurally lack, regardless of vintage: <strong>subawards (both directions), and everything before FY2008.</strong> §4 covers how subawards are appended through API calls from either path.</p>
 <hr></div>
 </div>
 <div class="section level2">
@@ -177,6 +218,7 @@ POST /api/v2/search/spending_by_award/  subawards=true, award_ids=[&lt;=~500 ids
 <p><code>award_ids</code> with <code>subawards = true</code> returns FSRS subawards <em>under</em> the named prime awards — the outbound direction. Measured cap: 500 ids per request works, 1,000 returns HTTP 503; batches of 400 with a count-first guard against the 10k result cap turned the pilot’s 61,738 awards into under 200 requests. FAINs are ambiguous across agencies, so results are filtered back to the exact <code>prime_award_generated_internal_id</code>.</p>
 <p>Verified against <code>ASST_NON_4482DRCAP00000001_070</code> (FEMA California public assistance): $14.74 bn obligated, 2,330 subawards totalling $9.97 bn — 68 % pass-through. Exactly the case the panel has to get right, and exactly the case a recipient-filtered pull misses entirely.</p>
 <p><strong>Both inbound and outbound matter, for different reasons.</strong> Outbound is subtracted from revenue. Inbound is <em>additional</em> revenue that appears nowhere in prime data — an organization that only ever receives subawards looks like a non-recipient. Some of the 223 zero-award organizations in <code>EXTRACT-PLAN.md</code> §6 may be exactly that, which is worth checking before concluding they are genuine non-recipients.</p>
+<p>Append options, from either acquisition path: <code>subawards = "out"</code> fetches pass-through by prime award (<code><a href="reference/us_fetch_subawards_out.html">us_fetch_subawards_out()</a></code> / <code><a href="reference/us_fetch_subawards_batch.html">us_fetch_subawards_batch()</a></code>); on the archive path, <code>subawards = "in"</code> appends inbound rows through <code><a href="reference/us_fetch_subawards_in.html">us_fetch_subawards_in()</a></code>, which runs the standard API download jobs and harvests only their subaward files. A subaward-only custom download (<code>bulk_download/awards/</code> with <code>sub_award_types</code>) was probed live on 2026-08-27: the endpoint accepts <code>recipient_search_text</code> and creates the job, but the build ran far longer than a standard transactions job, so it is not the package route.</p>
 <hr></div>
 <div class="section level2">
 <h2 id="id_5-normalization-and-accounting">5. Normalization and accounting<a class="anchor" aria-label="anchor" href="#id_5-normalization-and-accounting"></a></h2>
@@ -240,13 +282,16 @@ POST /api/v2/search/spending_by_award/  subawards=true, award_ids=[&lt;=~500 ids
 <p><strong>Stage 5 — scale.</strong> Run the 1,364-UEI top-1000 sample on the API path. Verify the archive schema, then run the full crosswalk on the archive path.</p>
 <p><strong>Stage 6 — documentation (in progress).</strong> Vignettes teaching the data model, the award-type taxonomy, subaward direction, and the accounting rules. Planned set and the measured material to build them from are in <code>VIGNETTES.md</code>. Three are written and render offline off <code><a href="reference/us_sample_extract.html">us_sample_extract()</a></code>: <code>structure.Rmd</code> (architecture + workflow diagram), <code>acquisition.Rmd</code> (API vs archive path), <code>panel.Rmd</code> (reading the output; rollups; inflation adjustment). <code>VignetteBuilder: knitr</code> is in <code>DESCRIPTION</code>. Still to write: data model, award types, subaward direction, accounting rules, reconciliation.</p>
 <div class="section level3">
+<h3 id="settled-since-first-written">Settled since first written<a class="anchor" aria-label="anchor" href="#settled-since-first-written"></a></h3>
+<ul><li>
+<strong>The outbound subaward pass ran on the pilot</strong> (2026-08-28; see <code>SUBAWARD-NOTES.md</code>): $12.6bn outbound against $118.5bn net obligations → net revenue $105.9bn, reconciling to the dollar with <code>us_panel(fill_gaps = TRUE)</code>.</li>
+<li>
+<strong>The archive schema is verified and the paths compared row-by-row</strong> — §3 above. Row universes and dollar totals matched exactly at FY2015; the contract code-pair transposition was found and is repaired in the harmonizer.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="open-questions-in-rough-priority-order">Open questions, in rough priority order<a class="anchor" aria-label="anchor" href="#open-questions-in-rough-priority-order"></a></h3>
 <ol style="list-style-type: decimal"><li>
-<strong>Run the outbound subaward pass on the pilot.</strong> All 39,243 pilot subaward rows are inbound (36,746) or internal (2,497); zero outbound, because the UEI-filtered download matches on the subawardee. Pass-through can only be fetched per prime award (<code><a href="reference/us_fetch_subawards_batch.html">us_fetch_subawards_batch()</a></code>), and until that runs the pilot’s <code>net_revenue</code> is <code>obligation_net</code> with nothing subtracted.</li>
-<li>
-<strong>Verify the archive schema</strong> (<code><a href="reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code>). Everything about path B rests on it.</li>
-<li>
-<strong>Inbound subawards and the zero-award organizations.</strong> Do any of the 223 receive federal money purely as subrecipients? The pilot’s $13.97bn of inbound subaward revenue says the mechanism is large enough to matter.</li>
+<strong>Inbound subawards and the zero-award organizations.</strong> Do any of the 223 receive federal money purely as subrecipients? The pilot’s $14.0bn of inbound subaward revenue says the mechanism is large enough to matter.</li>
 <li>
 <strong>IDV rollup.</strong> Delivery orders are separate awards with their own keys. Rolling them to the parent is a modelling choice; the argument exists and defaults to off, but the pilot should show what it changes.</li>
 <li>

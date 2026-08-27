@@ -15,12 +15,22 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/usaspend.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/structure.html">Package architecture</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>The data</h6></li>
+    <li><a class="dropdown-item" href="articles/data-model.html">How USAspending data is structured</a></li>
+    <li><a class="dropdown-item" href="articles/award-types.html">Award types: what is actually in the data</a></li>
+    <li><a class="dropdown-item" href="articles/subawards.html">Subawards: pass-through, direction, and what FSRS cannot see</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
+    <li><a class="dropdown-item" href="articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
+    <li><a class="dropdown-item" href="articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
@@ -40,11 +50,11 @@
 <div id="usaspend--vignette-plan" class="section level1">
 
 <p>What the package documentation has to teach, and the measured material to teach it with. Written 2026-08-27; numbers are from the 50-nonprofit pilot (302,025 prime transactions, 39,243 subaward rows) unless marked otherwise.</p>
-<p>This is the content bank behind <code>vignettes/</code>: the facts a reader has to be told, in the order that makes them land, so the arguing is done before the user-facing text is written. Three vignettes now exist; §1 tracks status.</p>
+<p>This is the content bank behind <code>vignettes/</code>: the facts a reader has to be told, in the order that makes them land, so the arguing is done before the user-facing text is written. All nine vignettes now exist; §1 tracks status.</p>
 <p>Companion documents: <code>ACCOUNTING.md</code> (the rules), <code>PLAN.md</code> (the pipeline).</p>
 <hr><div class="section level2">
 <h2 id="id_1-the-planned-set">1. The planned set<a class="anchor" aria-label="anchor" href="#id_1-the-planned-set"></a></h2>
-<p>Status as of 2026-08-27: three vignettes are <strong>written</strong> and render offline (<code>vignettes/</code>); the rest remain planned. <code>VignetteBuilder: knitr</code> is in <code>DESCRIPTION</code> and the pkgdown <code>articles</code> index orders them.</p>
+<p>Status as of 2026-08-28: <strong>all nine vignettes are written</strong> and render offline from <code><a href="reference/us_sample_extract.html">us_sample_extract()</a></code>. <code>VignetteBuilder: knitr</code> is in <code>DESCRIPTION</code>; the pkgdown <code>articles</code> index groups them (“The data” / “The pipeline”, with <code>usaspend.Rmd</code> as the Get-started page). This file remains the content bank behind them.</p>
 <table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>vignette</th>
 <th>status</th>
 <th>question it answers</th>
@@ -64,33 +74,33 @@
 <td>—</td>
 </tr><tr class="even"><td>
 <code>usaspend.Rmd</code> (intro)</td>
-<td>planned</td>
+<td><strong>written</strong></td>
 <td>UEIs in, panel out — the ten-line path</td>
 <td>nothing</td>
 </tr><tr class="odd"><td><code>data-model.Rmd</code></td>
-<td>planned</td>
+<td><strong>written</strong></td>
 <td>
 <strong>How USAspending is structured</strong>: transaction vs award vs subaward, and why the annual panel can only be built from transactions</td>
 <td>§2, §3 below</td>
 </tr><tr class="even"><td><code>award-types.Rmd</code></td>
-<td>planned</td>
+<td><strong>written</strong></td>
 <td>What is actually in the data: grants, contracts, IDVs, direct payments, loans — and which of them are revenue</td>
 <td>§3 below, <code>ACCOUNTING.md</code> §2, §5.6</td>
 </tr><tr class="odd"><td><code>subawards.Rmd</code></td>
-<td>planned</td>
+<td><strong>written</strong></td>
 <td>What “subaward” means here, why direction is the whole problem, and what the data cannot see</td>
 <td>§2 below, <code>ACCOUNTING.md</code> §6</td>
 </tr><tr class="even"><td><code>accounting.Rmd</code></td>
-<td>planned</td>
+<td><strong>written</strong></td>
 <td>Modifications, de-obligations, the year a claw-back belongs to</td>
 <td>
 <code>ACCOUNTING.md</code> §5</td>
 </tr><tr class="odd"><td><code>reconciliation.Rmd</code></td>
-<td>planned</td>
+<td><strong>written</strong></td>
 <td>Why 72% is a good number, and how to read a break</td>
 <td>
 <code>ACCOUNTING.md</code> §8</td>
-</tr></tbody></table><p>Of the planned set, <code>data-model.Rmd</code> and <code>accounting.Rmd</code> come first. The written three already cover pieces of the planned ones (<code>panel.Rmd</code> carries the loan/direct-payment treatment; <code>acquisition.Rmd</code> carries the outbound subaward asymmetry), so the planned vignettes should link rather than repeat.</p>
+</tr></tbody></table><p>The set is complete. Overlaps are handled by linking: <code>panel.Rmd</code> carries the loan/direct-payment treatment in depth, <code>acquisition.Rmd</code> the measured path comparison, and the others cross-reference rather than repeat.</p>
 <p>Teaching order matters more than completeness. A reader who has not yet internalised “an award is a ledger of modifications, not a payment” will misread every number in every other vignette, so the intro vignette must carry the worked eight-modification example from <code>ACCOUNTING.md</code> §1 before it shows a single aggregate.</p>
 <hr></div>
 <div class="section level2">
@@ -113,10 +123,10 @@
 <h3 id="id_23-direction-confirmed-at-scale">2.3 Direction, confirmed at scale<a class="anchor" aria-label="anchor" href="#id_23-direction-confirmed-at-scale"></a></h3>
 <p>Across all 39,243 pilot subaward rows, <strong>every row is inbound or internal</strong>:</p>
 <table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr class="header"><th>direction</th>
-<th>rows</th>
+<th>rows (post-dedupe)</th>
 <th>meaning</th>
 </tr></thead><tbody><tr class="odd"><td>inbound</td>
-<td>36,746</td>
+<td>29,319</td>
 <td>a pilot org is the subawardee</td>
 </tr><tr class="even"><td>internal</td>
 <td>2,497</td>
@@ -124,8 +134,9 @@
 </tr><tr class="odd"><td>outbound</td>
 <td><strong>0</strong></td>
 <td>—</td>
-</tr></tbody></table><p>The reason is mechanical, not accidental: the UEI-filtered bulk download matches on the <strong>subawardee</strong>, so a recipient-filtered pull can never return the rows where your org is the prime. Outbound pass-through — the flow that must be <em>subtracted</em> from revenue — has to be fetched per prime award via <code><a href="reference/us_fetch_subawards_out.html">us_fetch_subawards_out()</a></code> / <code><a href="reference/us_fetch_subawards_batch.html">us_fetch_subawards_batch()</a></code>. That is a separate API pass, <strong>still to be run for the pilot</strong>.</p>
-<p>Meanwhile the inbound rows are found money: <strong>$13.97bn</strong> of revenue against $118.5bn of prime obligations — money that appears nowhere in prime award data. An organization funded purely as a subrecipient looks like a non-recipient.</p>
+</tr></tbody></table><p>(7,427 of the 39,243 raw rows were FSRS restatement duplicates.)</p>
+<p>The reason is mechanical, not accidental: the UEI-filtered bulk download matches on the <strong>subawardee</strong>, so a recipient-filtered pull can never return the rows where your org is the prime. Outbound pass-through — the flow that must be <em>subtracted</em> from revenue — has to be fetched per prime award via <code><a href="reference/us_fetch_subawards_out.html">us_fetch_subawards_out()</a></code> / <code><a href="reference/us_fetch_subawards_batch.html">us_fetch_subawards_batch()</a></code>. That pass <strong>has now run on the pilot</strong> (2026-08-28, see <code>SUBAWARD-NOTES.md</code>): $12.6bn outbound, 147 batches × 2 families, ~65 minutes, reconciling to the dollar with <code>us_panel(fill_gaps = TRUE)</code> — net revenue $105.9bn.</p>
+<p>Meanwhile the inbound rows are found money: <strong>$14.0bn</strong> of revenue against $118.5bn of prime obligations — money that appears nowhere in prime award data. An organization funded purely as a subrecipient looks like a non-recipient.</p>
 <p>The vignette should end this section on the asymmetry, because it is the thing readers will get wrong: <em>inbound is free with your extract; outbound costs you a second API pass, and only outbound changes net revenue.</em></p>
 <hr></div>
 </div>
@@ -190,7 +201,49 @@
 <hr></div>
 </div>
 <div class="section level2">
-<h2 id="id_4-notes-for-whoever-writes-these">4. Notes for whoever writes these<a class="anchor" aria-label="anchor" href="#id_4-notes-for-whoever-writes-these"></a></h2>
+<h2 id="id_4-api-vs-archive-equivalence--measured-2026-08-27">4. API vs archive equivalence — measured 2026-08-27<a class="anchor" aria-label="anchor" href="#id_4-api-vs-archive-equivalence--measured-2026-08-27"></a></h2>
+<p>Material for <code>acquisition.Rmd</code> (already written into it) and for anyone auditing the pipeline. Real FY2015 + FY2024 archives (generated 2026-08-06) filtered to the 130 pilot UEIs, against the same-window slice of the pilot API pull (2026-08-27):</p>
+<table class="table"><colgroup><col width="20%"><col width="20%"><col width="20%"><col width="20%"><col width="20%"></colgroup><thead><tr class="header"><th>cell</th>
+<th>rows api = archive</th>
+<th>one-sided keys</th>
+<th>obligation diff</th>
+<th>fields differing</th>
+</tr></thead><tbody><tr class="odd"><td>FY2015 assistance</td>
+<td>8,795 = 8,795</td>
+<td>0</td>
+<td>$0</td>
+<td>
+<code>award_id_uri</code> (22), <code>award_total_obligated</code> (17)</td>
+</tr><tr class="even"><td>FY2015 contracts</td>
+<td>2,947 = 2,947</td>
+<td>0</td>
+<td>$0</td>
+<td>none (after un-swap fix)</td>
+</tr><tr class="odd"><td>FY2024 assistance</td>
+<td>17,225 vs 17,224</td>
+<td>1</td>
+<td>−$4,125.69</td>
+<td>vintage: <code>award_total_obligated</code> (430), <code>award_id_uri</code> (530), re-corrected rows (6), <code>recipient_parent_uei</code> (3)</td>
+</tr><tr class="even"><td>FY2024 contracts</td>
+<td>2,487 = 2,487</td>
+<td>0</td>
+<td>$0</td>
+<td>
+<code>last_modified_date</code> (30), <code>award_total_obligated</code> (4)</td>
+</tr></tbody></table><p>Findings, in teaching order:</p>
+<ol style="list-style-type: decimal"><li>
+<strong>Row universes and dollars are identical</strong> — the paths are genuinely interchangeable, and archive FY membership is by <code>action_date</code> fiscal year, the same partition as an API <code>action_date</code> filter.</li>
+<li>
+<strong>Archive contract files transpose <code>action_type_code</code>/<code>action_type</code> and <code>idv_type_code</code>/<code>idv_type</code></strong> — codes and descriptions swap columns. Names match, values do not; a name-based schema check cannot see it. Before the fix, 78% of archive contract actions misclassified. <code><a href="reference/us_harmonize_transactions.html">us_harmonize_transactions()</a></code> detects by value shape and un-swaps (regression test in <code>test-schema.R</code>); <code><a href="reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code> warns.</li>
+<li>
+<strong>Award-level derived stamps drift with generation date</strong> — <code>award_total_obligated</code> (lifetime figure, recomputed per file; diffs concentrated in NIH/PI-transfer awards) and <code>award_id_uri</code> (generated suffix, not stable across systems — never key on it). Transaction facts barely drift: three weeks of vintage skew at FY2024 produced exactly one one-sided row (a NASA de-obligation modified 15 days after archive generation; −,125.69 of .9bn, 0.00008%) and re-corrected fields on six common rows – the mechanism the annual <code>Delta</code> files exist for. Settled years show zero.</li>
+<li>
+<strong><code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">utils::download.file</a></code> truncates GB-scale files at R’s 60s default timeout, and a truncated zip then looks like a cache hit</strong> — fixed in <code><a href="reference/us_archive_download.html">us_archive_download()</a></code> (raised timeout, zip validation, partial-file cleanup). Found because the first real archive pull failed exactly this way.</li>
+<li>
+<strong>The archives carry no subawards in either direction and nothing before FY2008.</strong> Outbound: append from either path with <code>subawards = "out"</code>. Inbound: requires the API (bulk-download by-product).</li>
+</ol><hr></div>
+<div class="section level2">
+<h2 id="id_5-notes-for-whoever-writes-these">5. Notes for whoever writes these<a class="anchor" aria-label="anchor" href="#id_5-notes-for-whoever-writes-these"></a></h2>
 <ul><li>Every number above is reproducible from the pilot extract. When the vignettes are written, they should be <strong>computed in the <code>.Rmd</code></strong> from <code><a href="reference/us_sample_extract.html">us_sample_extract()</a></code> where the fixture supports it, and quoted as measured pilot figures where it does not — not hard-coded silently.</li>
 <li>The fixture (<code>inst/extdata/sample/</code>, 152 rows, three UEIs) already contains a reconciling eight-modification award, a −$310,999 revision, 30 zero-dollar administrative actions, and a $40M IDV ceiling against $0 obligated. That is enough to demonstrate §3.1 and most of <code>ACCOUNTING.md</code> §5 live, without a network call. Vignettes must build offline.</li>
 <li>Packaging is done: <code>VignetteBuilder: knitr</code> is in <code>DESCRIPTION</code> (<code>knitr</code> and <code>rmarkdown</code> were already in <code>Suggests</code>), and <code>_pkgdown.yml</code> carries an <code>articles</code> index ordering structure -&gt; acquisition -&gt; panel.</li>

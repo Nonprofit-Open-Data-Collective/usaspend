@@ -1,0 +1,101 @@
+---
+title: "Award types: what is actually in the data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Award types: what is actually in the data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+options(width = 90)
+```
+
+```{r setup, message = FALSE, warning = FALSE}
+library(usaspend)
+```
+
+Every transaction carries an award type code, and the code determines
+whether its dollars are revenue, capacity, or someone else's money. The
+package's taxonomy:
+
+```{r}
+us_award_type_codes()
+```
+
+Each code maps to an `award_family` (`grant`, `contract`, `idv`,
+`direct_payment`, `loan`, `other`) and an `award_group` (`assistance` vs
+`contract` — which of USAspending's two file layouts it arrives in).
+
+## What a real portfolio looks like
+
+The 50-nonprofit pilot (302,025 transactions, FY2008–FY2025), by type:
+
+| type | rows | dollars | what it actually is | revenue? |
+|---|---|---|---|---|
+| Project grants (04) + coop agreements (05) | 212k | $62.8bn | the core | yes |
+| Contracts (A–D) | 56.6k | $76.4bn | delivery orders, definitive contracts, POs, BPA calls | yes |
+| Direct payments (06, 10) | 19.3k | $3.0bn | almost entirely Pell, work-study, SEOG — student aid moving *through* the institution | separable; usually exclude |
+| Direct loans (07) | 6.5k | $0 obligated, **$626bn face value** | Federal Direct Student Loans; the university is a conduit | face value never |
+| Formula/block grants (03, 02) | 2.1k | $1.6bn | mostly government-affiliated orgs | yes |
+| Other/reimbursable (11) | 1.2k | $0.3bn | DOE/DOD/USDA cooperative R&D | revenue-like |
+| IDVs | 4.3k | ~$0.8bn obligated vs **$115bn ceiling** | contract vehicles | obligations only |
+
+Two numbers carry the whole argument: **$626bn of loan face value** and
+**$115bn of IDV ceiling**, against **$118.5bn of actual net obligations**.
+Summing the wrong dollar column overstates this portfolio roughly sixfold.
+
+## Loans: the data gets it right, keep it that way
+
+Every type-07 row in the pilot is a Federal Direct Student Loan. The loans
+are to *students*; the institution originates them. USAspending already
+encodes this correctly — `federal_action_obligation` is $0 on every one, and
+the face value travels in its own column (`loan_face_value` in the panel).
+The rule is simply to never let face value or subsidy cost reach a revenue
+total. Direct payments (06, 10) are the same story one step removed —
+student aid booked to the school but economically the students' — so they
+stay in the ledger with `award_family = "direct_payment"`, and a
+nonprofit-revenue analysis usually filters them out explicitly.
+
+## IDVs: vehicles, not money
+
+An indefinite-delivery vehicle (GWAC, IDC, BPA, BOA, FSS) is a contract
+*container*. Its ceiling is capacity; the money is obligated on the delivery
+orders placed under it — which are separate awards with their own keys. The
+sample shows the pair:
+
+```{r}
+tx <- us_sample_extract()$transactions
+tx[grepl("HHSD200200720032I", award_key),
+   .(rows = .N, obligated = sum(federal_action_obligation)),
+   by = .(award_key, award_type_label)]
+```
+
+The vehicle: $0 across its own modifications, against a $40M potential
+value. The delivery orders under it: the actual obligations. Whether to roll
+delivery orders up into their parent vehicle is a modelling choice — it
+changes award counts and agency attribution, not dollar totals — and the
+package defaults to **not** rolling up.
+
+## Two traps the package absorbs so you don't hit them
+
+**Codes collide across families.** `B` is *Continuation* for assistance and
+*Supplemental Agreement* for contracts; `C` is *Revision* vs *Funding Only
+Action*; `D` is *Adjustment to Completed Award* vs *Change Order*. Any
+classification that ignores `award_group` is wrong, which is why
+`us_classify_action()` requires it:
+
+```{r}
+us_classify_action(c("B", "C"), award_group = "assistance")[, -1]
+us_classify_action(c("B", "C"), award_group = "contract")[, -1]
+```
+
+**Description strings are not stable — group on codes, never labels.** The
+same pull can carry `"DELIVERY ORDER"` and `"DO"` for one code, and archive
+files carry different strings again (`vignette("acquisition")`). Package
+labels are always derived from the code via `us_classify_award_type()`, so
+they are stable no matter what the source file said. Contract IDV rows add
+one more wrinkle: their `award_type_code` is blank and the type lives in
+`idv_type_code` as a bare letter, which the classifier prefixes (`"B"` →
+`"IDV_B"`) because bare `"B"` would read as Purchase Order.

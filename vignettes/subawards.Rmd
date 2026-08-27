@@ -1,0 +1,125 @@
+---
+title: "Subawards: pass-through, direction, and what FSRS cannot see"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Subawards: pass-through, direction, and what FSRS cannot see}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+options(width = 90)
+```
+
+```{r setup, message = FALSE, warning = FALSE}
+library(usaspend)
+ex <- us_sample_extract()
+```
+
+## What a subaward row is — and is not
+
+A subaward row is an **FSRS report**: the prime awardee naming a first-tier
+subrecipient, required once a subaward crosses the **$30,000** threshold.
+Both parties carry UEIs, which is what makes direction recoverable at all.
+
+It is **not** the federal → state → local funding chain in general. When CMS
+pays a state Medicaid agency and the state pays a hospital, USAspending sees
+only the federal → state prime award; the state's onward payment is not an
+FSRS record, and Medicaid provider payments never appear at all. This is the
+single most common misreading of the data.
+
+The pattern *does* surface where the pass-through entity is itself a federal
+prime grantee that files FSRS — and the sample catches it live. Its largest
+inbound subaward is FEMA disaster money reaching Kaiser **through the
+California Governor's Office of Emergency Services**, a state agency that is
+the prime grantee:
+
+```{r, warning = FALSE}
+om <- us_org_map(ex$meta$uei)
+sb <- us_normalize_subawards(ex$subawards, org_uei = om$uei)
+sb[order(-subaward_amount)][1, .(prime_name, subawardee_uei, subaward_amount,
+                                 subaward_action_date)]
+```
+
+So state-conduit flows appear exactly when the state is a prime grantee that
+reports — a meaningful but **incomplete** slice of intergovernmental
+transfers. No analysis may treat observed subawards as the population of
+pass-through.
+
+## Direction is the whole problem
+
+A recipient-filtered bulk pull matches on the **subawardee**, so it returns
+only rows where your organization *receives*. Measured twice: this sample's
+32 rows are all inbound; the full pilot's 39,243 rows split 29,319 inbound,
+2,497 internal (both sides pilot orgs — NYU → NYU School of Medicine and the
+like), and **zero outbound**.
+
+```{r}
+sb[, .N, by = direction]
+```
+
+The four directions and what the panel does with each:
+
+| direction | meaning | treatment |
+|---|---|---|
+| `out` — org is prime | pass-through obligation | **subtracted**: `net_revenue = obligation_net − subaward_out` |
+| `in` — org is subawardee | revenue invisible in prime data | added as its own org-year table |
+| `internal` — both sides yours | transfers between an org's own UEIs | excluded from both flows ($551m in the pilot) |
+| `unrelated` | multi-recipient award now held elsewhere | excluded |
+
+Direction cannot be read off a row alone — it needs the organization's UEI
+set, which is why `us_normalize_subawards()` takes `org_uei` and
+`us_subaward_by_year()` errors rather than guessing.
+
+**The asymmetry to remember:** inbound arrives free with your extract;
+outbound costs a separate fetch by prime award; and only outbound changes
+`net_revenue`.
+
+## Fetching outbound at scale
+
+`us_extract(subawards = "out")` walks the extracted award keys through
+`us_fetch_subawards_batch()` — batched ~400 prime award ids per request.
+The pilot's 61,738 awards ran in 147 batches × 2 families, ~65 minutes,
+zero failures. Two traps it absorbs, both hit live: mixing assistance and
+contract type codes in one request makes the results endpoint fail *silently*
+(counts say subawards exist; results return none), so it runs one pass per
+family; and `award_ids` matches bare FAINs/PIIDs, which agencies reuse —
+four of five raw rows returned were strays belonging to other awards, so
+results are filtered back to the exact generated prime-award key. Without
+that filter, pass-through inflates roughly fivefold.
+
+## Tabulating so the numbers reconcile
+
+- **De-duplicate restatements.** FSRS reports are restated month to month;
+  19% of pilot bulk rows were the same subaward re-reported. Keep the latest
+  report per composite key.
+- **Book on `subaward_action_date`**, not the report date — reports lag,
+  sometimes across fiscal years.
+- **Attach with `us_panel(fill_gaps = TRUE)`.** FSRS reports trail the
+  obligations they draw on: 13% of pilot outbound dollars ($1.7bn) were
+  dated in org-award-years with *no prime activity at all*. Without
+  synthetic zero-obligation rows those dollars silently drop.
+- **Never attach one subaward to two organizations** — multi-recipient
+  awards would double-count it; the panel attaches once, to the dominant
+  org-row.
+
+Reconciliation target, asserted in the package tests: the panel's
+`subaward_out_amount` sums to exactly the dollars fetched.
+
+## What it amounts to
+
+Pilot magnitudes: **$12.6bn outbound and $14.0bn inbound against $118.5bn
+of net prime obligations** — net revenue $105.9bn after pass-through.
+Concentration is extreme (the top four orgs carry over half the outbound
+dollars; one research institute passes through 45% of everything it
+receives), and an organization funded purely as a subrecipient looks like a
+non-recipient in prime data.
+
+## Known limits — carry these next to any subaward number
+
+First-tier only (no sub-sub-awards); under-$30k censored, so pass-through is
+a lower bound everywhere; reporting compliance is uneven, so "zero
+subawards" and "never reported" are indistinguishable at the row level (keep
+counts alongside dollars); the subawardee UEI is often null for government
+subawardees; and FSRS amounts are commitments, not disbursements.

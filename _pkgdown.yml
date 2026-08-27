@@ -60,6 +60,7 @@ reference:
   contents:
   - us_fetch_subawards_batch
   - us_fetch_subawards_out
+  - us_fetch_subawards_in
   - us_fetch_award
   - us_subaward_by_year
 
@@ -102,9 +103,17 @@ reference:
   - usaspend-package
 
 articles:
-- title: Using usaspend
-  navbar: ~
+- title: The data
+  navbar: The data
+  contents:
+  - data-model
+  - award-types
+  - subawards
+- title: The pipeline
+  navbar: The pipeline
   contents:
   - structure
   - acquisition
+  - accounting
   - panel
+  - reconciliation

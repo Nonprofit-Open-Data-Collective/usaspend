@@ -1,10 +1,16 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/404.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/ACCOUNTING.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/accounting.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/acquisition.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/award-types.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/data-model.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/index.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/panel.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/reconciliation.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/structure.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/subawards.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/usaspend.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/authors.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/index.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/LICENSE-text.html</loc></url>
@@ -34,6 +40,7 @@
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_extract_plan.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_award.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_batch.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_in.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_out.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_harmonize_transactions.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_ledger.html</loc></url>
