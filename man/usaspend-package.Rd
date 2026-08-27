@@ -11,6 +11,7 @@ Takes a list of SAM.gov Unique Entity Identifiers (UEIs) and returns a clean, no
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://nonprofit-open-data-collective.github.io/usaspend/}
   \item \url{https://github.com/Nonprofit-Open-Data-Collective/usaspend}
   \item Report bugs at \url{https://github.com/Nonprofit-Open-Data-Collective/usaspend/issues}
 }

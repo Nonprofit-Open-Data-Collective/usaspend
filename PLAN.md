@@ -159,14 +159,68 @@ Crossover is around **2,900 UEIs** at 18 fiscal years. The top-1,000 sample
 (1,364 UEIs) sits below it, which is why `EXTRACT-PLAN.md` recommends the API
 for that run; extending to the full crosswalk flips the recommendation.
 
-### One assumption still open
+### API vs archive: the measured comparison — **[measured 2026-08-27]**
 
-The archive CSVs are assumed to carry the same column names as the download
-endpoint. That is stated, not measured — the schema probe used the API path, and
-checking the archive means unpacking a gigabyte file. `us_archive_verify_schema()`
-exists to settle it in one call against a real archive, and reports exactly
-which mapped columns are missing. **Run it before trusting the first archive
-pull.**
+The schema assumption was settled by downloading real archives (FY2015, both
+types; archives generated 2026-08-06) and comparing them row-by-row against
+the same-window slice of the pilot's API pull (2026-08-27), restricted to the
+same 130 UEIs. Results:
+
+1. **Column names match exactly.** All 32 mapped assistance columns and all
+   26 mapped contract columns are present in the archives.
+   `us_archive_verify_schema()` confirms this in one call.
+
+2. **The row universes are identical, and vintage skew is measurably tiny.**
+   All four cells, archive vs same-window API slice:
+
+   | cell | rows | one-sided keys | obligation diff |
+   |---|---|---|---|
+   | FY2015 assistance | 8,795 = 8,795 | 0 | $0 |
+   | FY2015 contracts | 2,947 = 2,947 | 0 | $0 |
+   | FY2024 assistance | 17,225 vs 17,224 | 1 | −$4,125.69 |
+   | FY2024 contracts | 2,487 = 2,487 | 0 | $0 |
+
+   The single one-sided row is the vintage mechanism caught in the act: a
+   NASA de-obligation modified 2026-08-21, fifteen days *after* the archive
+   was generated. Three weeks of skew at the leading edge amounts to one row
+   in 17,000 and $4.1k in $4.9bn (0.00008%), plus re-corrected fields on six
+   common rows. Settled years show zero. The annual `Delta` files exist for
+   exactly this residual.
+
+3. **But archive *contract* files transpose two (code, description) column
+   pairs.** In the archive layout, `action_type_code` carries the description
+   (`FUNDING ONLY ACTION`) and `action_type` carries the code (`C`); likewise
+   `idv_type_code` carries the mnemonic (`IDC`, `BPA`, `FSS`, `BOA`) and
+   `idv_type` the letter (`B`, `E`, `C`, `D`). Column-name verification cannot
+   see this — the names match; the values are swapped. Before the fix it
+   silently misclassified 78% of contract actions and every IDV.
+   `us_harmonize_transactions()` now detects the transposition from the value
+   shapes and un-swaps it (either layout harmonizes identically; regression
+   test in `test-schema.R`), and `us_archive_verify_schema()` warns when it
+   samples a transposed archive. Assistance files are not affected.
+
+4. **Two benign field-level differences remain, both award-level derived
+   stamps, not transaction facts.** `award_total_obligated` differed on 17 of
+   8,795 assistance rows (15 awards, all NIH — the PI-transfer population
+   whose lifetime totals keep moving; the two files were generated three weeks
+   apart). `award_id_uri` differs wherever present: its numeric suffix is a
+   generated identifier that is not stable across systems — never key on it.
+   The package keys on `award_key`, which matched on every row.
+
+5. **`utils::download.file` truncates gigabyte archives at R's default
+   60-second timeout**, and a truncated zip then masquerades as a cache hit.
+   `us_archive_download()` now raises the timeout
+   (`usaspend.download_timeout`, default 3600 s), validates every cached zip's
+   central directory before trusting it, and deletes failed partials.
+
+6. **Archive FY membership is by `action_date` fiscal year.** Every row in
+   the FY2015 files has an action date inside FY2015 — the same semantics as
+   an API pull with an `action_date` time period, so the two paths partition
+   time identically.
+
+What the archives structurally lack, regardless of vintage: **subawards (both
+directions), and everything before FY2008.** §4 covers how subawards are
+appended through API calls from either path.
 
 ---
 
@@ -215,6 +269,16 @@ prime data — an organization that only ever receives subawards looks like a
 non-recipient. Some of the 223 zero-award organizations in `EXTRACT-PLAN.md` §6
 may be exactly that, which is worth checking before concluding they are genuine
 non-recipients.
+
+Append options, from either acquisition path: `subawards = "out"` fetches
+pass-through by prime award (`us_fetch_subawards_out()` /
+`us_fetch_subawards_batch()`); on the archive path, `subawards = "in"`
+appends inbound rows through `us_fetch_subawards_in()`, which runs the
+standard API download jobs and harvests only their subaward files. A
+subaward-only custom download (`bulk_download/awards/` with
+`sub_award_types`) was probed live on 2026-08-27: the endpoint accepts
+`recipient_search_text` and creates the job, but the build ran far longer
+than a standard transactions job, so it is not the package route.
 
 ---
 
@@ -288,27 +352,31 @@ are written and render offline off `us_sample_extract()`: `structure.Rmd`
 `VignetteBuilder: knitr` is in `DESCRIPTION`. Still to write: data model,
 award types, subaward direction, accounting rules, reconciliation.
 
+### Settled since first written
+
+- **The outbound subaward pass ran on the pilot** (2026-08-28; see
+  `SUBAWARD-NOTES.md`): $12.6bn outbound against $118.5bn net obligations →
+  net revenue $105.9bn, reconciling to the dollar with
+  `us_panel(fill_gaps = TRUE)`.
+- **The archive schema is verified and the paths compared row-by-row** — §3
+  above. Row universes and dollar totals matched exactly at FY2015; the
+  contract code-pair transposition was found and is repaired in the
+  harmonizer.
+
 ### Open questions, in rough priority order
 
-1. **Run the outbound subaward pass on the pilot.** All 39,243 pilot subaward
-   rows are inbound (36,746) or internal (2,497); zero outbound, because the
-   UEI-filtered download matches on the subawardee. Pass-through can only be
-   fetched per prime award (`us_fetch_subawards_batch()`), and until that runs
-   the pilot's `net_revenue` is `obligation_net` with nothing subtracted.
-2. **Verify the archive schema** (`us_archive_verify_schema()`). Everything about
-   path B rests on it.
-3. **Inbound subawards and the zero-award organizations.** Do any of the 223
-   receive federal money purely as subrecipients? The pilot's $13.97bn of
+1. **Inbound subawards and the zero-award organizations.** Do any of the 223
+   receive federal money purely as subrecipients? The pilot's $14.0bn of
    inbound subaward revenue says the mechanism is large enough to matter.
-4. **IDV rollup.** Delivery orders are separate awards with their own keys.
+2. **IDV rollup.** Delivery orders are separate awards with their own keys.
    Rolling them to the parent is a modelling choice; the argument exists and
    defaults to off, but the pilot should show what it changes.
-5. **De-obligation policy.** `as_posted` is the default. Measure how far
+3. **De-obligation policy.** `as_posted` is the default. Measure how far
    `restate` moves the panel before committing.
-6. **Parent/child UEIs.** Prime summaries carry `recipient_parent_uei`.
+4. **Parent/child UEIs.** Prime summaries carry `recipient_parent_uei`.
    USAspending may know about subsidiary registrations absent from the SAM
    crosswalk.
-7. **Calendar vs fiscal year.** The panel defaults to calendar year as
+5. **Calendar vs fiscal year.** The panel defaults to calendar year as
    specified. Both bases are derived from `action_date` rather than trusting
    `action_date_fiscal_year`, so they are guaranteed consistent — but the
    downstream 990 comparison may want the fiscal basis.

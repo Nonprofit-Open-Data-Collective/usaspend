@@ -87,3 +87,45 @@ test_that("subaward direction is left unset until the org UEI set is known", {
   expect_true(all(sb$subawardee_uei %in% q))
   expect_false(any(sb$prime_uei %in% q))
 })
+
+test_that("archive-layout contract files with transposed code pairs harmonize identically", {
+  ## Measured on FY2015: archive contract CSVs carry action_type_code/action_type
+  ## and idv_type_code/idv_type with codes and descriptions in each other's
+  ## columns. The harmonizer must detect and un-swap by value shape.
+  base <- data.frame(
+    contract_transaction_unique_key = c("K1", "K2", "K3"),
+    contract_award_unique_key = c("A1", "A2", "A3"),
+    award_id_piid = c("P1", "P2", "P3"),
+    action_date = c("2015-01-15", "2015-02-15", "2015-03-15"),
+    federal_action_obligation = c("100", "200", "0"),
+    recipient_uei = rep("CFFMYPABYAG3", 3),
+    last_modified_date = rep("2015-06-01", 3),
+    stringsAsFactors = FALSE)
+
+  api_layout <- cbind(base,
+    action_type_code = c("C", "M", NA),
+    action_type = c("FUNDING ONLY ACTION", "OTHER ADMINISTRATIVE ACTION", NA),
+    award_type_code = c("D", "D", ""),
+    idv_type_code = c(NA, NA, "B"),
+    idv_type = c(NA, NA, "IDC"),
+    stringsAsFactors = FALSE)
+  archive_layout <- cbind(base,
+    action_type_code = c("FUNDING ONLY ACTION", "OTHER ADMINISTRATIVE ACTION", NA),
+    action_type = c("C", "M", NA),
+    award_type_code = c("D", "D", ""),
+    idv_type_code = c(NA, NA, "IDC"),
+    idv_type = c(NA, NA, "B"),
+    stringsAsFactors = FALSE)
+
+  a <- suppressMessages(us_harmonize_transactions(api_layout, "contract"))
+  b <- suppressMessages(us_harmonize_transactions(archive_layout, "contract"))
+
+  expect_equal(a$action_type_code, b$action_type_code)
+  expect_equal(a$action_class, b$action_class)
+  expect_equal(a$award_type_code, b$award_type_code)
+  expect_equal(b$action_type_code, c("C", "M", NA))
+  expect_equal(b$action_class[1:2], c("funding_only", "administrative"))
+  ## the blank-award-type IDV row must classify from the (un-swapped) idv code
+  expect_equal(b$award_type_code[3], "IDV_B")
+  expect_equal(b$award_family[3], "idv")
+})

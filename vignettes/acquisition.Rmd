@@ -88,10 +88,63 @@ Two things the archives do not contain:
   transactions only.
 - Nothing before FY2008 (the same floor as the API).
 
-One assumption to verify on first use: the archive CSVs are expected to carry
-the same column names as the download endpoint. `us_archive_verify_schema()`
-checks that in one call against a real archive and reports exactly which
-mapped columns are missing. Run it before trusting your first archive pull.
+## Do the two paths return the same data? Measured: yes, with three caveats
+
+Because the paths draw from the same database through different generators,
+the package's whole design rests on them being interchangeable. That was
+tested directly: real FY2015 and FY2024 archives (generated 2026-08-06) were
+filtered to 130 pilot UEIs and compared row-by-row against the same-window
+slice of a same-month API pull (2026-08-27).
+
+**Where it matters, they are identical.**
+
+| cell | rows (API vs archive) | one-sided keys | obligation difference |
+|---|---|---|---|
+| FY2015 assistance | 8,795 = 8,795 | 0 | \$0 |
+| FY2015 contracts | 2,947 = 2,947 | 0 | \$0 |
+| FY2024 assistance | 17,225 vs 17,224 | 1 | −\$4,125.69 |
+| FY2024 contracts | 2,487 = 2,487 | 0 | \$0 |
+
+Settled years match key-for-key and dollar-for-dollar. Archive files
+partition time exactly like an API pull filtered on `action_date`: every row
+in an FY file has an action date inside that fiscal year. All mapped column
+names are present in both.
+
+**Caveat one: archive contract files transpose two column pairs.** In the
+archives, `action_type_code` carries the *description* (`FUNDING ONLY
+ACTION`) and `action_type` carries the *code* (`C`); likewise
+`idv_type_code` holds the mnemonic (`IDC`) and `idv_type` the letter (`B`).
+The column names match perfectly, so a name-based check cannot see it — and
+before the package handled it, 78% of archive contract actions silently
+misclassified. `us_harmonize_transactions()` now detects the transposition
+from the value shapes and un-swaps it, so either layout classifies
+identically; `us_archive_verify_schema()` warns when it samples a transposed
+archive. Assistance files are unaffected.
+
+**Caveat two: award-level derived stamps drift between generation dates.**
+Transaction facts (dates, amounts, parties) matched exactly. Two columns did
+not, on a handful of rows: `award_total_obligated` (an award-*lifetime*
+figure recomputed at file-generation time — the two files were generated
+three weeks apart, and the diffs were concentrated in NIH awards, whose
+lifetime totals move as awards continue elsewhere), and `award_id_uri`,
+whose numeric suffix is a generated identifier that is simply not stable
+across systems. Key on `award_key`, never on `award_id_uri`; treat
+award-lifetime columns as a property of the *pull date*, not of the
+transaction.
+
+**Caveat three: at the leading edge, the archive is up to a month stale.**
+The archives regenerate monthly; corrections posted after generation reach
+the API first. Measured across the three-week gap, the entire divergence on
+FY2024 was **one row** — a NASA de-obligation of −\$4,125.69 modified
+fifteen days after the archive was cut — plus re-corrected fields on six of
+17,224 common rows: 0.00008% of that year's dollars. Settled years show
+zero. If the last few weeks matter for your analysis, refresh the leading
+fiscal year over the API (or apply the archive `Delta` files); for anything
+historical, the archive is exact.
+
+`us_archive_verify_schema()` runs the name check and the transposition probe
+against any unpacked archive in one call — still worth running on a fiscal
+year the package has not seen before.
 
 ## The crossover
 
@@ -137,6 +190,22 @@ count-first screen so awards reporting no subawards are skipped. Budget
 roughly one extra API call per few hundred awards. Until that pass runs,
 `net_revenue` in the panel equals `obligation_net`, and the panel's `flags`
 column says so.
+
+Inbound subawards — revenue received as a subrecipient — are a free
+by-product on the API path but absent from an archive extract. Passing
+`subawards = "in"` (or `"both"`) with `source = "archive"` appends them
+through `us_fetch_subawards_in()`, which runs the standard API download jobs
+and harvests only the subaward files. There is no cheaper route — a
+subaward-only custom download job exists but builds far slower server-side
+than the standard job — so this costs what the API path costs, and is only
+worth it below the crossover scale.
+
+The full append matrix:
+
+| you extracted via | inbound (`"in"`) | outbound (`"out"`) |
+|---|---|---|
+| API | already in the extract | `us_fetch_subawards_out()` per award |
+| archive | `us_fetch_subawards_in()` — API-job cost | `us_fetch_subawards_out()` per award |
 
 ## Choosing, in one table
 

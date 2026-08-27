@@ -84,8 +84,10 @@ us_extract_plan <- function(uei, years = 2008:2025,
 #' @param years Integer vector of fiscal years.
 #' @param award_types Award type codes; defaults to all.
 #' @param source `"auto"`, `"api"`, or `"archive"`.
-#' @param subawards `"none"`, `"in"` (whatever the bulk pull returns),
-#'   `"out"` (query by prime award), or `"both"`.
+#' @param subawards `"none"`, `"in"` (subawards received: free by-product on
+#'   the API path; on the archive path appended through API download jobs via
+#'   [us_fetch_subawards_in()], at the API path's cost), `"out"` (pass-through
+#'   paid: queried by prime award from either path), or `"both"`.
 #' @param dest Directory for intermediate files. Defaults to the package cache.
 #' @return A list of class `usaspend_extract` with elements `transactions`,
 #'   `subawards`, `jobs` (the acquisition manifest) and `meta`.
@@ -135,8 +137,9 @@ us_extract <- function(uei,
     }), use.names = TRUE, fill = TRUE)
     sb <- us_empty("subawards")
     if (subawards %in% c("in", "both")) {
-      cli::cli_warn(c("Inbound subawards are not in the annual archives.",
-                      "i" = "Re-run those UEIs with {.code source = \"api\"} if you need them."))
+      ## The archives carry no subawards at all, so inbound rows are appended
+      ## through API download jobs -- the API-path cost, incurred explicitly.
+      sb <- us_fetch_subawards_in(uei, years, dest = dest)
     }
   }
 
@@ -170,4 +173,48 @@ print.usaspend_extract <- function(x, ...) {
     "*" = "{nrow(x$subawards)} subaward row{?s}",
     "*" = "extracted {format(m$extracted_at, '%Y-%m-%d %H:%M')}"))
   invisible(x)
+}
+
+#' Append inbound subawards to an archive extract
+#'
+#' The annual Award Data Archive carries no subawards in either direction, so
+#' an archive-path extract has no inbound rows -- the revenue an organization
+#' receives as a *subawardee*, which appears nowhere in prime data. This
+#' fetches them through the API.
+#'
+#' There is no cheaper route: a `sub_award_types`-only custom download job was
+#' probed live and accepted, but builds far slower server-side than the
+#' standard transactions job whose by-product already includes the same rows.
+#' So this simply runs the standard bulk-download jobs and harvests only the
+#' subaward files -- **the cost is the API path's cost**, roughly one job per
+#' `batch_size` UEIs. For a handful of organizations that is minutes; for the
+#' full-crosswalk scale that motivated the archive path in the first place it
+#' is not, which is why [us_extract()] only calls this when `subawards` is
+#' explicitly `"in"` or `"both"`.
+#'
+#' @param uei Character vector of UEIs.
+#' @param years Integer vector of fiscal years.
+#' @param dest Directory for intermediate files; subaward CSVs land in a
+#'   `subawards_in/` subdirectory so they never mingle with other downloads.
+#' @return A `data.table` matching `us_schema("subawards")`. Direction is left
+#'   unset, as in any bulk pull -- [us_normalize_subawards()] assigns it from
+#'   the organization's UEI set.
+#' @export
+#' @examples
+#' \dontrun{
+#' ex <- us_extract(ueis, years = 2008:2025, source = "archive")
+#' ex$subawards <- us_fetch_subawards_in(ueis, 2008:2025)
+#' }
+us_fetch_subawards_in <- function(uei, years, dest = us_cache_dir("raw")) {
+  uei <- unique(us_validate_uei(uei))
+  uei <- uei[!is.na(uei)]
+  n_jobs <- ceiling(length(uei) / us_opt("batch_size"))
+  us_msg(c("Fetching inbound subawards for {length(uei)} UEI{?s} through {n_jobs} API download job{?s}.",
+           "i" = "This is the API path's cost; the annual archives have no subaward files."))
+  dest_sub <- file.path(dest, "subawards_in")
+  jobs <- us_download_run(uei, us_award_type_codes("all"),
+                          sprintf("%d-10-01", min(years) - 1L),
+                          sprintf("%d-09-30", max(years)))
+  us_download_fetch(jobs, dest = dest_sub)
+  read_download_dir(dest_sub)$subawards
 }

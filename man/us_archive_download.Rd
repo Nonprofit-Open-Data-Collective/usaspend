@@ -19,3 +19,12 @@ Archives are cached under \code{us_cache_dir("archive")} and never re-fetched if
 present -- these are gigabyte files and an accidental re-download is
 expensive.
 }
+\details{
+A cached zip is trusted only if its central directory reads back cleanly
+(\code{unzip(list = TRUE)}); a truncated file from an interrupted download is
+deleted and re-fetched rather than silently unpacked. Downloads run with
+\code{timeout} raised to \code{usaspend.download_timeout} (default 3600 s) -- R's
+60-second default truncates gigabyte files mid-stream -- and a failed or
+short download is removed instead of being left to masquerade as a cache
+hit.
+}

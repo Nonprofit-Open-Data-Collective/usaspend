@@ -143,7 +143,52 @@ panel carries gross positive, gross negative and net rather than net alone.
 
 ---
 
-## 4. Notes for whoever writes these
+## 4. API vs archive equivalence — measured 2026-08-27
+
+Material for `acquisition.Rmd` (already written into it) and for anyone
+auditing the pipeline. Real FY2015 + FY2024 archives (generated 2026-08-06)
+filtered to the 130 pilot UEIs, against the same-window slice of the pilot
+API pull (2026-08-27):
+
+| cell | rows api = archive | one-sided keys | obligation diff | fields differing |
+|---|---|---|---|---|
+| FY2015 assistance | 8,795 = 8,795 | 0 | $0 | `award_id_uri` (22), `award_total_obligated` (17) |
+| FY2015 contracts | 2,947 = 2,947 | 0 | $0 | none (after un-swap fix) |
+| FY2024 assistance | 17,225 vs 17,224 | 1 | −$4,125.69 | vintage: `award_total_obligated` (430), `award_id_uri` (530), re-corrected rows (6), `recipient_parent_uei` (3) |
+| FY2024 contracts | 2,487 = 2,487 | 0 | $0 | `last_modified_date` (30), `award_total_obligated` (4) |
+
+Findings, in teaching order:
+
+1. **Row universes and dollars are identical** — the paths are genuinely
+   interchangeable, and archive FY membership is by `action_date` fiscal
+   year, the same partition as an API `action_date` filter.
+2. **Archive contract files transpose `action_type_code`/`action_type` and
+   `idv_type_code`/`idv_type`** — codes and descriptions swap columns.
+   Names match, values do not; a name-based schema check cannot see it.
+   Before the fix, 78% of archive contract actions misclassified.
+   `us_harmonize_transactions()` detects by value shape and un-swaps
+   (regression test in `test-schema.R`); `us_archive_verify_schema()` warns.
+3. **Award-level derived stamps drift with generation date** —
+   `award_total_obligated` (lifetime figure, recomputed per file; diffs
+   concentrated in NIH/PI-transfer awards) and `award_id_uri` (generated
+   suffix, not stable across systems — never key on it). Transaction facts
+   barely drift: three weeks of vintage skew at FY2024 produced exactly one
+   one-sided row (a NASA de-obligation modified 15 days after archive
+   generation; −\,125.69 of \.9bn, 0.00008%) and re-corrected fields on
+   six common rows -- the mechanism the annual `Delta` files exist for.
+   Settled years show zero.
+4. **`utils::download.file` truncates GB-scale files at R's 60s default
+   timeout, and a truncated zip then looks like a cache hit** — fixed in
+   `us_archive_download()` (raised timeout, zip validation, partial-file
+   cleanup). Found because the first real archive pull failed exactly this
+   way.
+5. **The archives carry no subawards in either direction and nothing before
+   FY2008.** Outbound: append from either path with `subawards = "out"`.
+   Inbound: requires the API (bulk-download by-product).
+
+---
+
+## 5. Notes for whoever writes these
 
 - Every number above is reproducible from the pilot extract. When the vignettes
   are written, they should be **computed in the `.Rmd`** from

@@ -84,6 +84,14 @@ us_archive_size <- function(manifest) {
 #' present -- these are gigabyte files and an accidental re-download is
 #' expensive.
 #'
+#' A cached zip is trusted only if its central directory reads back cleanly
+#' (`unzip(list = TRUE)`); a truncated file from an interrupted download is
+#' deleted and re-fetched rather than silently unpacked. Downloads run with
+#' `timeout` raised to `usaspend.download_timeout` (default 3600 s) -- R's
+#' 60-second default truncates gigabyte files mid-stream -- and a failed or
+#' short download is removed instead of being left to masquerade as a cache
+#' hit.
+#'
 #' @param manifest Output of [us_archive_manifest()].
 #' @param unpack Unzip after downloading.
 #' @return The manifest with `zip_path` and `csv_dir` columns.
@@ -93,14 +101,24 @@ us_archive_download <- function(manifest, unpack = TRUE) {
   root <- us_cache_dir("archive")
   manifest[, "zip_path" := file.path(root, file_name)]
   manifest[, "csv_dir" := file.path(root, tools::file_path_sans_ext(file_name))]
+  zip_ok <- function(z) {
+    !inherits(try(utils::unzip(z, list = TRUE), silent = TRUE), "try-error")
+  }
+  old <- options(timeout = max(us_opt("download_timeout"), getOption("timeout")))
+  on.exit(options(old), add = TRUE)
   for (i in seq_len(nrow(manifest))) {
     z <- manifest$zip_path[i]
+    if (file.exists(z) && !zip_ok(z)) {
+      cli::cli_warn("Cached {.file {basename(z)}} is corrupt (interrupted download?); re-fetching.")
+      unlink(z)
+    }
     if (file.exists(z)) {
       us_msg("Cached: {.file {basename(z)}} ({round(file.size(z) / 1e6)} MB).")
     } else {
       us_msg("Downloading {.file {basename(z)}} ...")
       r <- try(utils::download.file(manifest$url[i], z, mode = "wb", quiet = FALSE), silent = TRUE)
-      if (inherits(r, "try-error")) {
+      if (inherits(r, "try-error") || !file.exists(z) || !zip_ok(z)) {
+        unlink(z)
         cli::cli_warn("Download failed: {.file {basename(z)}}")
         next
       }
@@ -144,6 +162,26 @@ us_archive_verify_schema <- function(csv_dir, group = c("assistance", "contract"
                     "x" = "{.val {miss$raw_column}}"))
   } else {
     us_msg("All {nrow(out)} mapped columns present.")
+  }
+
+  ## Matching names are necessary, not sufficient: archive contract files are
+  ## known to transpose the (code, description) pairs below. Sample values and
+  ## report, so a new transposition surfaces here rather than as silent
+  ## misclassification downstream. The harmonizer un-swaps these on its own.
+  if (group == "contract") {
+    pairs <- list(c("action_type_code", "action_type"),
+                  c("idv_type_code", "idv_type"))
+    smp <- data.table::fread(f[1], nrows = 10000L,
+                             select = intersect(unlist(pairs), cols),
+                             colClasses = "character")
+    for (p in pairs) {
+      if (!all(p %in% names(smp))) next
+      v <- smp[[p[1]]]; v <- v[!is.na(v) & nzchar(v)]
+      if (length(v) && mean(nchar(v) <= 1L) <= 0.5) {
+        cli::cli_warn(c("Values in {.field {p[1]}} look like descriptions, not codes.",
+                        "i" = "This archive transposes {.field {p[1]}}/{.field {p[2]}}; {.fn us_harmonize_transactions} detects and un-swaps this automatically."))
+      }
+    }
   }
   out[]
 }

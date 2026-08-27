@@ -36,6 +36,12 @@ serves both. Raw columns are read as character and cast explicitly here;
 nothing is guessed by a CSV reader.
 }
 \details{
+One measured divergence between the paths is repaired here: archive
+\emph{contract} files transpose the \code{action_type_code}/\code{action_type} and
+\code{idv_type_code}/\code{idv_type} column pairs (codes and descriptions swap
+places). The swap is detected from the values themselves and undone before
+mapping, so both sources classify identically.
+
 Derived on the way through:
 \itemize{
 \item \code{award_group} from the file family (contract vs assistance).

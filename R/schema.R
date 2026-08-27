@@ -237,12 +237,40 @@ apply_map <- function(raw, map, table, source_file = NA_character_) {
   out[]
 }
 
+## The two acquisition paths agree on column NAMES but not always on which
+## value lives where. Measured on FY2015 archives vs a same-window API pull:
+## the archive CONTRACT files carry the (code, description) pairs
+## action_type_code/action_type and idv_type_code/idv_type transposed --
+## codes in the description column and descriptions (or mnemonics like "IDC")
+## in the code column. Assistance files are not affected. Detected by value
+## shape, not by source, so either representation harmonizes correctly.
+unswap_code_pair <- function(raw, code_col, desc_col, max_code_chars = 1L) {
+  if (!all(c(code_col, desc_col) %in% names(raw))) return(raw)
+  looks_code <- function(x) {
+    x <- x[!is.na(x) & nzchar(x)]
+    if (!length(x)) return(NA)
+    mean(nchar(x) <= max_code_chars) > 0.5
+  }
+  a <- looks_code(raw[[code_col]]); b <- looks_code(raw[[desc_col]])
+  if (identical(a, FALSE) && identical(b, TRUE)) {
+    us_msg("Raw columns {.field {code_col}}/{.field {desc_col}} arrived transposed (archive layout); un-swapping.")
+    data.table::setnames(raw, c(code_col, desc_col), c(desc_col, code_col))
+  }
+  raw
+}
+
 #' Harmonize raw USAspending files to the canonical schema
 #'
 #' Both acquisition paths -- the REST download endpoint and the annual Award
 #' Data Archive -- emit the same underlying CSV layouts, so one harmonizer
 #' serves both. Raw columns are read as character and cast explicitly here;
 #' nothing is guessed by a CSV reader.
+#'
+#' One measured divergence between the paths is repaired here: archive
+#' *contract* files transpose the `action_type_code`/`action_type` and
+#' `idv_type_code`/`idv_type` column pairs (codes and descriptions swap
+#' places). The swap is detected from the values themselves and undone before
+#' mapping, so both sources classify identically.
 #'
 #' Derived on the way through:
 #' \itemize{
@@ -274,6 +302,10 @@ us_harmonize_transactions <- function(raw, group = c("assistance", "contract"),
                                       source_file = NA_character_) {
   group <- match.arg(group)
   raw <- data.table::as.data.table(raw)
+  if (group == "contract") {
+    raw <- unswap_code_pair(raw, "action_type_code", "action_type")
+    raw <- unswap_code_pair(raw, "idv_type_code", "idv_type")
+  }
   map <- if (group == "assistance") tx_map_assistance() else tx_map_contract()
   out <- apply_map(raw, map, "transactions", source_file)
 

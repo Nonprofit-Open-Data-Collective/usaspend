@@ -18,6 +18,9 @@ prefixed \code{usaspend.}.
 sustained single-recipient calls; 2/s is the measured safe ceiling.}
 \item{\code{usaspend.max_tries}}{Retry attempts per request.}
 \item{\code{usaspend.timeout}}{Per-request timeout in seconds.}
+\item{\code{usaspend.download_timeout}}{Seconds allowed per archive-file
+download (default 3600). R's own 60-second default truncates gigabyte
+files mid-stream.}
 \item{\code{usaspend.batch_size}}{UEIs per bulk-download job. The API caps
 \code{recipient_search_text} near 20, but large recipients time out server-side
 well below that, so the default is deliberately conservative.}

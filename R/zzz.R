@@ -5,6 +5,8 @@ us_opt_defaults <- list(
   usaspend.throttle    = 2,         # requests per second
   usaspend.max_tries   = 6,         # retries per request
   usaspend.timeout     = 180,       # seconds per request
+  usaspend.download_timeout = 3600, # seconds per archive file; R's 60s default
+                                    # truncates gigabyte downloads mid-stream
   usaspend.batch_size  = 5,         # UEIs per download job; see us_download_run()
   usaspend.concurrent  = 3,         # download jobs in flight
   usaspend.verbose     = TRUE
@@ -38,6 +40,9 @@ us_msg <- function(..., .envir = parent.frame()) {
 #'     sustained single-recipient calls; 2/s is the measured safe ceiling.}
 #'   \item{`usaspend.max_tries`}{Retry attempts per request.}
 #'   \item{`usaspend.timeout`}{Per-request timeout in seconds.}
+#'   \item{`usaspend.download_timeout`}{Seconds allowed per archive-file
+#'     download (default 3600). R's own 60-second default truncates gigabyte
+#'     files mid-stream.}
 #'   \item{`usaspend.batch_size`}{UEIs per bulk-download job. The API caps
 #'     `recipient_search_text` near 20, but large recipients time out server-side
 #'     well below that, so the default is deliberately conservative.}
