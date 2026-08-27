@@ -16,6 +16,12 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/structure.html">Package architecture</a></li>
+    <li><a class="dropdown-item" href="articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
+  </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -46,7 +52,7 @@
 <code>../npmatch/data-dev/usaspending/EXTRACT-PLAN.md</code> — the sampling and feasibility work this package is built on</li>
 </ul><hr><div class="section level2">
 <h2 id="id_1-what-the-package-produces">1. What the package produces<a class="anchor" aria-label="anchor" href="#id_1-what-the-package-produces"></a></h2>
-<p>Four tables, one canonical schema each (<code><a href="reference/us_schema.html">us_schema()</a></code>):</p>
+<p>Four canonical tables (<code><a href="reference/us_schema.html">us_schema()</a></code>), plus one derived org-level table:</p>
 <table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr class="header"><th>table</th>
 <th>grain</th>
 <th>what it is</th>
@@ -62,7 +68,11 @@
 </tr><tr class="even"><td><strong><code>panel</code></strong></td>
 <td><strong>org × award × year</strong></td>
 <td><strong>the deliverable</strong></td>
+</tr><tr class="odd"><td><code>subawards_in</code></td>
+<td>org × year</td>
+<td>subaward revenue <em>received</em> – reported under other primes’ award keys, so it cannot sit on this organization’s award rows</td>
 </tr></tbody></table><p>The panel carries, per organization-award-year: the awarding agency and sub-agency, the award type category, gross positive and gross negative obligations and their net, dollars passed through as subawards, and <code>net_revenue = obligation_net − subaward_out_amount</code>.</p>
+<p>Above the panel sit the analysis helpers: <code><a href="reference/us_org_year.html">us_org_year()</a></code> collapses to org × year, <code><a href="reference/us_rollup.html">us_rollup()</a></code> aggregates to org/year/state grains with inbound subawards folded in (adding <code>total_net = obligation_net + subaward_in − subaward_out</code>), and <code><a href="reference/us_adjust_inflation.html">us_adjust_inflation()</a></code> restates any year-grained table into constant dollars via the bundled CPI-U series (<code><a href="reference/us_price_index.html">us_price_index()</a></code>).</p>
 <div class="section level3">
 <h3 id="one-thing-the-panel-is-not">One thing the panel is not<a class="anchor" aria-label="anchor" href="#one-thing-the-panel-is-not"></a></h3>
 <p><code>obligation_net</code> is a <strong>commitment</strong>, not a payment. Federal award data carries no annual cash figure at all — <code>total_outlayed_amount_for_overall_award</code> exists but is award-lifetime and mostly blank before FY2017. Annual disbursements live in the account-level File B/C extracts, which the award endpoints do not expose.</p>
@@ -92,8 +102,13 @@
               us_net_by_year()   us_subaward_by_year()
                          \          /
                        us_panel()  -&gt;  panel + reconciliation
-                         |
-              us_reconcile()  us_audit()</code></pre>
+                        /          \
+         us_reconcile()              us_org_year()  us_rollup()
+         us_audit()                  org x year; org/year/state grains,
+                                     inbound subawards folded in
+                                            |
+                                     us_adjust_inflation()
+                                     constant dollars (bundled CPI-U)</code></pre>
 <p>Everything above the canonical schema boundary is acquisition and knows about HTTP, zip files and duckdb. Everything below is accounting and knows nothing about where a row came from. That boundary is what makes the two acquisition paths interchangeable, and it is enforced by test, not by convention.</p>
 <hr></div>
 <div class="section level2">
@@ -165,8 +180,7 @@ POST /api/v2/search/spending_by_award/  subawards=true, award_ids=[&lt;=~500 ids
 <hr></div>
 <div class="section level2">
 <h2 id="id_5-normalization-and-accounting">5. Normalization and accounting<a class="anchor" aria-label="anchor" href="#id_5-normalization-and-accounting"></a></h2>
-<p>Specified in full in <code>ACCOUNTING.md</code>. Currently <strong>documented placeholders</strong>: each function validates its arguments and then stops with a pointer to its specification section.</p>
-<p><strong>All implemented and validated against the 50-nonprofit pilot</strong> (302,025 prime transactions, 39,243 subaward rows; pulled 2026-08-27). The full pipeline runs the pilot end-to-end in ~1 minute and yields 168,362 org × award × year rows netting to $118.5bn.</p>
+<p>Specified in full in <code>ACCOUNTING.md</code>. <strong>All implemented and validated against the 50-nonprofit pilot</strong> (302,025 prime transactions, 39,243 subaward rows; pulled 2026-08-27). The full pipeline runs the pilot end-to-end in ~1 minute and yields 168,362 org × award × year rows netting to $118.5bn.</p>
 <table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>function</th>
 <th>does</th>
 <th>spec</th>
@@ -220,11 +234,11 @@ POST /api/v2/search/spending_by_award/  subawards=true, award_ids=[&lt;=~500 ids
 <div class="section level2">
 <h2 id="id_7-roadmap">7. Roadmap<a class="anchor" aria-label="anchor" href="#id_7-roadmap"></a></h2>
 <p><strong>Stage 1 — acquisition (done).</strong> Client, job machinery, archive path, canonical schema, code tables, fixture, 90 tests passing.</p>
-<p><strong>Stage 2 — normalization (needs the 50-org pilot).</strong> Implement §3, §4 and §6 of <code>ACCOUNTING.md</code> against real volume. Deliverable: <code>us_normalize_*()</code> and a duplication/anomaly report over the pilot.</p>
-<p><strong>Stage 3 — accounting (needs stage 2).</strong> Implement §5 and §7. Deliverable: <code><a href="reference/us_panel.html">us_panel()</a></code>, both de-obligation policies, and a comparison of what the choice costs on the pilot.</p>
-<p><strong>Stage 4 — reconciliation (needs stage 3).</strong> Implement §8. Deliverable: the lifetime identity check at scale, the obligation-to-outlay gap distribution, and subaward coverage rates.</p>
+<p><strong>Stage 2 — normalization (done).</strong> Implement §3, §4 and §6 of <code>ACCOUNTING.md</code> against real volume. Deliverable: <code>us_normalize_*()</code> and a duplication/anomaly report over the pilot.</p>
+<p><strong>Stage 3 — accounting (done).</strong> Implement §5 and §7. Deliverable: <code><a href="reference/us_panel.html">us_panel()</a></code>, both de-obligation policies, and a comparison of what the choice costs on the pilot.</p>
+<p><strong>Stage 4 — reconciliation (done).</strong> Implement §8. Deliverable: the lifetime identity check at scale, the obligation-to-outlay gap distribution, and subaward coverage rates.</p>
 <p><strong>Stage 5 — scale.</strong> Run the 1,364-UEI top-1000 sample on the API path. Verify the archive schema, then run the full crosswalk on the archive path.</p>
-<p><strong>Stage 6 — documentation.</strong> Vignettes teaching the data model, the award-type taxonomy, subaward direction, and the accounting rules. Planned set and the measured material to build them from are in <code>VIGNETTES.md</code>; packaging needs only <code>VignetteBuilder: knitr</code> in <code>DESCRIPTION</code>, and vignettes must build offline off <code><a href="reference/us_sample_extract.html">us_sample_extract()</a></code>.</p>
+<p><strong>Stage 6 — documentation (in progress).</strong> Vignettes teaching the data model, the award-type taxonomy, subaward direction, and the accounting rules. Planned set and the measured material to build them from are in <code>VIGNETTES.md</code>. Three are written and render offline off <code><a href="reference/us_sample_extract.html">us_sample_extract()</a></code>: <code>structure.Rmd</code> (architecture + workflow diagram), <code>acquisition.Rmd</code> (API vs archive path), <code>panel.Rmd</code> (reading the output; rollups; inflation adjustment). <code>VignetteBuilder: knitr</code> is in <code>DESCRIPTION</code>. Still to write: data model, award types, subaward direction, accounting rules, reconciliation.</p>
 <div class="section level3">
 <h3 id="open-questions-in-rough-priority-order">Open questions, in rough priority order<a class="anchor" aria-label="anchor" href="#open-questions-in-rough-priority-order"></a></h3>
 <ol style="list-style-type: decimal"><li>
