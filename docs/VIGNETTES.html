@@ -22,6 +22,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The data</h6></li>
     <li><a class="dropdown-item" href="articles/data-model.html">How USAspending data is structured</a></li>
+    <li><a class="dropdown-item" href="articles/data-dictionary.html">Data dictionary: tables, keys, and relationships</a></li>
     <li><a class="dropdown-item" href="articles/award-types.html">Award types: what is actually in the data</a></li>
     <li><a class="dropdown-item" href="articles/subawards.html">Subawards: pass-through, direction, and what FSRS cannot see</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -50,11 +51,11 @@
 <div id="usaspend--vignette-plan" class="section level1">
 
 <p>What the package documentation has to teach, and the measured material to teach it with. Written 2026-08-27; numbers are from the 50-nonprofit pilot (302,025 prime transactions, 39,243 subaward rows) unless marked otherwise.</p>
-<p>This is the content bank behind <code>vignettes/</code>: the facts a reader has to be told, in the order that makes them land, so the arguing is done before the user-facing text is written. All nine vignettes now exist; §1 tracks status.</p>
+<p>This is the content bank behind <code>vignettes/</code>: the facts a reader has to be told, in the order that makes them land, so the arguing is done before the user-facing text is written. All ten vignettes now exist; §1 tracks status.</p>
 <p>Companion documents: <code>ACCOUNTING.md</code> (the rules), <code>PLAN.md</code> (the pipeline).</p>
 <hr><div class="section level2">
 <h2 id="id_1-the-planned-set">1. The planned set<a class="anchor" aria-label="anchor" href="#id_1-the-planned-set"></a></h2>
-<p>Status as of 2026-08-28: <strong>all nine vignettes are written</strong> and render offline from <code><a href="reference/us_sample_extract.html">us_sample_extract()</a></code>. <code>VignetteBuilder: knitr</code> is in <code>DESCRIPTION</code>; the pkgdown <code>articles</code> index groups them (“The data” / “The pipeline”, with <code>usaspend.Rmd</code> as the Get-started page). This file remains the content bank behind them.</p>
+<p>Status as of 2026-08-28: <strong>all ten vignettes are written</strong> and render offline from <code><a href="reference/us_sample_extract.html">us_sample_extract()</a></code>. <code>VignetteBuilder: knitr</code> is in <code>DESCRIPTION</code>; the pkgdown <code>articles</code> index groups them (“The data” / “The pipeline”, with <code>usaspend.Rmd</code> as the Get-started page). This file remains the content bank behind them.</p>
 <table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>vignette</th>
 <th>status</th>
 <th>question it answers</th>
@@ -77,25 +78,30 @@
 <td><strong>written</strong></td>
 <td>UEIs in, panel out — the ten-line path</td>
 <td>nothing</td>
-</tr><tr class="odd"><td><code>data-model.Rmd</code></td>
+</tr><tr class="odd"><td><code>data-dictionary.Rmd</code></td>
+<td><strong>written</strong></td>
+<td>reference: ER diagrams of source / extract / panel, keys and cardinality, accounting-critical fields per table, code-value tables, pilot descriptives by award type; long dictionaries as CSVs in <code>vignettes/data-dictionary/</code>
+</td>
+<td>—</td>
+</tr><tr class="even"><td><code>data-model.Rmd</code></td>
 <td><strong>written</strong></td>
 <td>
 <strong>How USAspending is structured</strong>: transaction vs award vs subaward, and why the annual panel can only be built from transactions</td>
 <td>§2, §3 below</td>
-</tr><tr class="even"><td><code>award-types.Rmd</code></td>
+</tr><tr class="odd"><td><code>award-types.Rmd</code></td>
 <td><strong>written</strong></td>
 <td>What is actually in the data: grants, contracts, IDVs, direct payments, loans — and which of them are revenue</td>
 <td>§3 below, <code>ACCOUNTING.md</code> §2, §5.6</td>
-</tr><tr class="odd"><td><code>subawards.Rmd</code></td>
+</tr><tr class="even"><td><code>subawards.Rmd</code></td>
 <td><strong>written</strong></td>
 <td>What “subaward” means here, why direction is the whole problem, and what the data cannot see</td>
 <td>§2 below, <code>ACCOUNTING.md</code> §6</td>
-</tr><tr class="even"><td><code>accounting.Rmd</code></td>
+</tr><tr class="odd"><td><code>accounting.Rmd</code></td>
 <td><strong>written</strong></td>
 <td>Modifications, de-obligations, the year a claw-back belongs to</td>
 <td>
 <code>ACCOUNTING.md</code> §5</td>
-</tr><tr class="odd"><td><code>reconciliation.Rmd</code></td>
+</tr><tr class="even"><td><code>reconciliation.Rmd</code></td>
 <td><strong>written</strong></td>
 <td>Why 72% is a good number, and how to read a break</td>
 <td>

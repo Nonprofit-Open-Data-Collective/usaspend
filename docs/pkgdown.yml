@@ -5,13 +5,14 @@ articles:
   accounting: accounting.html
   acquisition: acquisition.html
   award-types: award-types.html
+  data-dictionary: data-dictionary.html
   data-model: data-model.html
   panel: panel.html
   reconciliation: reconciliation.html
   structure: structure.html
   subawards: subawards.html
   usaspend: usaspend.html
-last_built: 2026-08-27T17:09Z
+last_built: 2026-08-27T17:32Z
 urls:
   reference: https://nonprofit-open-data-collective.github.io/usaspend/reference
   article: https://nonprofit-open-data-collective.github.io/usaspend/articles
