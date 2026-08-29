@@ -83,10 +83,17 @@ cannot pass silently as a netted figure.
 ## The outlay gap
 
 `us_reconcile()` also reports `outlay_ratio` — lifetime outlays over
-lifetime obligations — where USAspending provides outlays (mostly
-post-FY2017 awards). This is the promise-versus-payment gap: the number that
-tells a reader how far an obligations panel is from a cash panel
-(`vignette("data-model")` explains why no annual cash figure exists).
+lifetime obligations — where USAspending provides outlays. Interpret it
+against the reporting mandates: account-level outlay reporting was
+quarterly and optional from FY2017, required for COVID-supplemental awards
+from April 2020, and monthly and mandatory only from FY2022. For an award
+straddling those dates the ratio *understates* payments — the pre-mandate
+outlays were never reported, not merely not yet paid — and for whole
+agencies it is missing outright (VA and DoD in the VUMC pilot, versus 98%
+coverage for post-FY2022 HHS awards). This is the promise-versus-payment
+gap: the number that tells a reader how far an obligations panel is from a
+cash panel (`vignette("data-model")` explains why no annual cash figure
+exists in award data).
 
 ## Practice
 

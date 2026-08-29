@@ -83,14 +83,49 @@ expected loss), `non_federal_funding_amount` (someone else's cost share).
 ## Obligations are promises; outlays are cash; only promises are annual
 
 `federal_action_obligation` is a *commitment*. The disbursement — the
-outlay — happens later, often across years. And the award data carries **no
-annual outlay figure at all**: `total_outlayed_amount_for_overall_award` is
-lifetime-to-date and blank on most rows (annual outlays live in
-account-level extracts the award endpoints do not expose). So an annual
-panel from this data measures obligations, and honest analysis says so.
-The package enforces the honesty: `us_money_column("outlay")` errors rather
-than substituting something close, and `us_reconcile()` reports each award's
-obligation-to-outlay ratio so the size of the gap stays visible.
+outlay — happens later, often across years, and within any given year the
+two differ **widely**. Measured on the FY2022+ VUMC awards whose
+account-level (File C) records reconcile with their award transactions:
+obligations put a median 90% of an award's dollars in its first fiscal
+year while outlays put 2% there; the dollar-weighted center of cash lags
+the center of commitment by roughly one year; and about two-thirds of an
+award's dollars land in a *different year* under outlays than under
+obligations. An obligations panel and a cash panel are different objects,
+and neither approximates the other.
+
+The award data carries **no annual outlay figure at all**:
+`total_outlayed_amount_for_overall_award` is lifetime-to-date and blank on
+most rows. Annual outlays exist only in the account-level File C data
+(exposed per award at `POST /awards/funding/`, absent from every bulk
+transaction file), and their coverage follows the reporting mandates:
+quarterly and effectively optional from FY2017, required for
+COVID-supplemental awards from April 2020, monthly and mandatory for all
+agencies only from FY2022. Lifetime outlay totals therefore *undercount*
+any award straddling those dates — pre-mandate disbursements were never
+reported, not merely not yet paid.
+
+Nor is coverage just an era problem. On the VUMC sample data, the share of
+awards carrying a nonzero lifetime outlay:
+
+| first action | assistance | contracts |
+|---|---|---|
+| pre-FY2017 | 33% | 0% |
+| FY2017–21 | 78% | 15% |
+| FY2022+ | 91% | 14% |
+
+The contract gap is an *agency* gap: post-FY2022, 98% of HHS awards carry
+an outlay against 0% of VA contracts and 2% of DoD awards. Whether outlays
+exist for a portfolio depends on who funds it.
+
+So an annual panel from this data measures obligations, and honest analysis
+says so. The package enforces the honesty: `us_money_column("outlay")`
+errors rather than substituting something close, and `us_reconcile()`
+reports each award's obligation-to-outlay ratio so the size of the gap
+stays visible. For portfolios where cash genuinely matters,
+`us_add_outlays()` attaches annual File C outlays to a fiscal panel as a
+*separate* column — fetched per award with `us_fetch_outlays()`, graded per
+award for era, agency, and linkage coverage, and never substituted into
+`obligation_net`.
 
 ## Award attributes are a moving target
 

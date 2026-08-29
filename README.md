@@ -49,9 +49,12 @@ knows or cares which was used.
 ## Three things that will bite you
 
 1. **Obligations are not payments.** The panel measures commitments. Federal
-   award data carries no annual cash figure — lifetime outlays only, mostly
-   blank before FY2017. `us_money_column("outlay")` errors rather than
-   substituting something close.
+   award data carries no annual cash figure — lifetime outlays only, and those
+   are complete only for awards begun after the FY2022 monthly reporting
+   mandate (for some agencies not even then). `us_money_column("outlay")`
+   errors rather than substituting something close; `us_add_outlays()` can
+   attach account-level annual outlays to a fiscal panel as a separate,
+   coverage-graded column.
 2. **Bulk subawards run the wrong way.** Filtering on `recipient_search_text`
    returns subawards where your UEI is the *subawardee*, not the prime. A
    three-UEI test pull returned 32 subaward rows, all 32 inbound. Pass-through

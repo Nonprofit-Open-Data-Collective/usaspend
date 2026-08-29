@@ -239,6 +239,11 @@ print.usaspend_panel <- function(x, ...) {
     "*" = "{data.table::uniqueN(p$org_id)} organization{?s}, {data.table::uniqueN(p$award_key)} award{?s}",
     "*" = "{min(p$year)}-{max(p$year)} ({x$meta$period} year, {x$meta$deobligation_policy})",
     "*" = "net obligations ${prettyNum(round(sum(p$obligation_net) / 1e6), big.mark = ',')}M",
-    "*" = if (x$meta$subawards_out_fetched) "outbound subawards netted" else "outbound subawards NOT fetched -- net_revenue equals obligation_net"))
+    "*" = if (x$meta$subawards_out_fetched) "outbound subawards netted" else "outbound subawards NOT fetched -- net_revenue equals obligation_net",
+    "*" = if (!is.null(x$meta$outlays)) {
+      cv <- x$meta$outlays$coverage
+      n_complete <- sum(cv[names(cv) == "complete"])
+      "annual outlays attached ({n_complete} of {sum(cv)} awards complete)"
+    }))
   invisible(x)
 }

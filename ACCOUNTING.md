@@ -80,17 +80,50 @@ organization with $40M it never received.
 | `non_federal_funding_amount` | cost share from someone else |
 | `total_outlayed_amount_for_overall_award` | award-lifetime, not annual — see below |
 
-### 2.4 Outlays are not available annually
+### 2.4 Outlays are not available annually (in award data)
 
 The award data has no annual disbursement figure. `total_outlayed_amount_for_overall_award`
 is lifetime-to-date and blank on most rows **[measured]** — in the sample it is
-populated on one award of eighteen. Annual outlays live in the account-level
-File B/C extracts, which the award endpoints do not expose at all.
+populated on one award of eighteen. Annual outlays exist only in the
+account-level File C data, reachable per award via `POST /awards/funding/` but
+absent from every transaction download this package builds on.
+
+Coverage follows the reporting mandates, and it is not just an era problem
+**[measured on VUMC, 2026-08-28, `data-raw/outlay-timing-analysis.R`]**:
+
+* File C outlay reporting was quarterly and optional from FY2017, required for
+  COVID-supplemental awards from April 2020, and monthly and mandatory for all
+  agencies only from FY2022. Lifetime outlay totals **undercount** any award
+  straddling those dates — the pre-mandate outlays were never reported, not
+  merely not yet paid.
+* Coverage varies by agency and family as much as by era. Share of VUMC awards
+  with a nonzero lifetime outlay, by first action: assistance 33% / 78% / 91%
+  across pre-FY2017 / FY2017–21 / FY2022+, contracts 0% / 15% / 14%. The
+  contract gap is an agency gap: post-FY2022, HHS 98% versus VA contracts 0%
+  and DoD 2%.
+* Where both series exist (FY2022+ VUMC awards whose File C obligations
+  reconcile with their award transactions), within-year obligations and
+  within-year outlays diverge widely: obligations put a median 90% of an
+  award's dollars in its first fiscal year, outlays 2%; cash lags commitment
+  by roughly one year; about two-thirds of dollars land in a different year
+  under the two measures. Same-year portfolio correlation was 0.37 against
+  0.74 for outlays-on-prior-year-obligations.
 
 `us_money_column("outlay")` therefore **errors** rather than returning a
 plausible substitute. The panel measures obligations, says so, and reports the
 obligation-to-outlay gap per award in `us_reconcile()` so the reader can see how
 far that is from cash.
+
+Annual outlays are available as an **optional, explicitly scoped layer**:
+`us_fetch_outlays()` walks the per-award File C endpoint,
+`us_outlays_by_year()` applies the cumulative-within-fiscal-year rule
+(`gross_outlay_amount` is reported as of period end and resets at the FY
+boundary — the annual figure is the last value per account cell, never the
+period sum), and `us_add_outlays()` joins the result onto a fiscal panel as
+`outlay_amount` plus a per-award `outlay_coverage` grade (`complete` /
+`truncated_pre_FY2022` / `unlinked` / `no_outlay_rows` / `no_file_c` /
+`fetch_failed`). A missing measurement is `NA`, never a fake zero;
+`obligation_net` and `net_revenue` are never touched.
 
 ### 2.5 What the ledger actually contains — **[measured]**
 

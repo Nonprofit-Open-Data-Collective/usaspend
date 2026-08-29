@@ -5,9 +5,9 @@
 \alias{us_empty}
 \title{Canonical table schemas}
 \usage{
-us_schema(table = c("transactions", "subawards", "awards", "panel"))
+us_schema(table = c("transactions", "subawards", "awards", "panel", "funding"))
 
-us_empty(table = c("transactions", "subawards", "awards", "panel"))
+us_empty(table = c("transactions", "subawards", "awards", "panel", "funding"))
 }
 \arguments{
 \item{table}{Which schema to return.}
@@ -29,6 +29,9 @@ an annual panel.}
 \item{\code{subawards}}{One row per FSRS subaward report line.}
 \item{\code{awards}}{One row per prime award -- the spine.}
 \item{\code{panel}}{One row per organization x award x year -- the deliverable.}
+\item{\code{funding}}{One row per account-level (File C) record for an award:
+federal account x period, from \code{\link[=us_fetch_outlays]{us_fetch_outlays()}}. The only place
+annual outlays exist.}
 }
 }
 \examples{

@@ -15,11 +15,20 @@
 #'     measure, which substitutes the loan subsidy cost for loans and equals the
 #'     obligation otherwise. In the pilot the two are identical on every
 #'     non-loan row.}
-#'   \item{`"outlay"`}{Not available. `award_total_outlayed` exists but is
-#'     award-lifetime and mostly missing -- 91% of pilot awards starting before
-#'     2017 report no outlay at all. There is no transaction-level or annual
-#'     outlay in the award data. Requesting this raises an error rather than
-#'     returning something misleading.}
+#'   \item{`"outlay"`}{Not available. There is no transaction-level or annual
+#'     outlay in the award data, and `award_total_outlayed` is lifetime-to-date,
+#'     not annual. Its coverage follows the reporting mandates: account-level
+#'     (File C) outlay reporting was quarterly and optional from FY2017,
+#'     required for COVID-supplemental awards from April 2020, and monthly and
+#'     mandatory for all agencies only from FY2022 -- so lifetime outlays
+#'     undercount any award straddling those dates (91% of pilot awards
+#'     starting before 2017 report no outlay at all), and coverage varies by
+#'     agency and award family, not just era: post-FY2022 in the VUMC pilot,
+#'     98% of HHS awards carry an outlay against 0% of VA contracts.
+#'     Requesting this raises an error rather than returning something
+#'     misleading. Annual outlays can be attached to a fiscal panel as a
+#'     separate, coverage-graded column with [us_add_outlays()] -- they are
+#'     an additional measure, never the panel measure.}
 #' }
 #'
 #' The measures that must never be summed as revenue: `potential_value`,
@@ -39,8 +48,8 @@ us_money_column <- function(measure = c("obligation", "pragmatic", "outlay")) {
   if (measure == "outlay") {
     us_abort(c("Annual outlays are not available from the award data.",
                "i" = "{.field award_total_outlayed} is award-lifetime and missing for 91% of pre-2017 pilot awards.",
-               "i" = "Annual disbursements require the account-level File B/C download.",
-               "i" = "Use {.val obligation} and describe the panel as obligations, not payments."))
+               "i" = "Annual disbursements live in account-level File C data, complete only from FY2022 when monthly reporting became mandatory.",
+               "i" = "Use {.val obligation} and describe the panel as obligations, not payments; attach cash as a separate column with {.fn us_add_outlays}."))
   }
   switch(measure, obligation = "federal_action_obligation",
                   pragmatic  = "pragmatic_obligation")

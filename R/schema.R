@@ -21,6 +21,7 @@ us_schema_spec <- function() {
     data.table::data.table(field = names(v), type = unname(v))
   }
   chr <- "character"; num <- "numeric"; int <- "integer"; dat <- "Date"
+  lgl <- "logical"
   list(
     transactions = D(
       transaction_key = chr, award_key = chr, parent_award_id = chr,
@@ -82,6 +83,17 @@ us_schema_spec <- function() {
       subaward_out_amount = num, n_subawards_out = int,
       subaward_in_amount = num, n_subawards_in = int,
       net_revenue = num, flags = chr
+    ),
+    funding = D(
+      award_key = chr,
+      reporting_fiscal_year = int, reporting_fiscal_quarter = int,
+      reporting_fiscal_month = int, is_quarterly_submission = lgl,
+      federal_account = chr, account_title = chr,
+      disaster_emergency_fund_code = chr,
+      object_class = chr, object_class_name = chr,
+      program_activity_code = chr, program_activity_name = chr,
+      funding_agency_id = chr, funding_agency_name = chr,
+      transaction_obligated_amount = num, gross_outlay_amount = num
     )
   )
 }
@@ -99,6 +111,9 @@ us_schema_spec <- function() {
 #'   \item{`subawards`}{One row per FSRS subaward report line.}
 #'   \item{`awards`}{One row per prime award -- the spine.}
 #'   \item{`panel`}{One row per organization x award x year -- the deliverable.}
+#'   \item{`funding`}{One row per account-level (File C) record for an award:
+#'     federal account x period, from [us_fetch_outlays()]. The only place
+#'     annual outlays exist.}
 #' }
 #'
 #' @param table Which schema to return.
@@ -108,7 +123,7 @@ us_schema_spec <- function() {
 #' @examples
 #' us_schema("panel")
 #' str(us_empty("transactions"))
-us_schema <- function(table = c("transactions", "subawards", "awards", "panel")) {
+us_schema <- function(table = c("transactions", "subawards", "awards", "panel", "funding")) {
   table <- match.arg(table)
   spec <- us_schema_spec()[[table]]
   if (nrow(spec) == 0L || length(spec$field) != length(spec$type)) {
@@ -119,7 +134,7 @@ us_schema <- function(table = c("transactions", "subawards", "awards", "panel"))
 
 #' @rdname us_schema
 #' @export
-us_empty <- function(table = c("transactions", "subawards", "awards", "panel")) {
+us_empty <- function(table = c("transactions", "subawards", "awards", "panel", "funding")) {
   spec <- us_schema(match.arg(table))
   make <- function(ty) switch(ty,
     character = character(0), numeric = numeric(0),
