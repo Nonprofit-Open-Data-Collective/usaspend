@@ -32,6 +32,10 @@
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -247,6 +251,100 @@
         </dt>
         <dd>Aggregate subawards by year</dd>
       </dl></div><div class="section level2">
+      <h2 id="annual-outlays-file-c-">Annual outlays (File C)<a class="anchor" aria-label="anchor" href="#annual-outlays-file-c-"></a></h2>
+
+      <div class="section-desc"><p>The optional cash layer. Annual disbursements exist only in account-level File C data, complete only from the FY2022 monthly mandate and absent for whole agencies – fetched per award, graded for coverage, and attached to a fiscal panel without ever substituting for obligations.</p></div>
+
+
+    </div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="us_fetch_outlays.html">us_fetch_outlays()</a></code>
+
+        </dt>
+        <dd>Fetch account-level (File C) funding history per award</dd>
+      </dl><dl><dt>
+
+          <code><a href="us_outlays_by_year.html">us_outlays_by_year()</a></code>
+
+        </dt>
+        <dd>Collapse File C funding records to annual outlays per award</dd>
+      </dl><dl><dt>
+
+          <code><a href="us_add_outlays.html">us_add_outlays()</a></code>
+
+        </dt>
+        <dd>Attach annual outlays to a panel</dd>
+      </dl></div><div class="section level2">
+      <h2 id="outlay-imputation">Outlay imputation<a class="anchor" aria-label="anchor" href="#outlay-imputation"></a></h2>
+
+      <div class="section-desc"><p>Where real File C outlays don’t reach, impute the cash calendar from obligations: liquidation curves fitted on reconciled ground truth, with an explicit even-spread fallback outside the model’s support.</p></div>
+
+
+    </div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="us_impute_outlays.html">us_impute_outlays()</a></code>
+
+        </dt>
+        <dd>Impute annual outlays from obligations data</dd>
+      </dl><dl><dt>
+
+          <code><a href="us_add_imputed_outlays.html">us_add_imputed_outlays()</a></code>
+
+        </dt>
+        <dd>Attach imputed outlays to a panel</dd>
+      </dl><dl><dt>
+
+          <code><a href="us_impute_fit.html">us_impute_fit()</a></code>
+
+        </dt>
+        <dd>Fit a liquidation-curve outlay model</dd>
+      </dl><dl><dt>
+
+          <code><a href="us_impute_eval.html">us_impute_eval()</a></code>
+
+        </dt>
+        <dd>Cross-validated evaluation of an outlay-imputation configuration</dd>
+      </dl><dl><dt>
+
+          <code><a href="us_outlay_training.html">us_outlay_training()</a></code>
+
+        </dt>
+        <dd>Build an outlay-imputation training set</dd>
+      </dl><dl><dt>
+
+          <code><a href="us_outlay_features.html">us_outlay_features()</a></code>
+
+        </dt>
+        <dd>Award-level features for outlay imputation</dd>
+      </dl><dl><dt>
+
+          <code><a href="us_misallocation.html">us_misallocation()</a></code>
+
+        </dt>
+        <dd>Misallocation share between an imputed and an actual annual series</dd>
+      </dl><dl><dt>
+
+          <code><a href="outlay_model.html">outlay_model</a></code>
+
+        </dt>
+        <dd>The default liquidation-curve outlay model</dd>
+      </dl><dl><dt>
+
+          <code><a href="outlay_training.html">outlay_training</a></code>
+
+        </dt>
+        <dd>Outlay-imputation ground truth</dd>
+      </dl></div><div class="section level2">
       <h2 id="normalization-and-accounting">Normalization and accounting<a class="anchor" aria-label="anchor" href="#normalization-and-accounting"></a></h2>
 
       <div class="section-desc"><p>The rules that turn a raw modification ledger into clean signed transactions, specified in ACCOUNTING.md.</p></div>
@@ -437,7 +535,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer></div>

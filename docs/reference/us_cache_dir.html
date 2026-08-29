@@ -36,6 +36,10 @@ never be re-fetched by accident."></head><body>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -91,11 +95,11 @@ never be re-fetched by accident.</p>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Layout:</p>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="sc">&lt;</span>cache<span class="sc">&gt;</span><span class="er">/</span>jobs<span class="sc">/</span>      API download job zips and their manifests</span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="sc">&lt;</span>cache<span class="sc">&gt;</span><span class="er">/</span>raw<span class="sc">/</span>       unzipped CSVs from API jobs</span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="sc">&lt;</span>cache<span class="sc">&gt;</span><span class="er">/</span>archive<span class="sc">/</span>   annual Award Data Archive zips</span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="sc">&lt;</span>cache<span class="sc">&gt;</span><span class="er">/</span>parquet<span class="sc">/</span>   archive CSVs converted to partitioned parquet</span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="sc">&lt;</span>cache<span class="sc">&gt;</span><span class="er">/</span>duckdb<span class="sc">/</span>    on<span class="sc">-</span>disk duckdb databases</span></code></pre><p></p></div>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="sc">&lt;</span>cache<span class="sc">&gt;</span><span class="er">/</span>jobs<span class="sc">/</span>      API download job zips and their manifests</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="sc">&lt;</span>cache<span class="sc">&gt;</span><span class="er">/</span>raw<span class="sc">/</span>       unzipped CSVs from API jobs</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="sc">&lt;</span>cache<span class="sc">&gt;</span><span class="er">/</span>archive<span class="sc">/</span>   annual Award Data Archive zips</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="sc">&lt;</span>cache<span class="sc">&gt;</span><span class="er">/</span>parquet<span class="sc">/</span>   archive CSVs converted to partitioned parquet</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="sc">&lt;</span>cache<span class="sc">&gt;</span><span class="er">/</span>duckdb<span class="sc">/</span>    on<span class="sc">-</span>disk duckdb databases</span></code></pre><p></p></div>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
@@ -107,7 +111,7 @@ never be re-fetched by accident.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer></div>

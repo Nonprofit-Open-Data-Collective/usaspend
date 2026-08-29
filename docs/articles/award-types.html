@@ -47,6 +47,10 @@
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul>
 </li>
       </ul>
@@ -79,24 +83,17 @@
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nonprofit-open-data-collective.github.io/usaspend/">usaspend</a></span><span class="op">)</span></span></code></pre></div>
-<p>Every transaction carries an award type code, and the code determines
-whether its dollars are revenue, capacity, or someone else’s money. The
-package’s taxonomy:</p>
+<p>Every transaction carries an award type code, and the code determines whether its dollars are revenue, capacity, or someone else’s money. The package’s taxonomy:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/us_award_type_codes.html">us_award_type_codes</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  [1] "A"       "B"       "C"       "D"       "IDV_A"   "IDV_B"   "IDV_B_A" "IDV_B_B"</span></span>
 <span><span class="co">#&gt;  [9] "IDV_B_C" "IDV_C"   "IDV_D"   "IDV_E"   "02"      "03"      "04"      "05"     </span></span>
 <span><span class="co">#&gt; [17] "06"      "10"      "07"      "08"      "09"      "11"</span></span></code></pre></div>
-<p>Each code maps to an <code>award_family</code> (<code>grant</code>,
-<code>contract</code>, <code>idv</code>, <code>direct_payment</code>,
-<code>loan</code>, <code>other</code>) and an <code>award_group</code>
-(<code>assistance</code> vs <code>contract</code> — which of
-USAspending’s two file layouts it arrives in).</p>
+<p>Each code maps to an <code>award_family</code> (<code>grant</code>, <code>contract</code>, <code>idv</code>, <code>direct_payment</code>, <code>loan</code>, <code>other</code>) and an <code>award_group</code> (<code>assistance</code> vs <code>contract</code> — which of USAspending’s two file layouts it arrives in).</p>
 <div class="section level2">
 <h2 id="what-a-real-portfolio-looks-like">What a real portfolio looks like<a class="anchor" aria-label="anchor" href="#what-a-real-portfolio-looks-like"></a>
 </h2>
-<p>The 50-nonprofit pilot (302,025 transactions, FY2008–FY2025), by
-type:</p>
+<p>The 50-nonprofit pilot (302,025 transactions, FY2008–FY2025), by type:</p>
 <table class="table">
 <colgroup>
 <col width="20%">
@@ -131,8 +128,7 @@ type:</p>
 <td>Direct payments (06, 10)</td>
 <td>19.3k</td>
 <td>$3.0bn</td>
-<td>almost entirely Pell, work-study, SEOG — student aid moving
-<em>through</em> the institution</td>
+<td>almost entirely Pell, work-study, SEOG — student aid moving <em>through</em> the institution</td>
 <td>separable; usually exclude</td>
 </tr>
 <tr class="even">
@@ -167,33 +163,17 @@ type:</p>
 </tr>
 </tbody>
 </table>
-<p>Two numbers carry the whole argument: <strong>$626bn of loan face
-value</strong> and <strong>$115bn of IDV ceiling</strong>, against
-<strong>$118.5bn of actual net obligations</strong>. Summing the wrong
-dollar column overstates this portfolio roughly sixfold.</p>
+<p>Two numbers carry the whole argument: <strong>$626bn of loan face value</strong> and <strong>$115bn of IDV ceiling</strong>, against <strong>$118.5bn of actual net obligations</strong>. Summing the wrong dollar column overstates this portfolio roughly sixfold.</p>
 </div>
 <div class="section level2">
 <h2 id="loans-the-data-gets-it-right-keep-it-that-way">Loans: the data gets it right, keep it that way<a class="anchor" aria-label="anchor" href="#loans-the-data-gets-it-right-keep-it-that-way"></a>
 </h2>
-<p>Every type-07 row in the pilot is a Federal Direct Student Loan. The
-loans are to <em>students</em>; the institution originates them.
-USAspending already encodes this correctly —
-<code>federal_action_obligation</code> is $0 on every one, and the face
-value travels in its own column (<code>loan_face_value</code> in the
-panel). The rule is simply to never let face value or subsidy cost reach
-a revenue total. Direct payments (06, 10) are the same story one step
-removed — student aid booked to the school but economically the
-students’ — so they stay in the ledger with
-<code>award_family = "direct_payment"</code>, and a nonprofit-revenue
-analysis usually filters them out explicitly.</p>
+<p>Every type-07 row in the pilot is a Federal Direct Student Loan. The loans are to <em>students</em>; the institution originates them. USAspending already encodes this correctly — <code>federal_action_obligation</code> is $0 on every one, and the face value travels in its own column (<code>loan_face_value</code> in the panel). The rule is simply to never let face value or subsidy cost reach a revenue total. Direct payments (06, 10) are the same story one step removed — student aid booked to the school but economically the students’ — so they stay in the ledger with <code>award_family = "direct_payment"</code>, and a nonprofit-revenue analysis usually filters them out explicitly.</p>
 </div>
 <div class="section level2">
 <h2 id="idvs-vehicles-not-money">IDVs: vehicles, not money<a class="anchor" aria-label="anchor" href="#idvs-vehicles-not-money"></a>
 </h2>
-<p>An indefinite-delivery vehicle (GWAC, IDC, BPA, BOA, FSS) is a
-contract <em>container</em>. Its ceiling is capacity; the money is
-obligated on the delivery orders placed under it — which are separate
-awards with their own keys. The sample shows the pair:</p>
+<p>An indefinite-delivery vehicle (GWAC, IDC, BPA, BOA, FSS) is a contract <em>container</em>. Its ceiling is capacity; the money is obligated on the delivery orders placed under it — which are separate awards with their own keys. The sample shows the pair:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_sample_extract.html">us_sample_extract</a></span><span class="op">(</span><span class="op">)</span><span class="op">$</span><span class="va">transactions</span></span>
 <span><span class="va">tx</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl</a></span><span class="op">(</span><span class="st">"HHSD200200720032I"</span>, <span class="va">award_key</span><span class="op">)</span>,</span>
@@ -213,23 +193,12 @@ awards with their own keys. The sample shows the pair:</p>
 <span><span class="co">#&gt; 3:  390297.9</span></span>
 <span><span class="co">#&gt; 4: 1818651.0</span></span>
 <span><span class="co">#&gt; 5:  458210.1</span></span></code></pre></div>
-<p>The vehicle: $0 across its own modifications, against a $40M
-potential value. The delivery orders under it: the actual obligations.
-Whether to roll delivery orders up into their parent vehicle is a
-modelling choice — it changes award counts and agency attribution, not
-dollar totals — and the package defaults to <strong>not</strong> rolling
-up.</p>
+<p>The vehicle: $0 across its own modifications, against a $40M potential value. The delivery orders under it: the actual obligations. Whether to roll delivery orders up into their parent vehicle is a modelling choice — it changes award counts and agency attribution, not dollar totals — and the package defaults to <strong>not</strong> rolling up.</p>
 </div>
 <div class="section level2">
 <h2 id="two-traps-the-package-absorbs-so-you-dont-hit-them">Two traps the package absorbs so you don’t hit them<a class="anchor" aria-label="anchor" href="#two-traps-the-package-absorbs-so-you-dont-hit-them"></a>
 </h2>
-<p><strong>Codes collide across families.</strong> <code>B</code> is
-<em>Continuation</em> for assistance and <em>Supplemental Agreement</em>
-for contracts; <code>C</code> is <em>Revision</em> vs <em>Funding Only
-Action</em>; <code>D</code> is <em>Adjustment to Completed Award</em> vs
-<em>Change Order</em>. Any classification that ignores
-<code>award_group</code> is wrong, which is why
-<code><a href="../reference/us_classify_action.html">us_classify_action()</a></code> requires it:</p>
+<p><strong>Codes collide across families.</strong> <code>B</code> is <em>Continuation</em> for assistance and <em>Supplemental Agreement</em> for contracts; <code>C</code> is <em>Revision</em> vs <em>Funding Only Action</em>; <code>D</code> is <em>Adjustment to Completed Award</em> vs <em>Change Order</em>. Any classification that ignores <code>award_group</code> is wrong, which is why <code><a href="../reference/us_classify_action.html">us_classify_action()</a></code> requires it:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/us_classify_action.html">us_classify_action</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>, award_group <span class="op">=</span> <span class="st">"assistance"</span><span class="op">)</span><span class="op">[</span>, <span class="op">-</span><span class="fl">1</span><span class="op">]</span></span>
 <span><span class="co">#&gt;    action_type_code action_type_label action_class</span></span>
@@ -241,16 +210,7 @@ Action</em>; <code>D</code> is <em>Adjustment to Completed Award</em> vs
 <span><span class="co">#&gt;              &lt;char&gt;                              &lt;char&gt;       &lt;char&gt;</span></span>
 <span><span class="co">#&gt; 1:                B Supplemental Agreement Within Scope     revision</span></span>
 <span><span class="co">#&gt; 2:                C                 Funding Only Action funding_only</span></span></code></pre></div>
-<p><strong>Description strings are not stable — group on codes, never
-labels.</strong> The same pull can carry <code>"DELIVERY ORDER"</code>
-and <code>"DO"</code> for one code, and archive files carry different
-strings again (<code><a href="../articles/acquisition.html">vignette("acquisition")</a></code>). Package labels are
-always derived from the code via <code><a href="../reference/us_classify_award_type.html">us_classify_award_type()</a></code>,
-so they are stable no matter what the source file said. Contract IDV
-rows add one more wrinkle: their <code>award_type_code</code> is blank
-and the type lives in <code>idv_type_code</code> as a bare letter, which
-the classifier prefixes (<code>"B"</code> → <code>"IDV_B"</code>)
-because bare <code>"B"</code> would read as Purchase Order.</p>
+<p><strong>Description strings are not stable — group on codes, never labels.</strong> The same pull can carry <code>"DELIVERY ORDER"</code> and <code>"DO"</code> for one code, and archive files carry different strings again (<code><a href="../articles/acquisition.html">vignette("acquisition")</a></code>). Package labels are always derived from the code via <code><a href="../reference/us_classify_award_type.html">us_classify_award_type()</a></code>, so they are stable no matter what the source file said. Contract IDV rows add one more wrinkle: their <code>award_type_code</code> is blank and the type lives in <code>idv_type_code</code> as a bare letter, which the classifier prefixes (<code>"B"</code> → <code>"IDV_B"</code>) because bare <code>"B"</code> would read as Purchase Order.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
@@ -263,7 +223,7 @@ because bare <code>"B"</code> would read as Purchase Order.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer>

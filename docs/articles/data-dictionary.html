@@ -47,6 +47,10 @@
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul>
 </li>
       </ul>
@@ -79,20 +83,11 @@
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nonprofit-open-data-collective.github.io/usaspend/">usaspend</a></span><span class="op">)</span></span></code></pre></div>
-<p>This is the reference companion to
-<code><a href="../articles/data-model.html">vignette("data-model")</a></code>: what the package queries at
-USAspending, what the extract and panel objects contain, which fields
-drive the accounting, and what the code values mean. Short tables here
-carry only keys and accounting-critical fields; every table links to its
-<strong>full dictionary as CSV</strong> in <a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/tree/main/vignettes/data-dictionary" class="external-link"><code>vignettes/data-dictionary/</code></a>.</p>
+<p>This is the reference companion to <code><a href="../articles/data-model.html">vignette("data-model")</a></code>: what the package queries at USAspending, what the extract and panel objects contain, which fields drive the accounting, and what the code values mean. Short tables here carry only keys and accounting-critical fields; every table links to its <strong>full dictionary as CSV</strong> in <a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/tree/main/vignettes/data-dictionary" class="external-link"><code>vignettes/data-dictionary/</code></a>.</p>
 <div class="section level2">
 <h2 id="the-source-side-what-the-package-actually-queries">1. The source side: what the package actually queries<a class="anchor" aria-label="anchor" href="#the-source-side-what-the-package-actually-queries"></a>
 </h2>
-<p>It is <em>not</em> one query per table. The package touches
-<strong>four server interfaces</strong>, and they map onto the extract’s
-tables asymmetrically — one bulk-download job returns both prime
-transactions <em>and</em> subawards; the archives return transactions
-only; subawards at scale need their own search queries.</p>
+<p>It is <em>not</em> one query per table. The package touches <strong>four server interfaces</strong>, and they map onto the extract’s tables asymmetrically — one bulk-download job returns both prime transactions <em>and</em> subawards; the archives return transactions only; subawards at scale need their own search queries.</p>
 <table class="table">
 <colgroup>
 <col width="25%">
@@ -111,47 +106,35 @@ only; subawards at scale need their own search queries.</p>
 <td>1</td>
 <td>
 <code>POST /api/v2/download/transactions/</code> (bulk job)</td>
-<td>up to ~20 UEIs × a date range → a zip of 4 CSVs: assistance +
-contract prime transactions, <strong>plus</strong> FSRS subawards where
-a queried UEI is the <em>subawardee</em>
+<td>up to ~20 UEIs × a date range → a zip of 4 CSVs: assistance + contract prime transactions, <strong>plus</strong> FSRS subawards where a queried UEI is the <em>subawardee</em>
 </td>
 <td>
-<code>transactions</code> <strong>and</strong>
-<code>subawards</code> (inbound)</td>
+<code>transactions</code> <strong>and</strong> <code>subawards</code> (inbound)</td>
 </tr>
 <tr class="even">
 <td>2</td>
 <td>Award Data Archive files (<code>files.usaspending.gov</code>)</td>
-<td>one fiscal year × one family, <em>all recipients</em> → filtered
-locally with duckdb</td>
+<td>one fiscal year × one family, <em>all recipients</em> → filtered locally with duckdb</td>
 <td>
 <code>transactions</code> only</td>
 </tr>
 <tr class="odd">
 <td>3</td>
 <td>
-<code>POST /api/v2/search/spending_by_award/</code> with
-<code>subawards = true</code>
+<code>POST /api/v2/search/spending_by_award/</code> with <code>subawards = true</code>
 </td>
-<td>FSRS lines filtered by prime <code>award_ids</code> (→
-<em>outbound</em>) or by <code>recipient_search_text</code> (→
-<em>inbound</em>)</td>
+<td>FSRS lines filtered by prime <code>award_ids</code> (→ <em>outbound</em>) or by <code>recipient_search_text</code> (→ <em>inbound</em>)</td>
 <td><code>subawards</code></td>
 </tr>
 <tr class="even">
 <td>4</td>
 <td><code>GET /api/v2/awards/{award_key}/</code></td>
-<td>one prime award’s summary (<code>subaward_count</code>, lifetime
-totals)</td>
+<td>one prime award’s summary (<code>subaward_count</code>, lifetime totals)</td>
 <td>the pass-through screen; <code>awards</code> enrichment</td>
 </tr>
 </tbody>
 </table>
-<p>Behind those endpoints, USAspending’s warehouse — as far as these
-queries can see it — looks like this. Two transaction systems (FABS for
-assistance, FPDS for contracts) hang off a derived award summary; FSRS
-subaward reports reference a prime award and <em>two</em>
-recipients:</p>
+<p>Behind those endpoints, USAspending’s warehouse — as far as these queries can see it — looks like this. Two transaction systems (FABS for assistance, FPDS for contracts) hang off a derived award summary; FSRS subaward reports reference a prime award and <em>two</em> recipients:</p>
 <pre class="mermaid" style="text-align: center; background: transparent;">
 erDiagram
     RECIPIENT ||--o{ AWARD : "holds (current)"
@@ -192,22 +175,12 @@ erDiagram
         date subaward_action_date
     }
 </pre>
-<p>Two source facts worth reading off the diagram: <code>award_id</code>
-(FAIN/PIID) is <strong>not</strong> unique — agencies reuse it, which is
-why every join in the package runs on the generated
-<code>award_key</code>; and an FSRS line has <em>two</em> recipient
-edges, which is why subaward <strong>direction</strong> exists only
-relative to an organization’s UEI set.</p>
+<p>Two source facts worth reading off the diagram: <code>award_id</code> (FAIN/PIID) is <strong>not</strong> unique — agencies reuse it, which is why every join in the package runs on the generated <code>award_key</code>; and an FSRS line has <em>two</em> recipient edges, which is why subaward <strong>direction</strong> exists only relative to an organization’s UEI set.</p>
 </div>
 <div class="section level2">
-<h2 id="the-extract-object-us_extract-us_sample_extract">2. The extract object — <code>us_extract()</code> /
-<code>us_sample_extract()</code><a class="anchor" aria-label="anchor" href="#the-extract-object-us_extract-us_sample_extract"></a>
+<h2 id="the-extract-object-us_extract-us_sample_extract">2. The extract object — <code>us_extract()</code> / <code>us_sample_extract()</code><a class="anchor" aria-label="anchor" href="#the-extract-object-us_extract-us_sample_extract"></a>
 </h2>
-<p>Four elements: two data tables plus the acquisition manifest
-(<code>jobs</code>) and provenance (<code>meta</code>). The tables are
-<strong>harmonized but not normalized</strong> — duplicates,
-<code>D</code>-flagged deletes, and aggregate records are still present,
-which is why <code><a href="../reference/us_panel.html">us_panel()</a></code> re-normalizes.</p>
+<p>Four elements: two data tables plus the acquisition manifest (<code>jobs</code>) and provenance (<code>meta</code>). The tables are <strong>harmonized but not normalized</strong> — duplicates, <code>D</code>-flagged deletes, and aggregate records are still present, which is why <code><a href="../reference/us_panel.html">us_panel()</a></code> re-normalizes.</p>
 <pre class="mermaid" style="text-align: center; background: transparent;">
 erDiagram
     AWARD ||--o{ TRANSACTIONS : "award_key (implicit -- spine built later)"
@@ -226,14 +199,8 @@ erDiagram
         numeric subaward_amount
     }
 </pre>
-<p>Note the second edge: for <em>inbound</em> subaward rows the prime
-award belongs to <strong>another organization</strong>, so
-<code>prime_award_key</code> usually matches nothing in your own
-<code>transactions</code>. That is by design — inbound rows are revenue
-that prime data cannot see.</p>
-<p><strong><code>$transactions</code></strong> — one row per award
-action (<a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/transactions.csv" class="external-link">full
-dictionary, 48 fields</a>):</p>
+<p>Note the second edge: for <em>inbound</em> subaward rows the prime award belongs to <strong>another organization</strong>, so <code>prime_award_key</code> usually matches nothing in your own <code>transactions</code>. That is by design — inbound rows are revenue that prime data cannot see.</p>
+<p><strong><code>$transactions</code></strong> — one row per award action (<a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/transactions.csv" class="external-link">full dictionary, 48 fields</a>):</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -283,8 +250,7 @@ dictionary, 48 fields</a>):</p>
 </tr>
 <tr class="odd">
 <td>
-<code>award_group</code> / <code>award_family</code> /
-<code>award_type_code</code>
+<code>award_group</code> / <code>award_family</code> / <code>award_type_code</code>
 </td>
 <td>the include/exclude switches</td>
 </tr>
@@ -310,9 +276,7 @@ dictionary, 48 fields</a>):</p>
 </tr>
 </tbody>
 </table>
-<p><strong><code>$subawards</code></strong> — one row per FSRS report
-line (<a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/subawards.csv" class="external-link">full
-dictionary, 24 fields</a>):</p>
+<p><strong><code>$subawards</code></strong> — one row per FSRS report line (<a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/subawards.csv" class="external-link">full dictionary, 24 fields</a>):</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -326,9 +290,7 @@ dictionary, 24 fields</a>):</p>
 <tr class="odd">
 <td><code>subaward_key</code></td>
 <td>
-<strong>PK</strong>:
-<code>prime_award_key \| subaward_number \| action_date</code>;
-restatement de-dup key</td>
+<strong>PK</strong>: <code>prime_award_key \| subaward_number \| action_date</code>; restatement de-dup key</td>
 </tr>
 <tr class="even">
 <td><code>prime_award_key</code></td>
@@ -356,24 +318,16 @@ restatement de-dup key</td>
 <tr class="odd">
 <td><code>direction</code></td>
 <td>
-<code>NA</code> until <code><a href="../reference/us_normalize_subawards.html">us_normalize_subawards()</a></code> assigns
-it</td>
+<code>NA</code> until <code><a href="../reference/us_normalize_subawards.html">us_normalize_subawards()</a></code> assigns it</td>
 </tr>
 </tbody>
 </table>
-<p><strong><code>$jobs</code></strong> is the acquisition manifest
-(download jobs or archive files); <strong><code>$meta</code></strong>
-records <code>uei</code>, <code>years</code>, <code>source</code>, and
-<code>subawards</code> — which directions were fetched, so a zero can
-never pass as a measured zero.</p>
+<p><strong><code>$jobs</code></strong> is the acquisition manifest (download jobs or archive files); <strong><code>$meta</code></strong> records <code>uei</code>, <code>years</code>, <code>source</code>, and <code>subawards</code> — which directions were fetched, so a zero can never pass as a measured zero.</p>
 </div>
 <div class="section level2">
 <h2 id="the-panel-object-us_panel">3. The panel object — <code>us_panel()</code><a class="anchor" aria-label="anchor" href="#the-panel-object-us_panel"></a>
 </h2>
-<p>Five tables plus <code>meta</code>. The panel is keyed <strong>org ×
-award × year</strong>; organization-level inbound revenue lives in its
-own table because it cannot sit on another organization’s award
-rows.</p>
+<p>Five tables plus <code>meta</code>. The panel is keyed <strong>org × award × year</strong>; organization-level inbound revenue lives in its own table because it cannot sit on another organization’s award rows.</p>
 <pre class="mermaid" style="text-align: center; background: transparent;">
 erDiagram
     ORG ||--o{ PANEL : "org_id"
@@ -413,8 +367,7 @@ erDiagram
         numeric subaward_in_amount
     }
 </pre>
-<p><strong><code>$panel</code></strong> — the deliverable (<a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/panel.csv" class="external-link">full
-dictionary, 30 fields</a>):</p>
+<p><strong><code>$panel</code></strong> — the deliverable (<a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/panel.csv" class="external-link">full dictionary, 30 fields</a>):</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -427,17 +380,14 @@ dictionary, 30 fields</a>):</p>
 <tbody>
 <tr class="odd">
 <td>
-<code>org_id</code> + <code>award_key</code> +
-<code>year</code>
+<code>org_id</code> + <code>award_key</code> + <code>year</code>
 </td>
 <td>
-<strong>composite PK</strong> (grain asserted by
-<code><a href="../reference/us_audit.html">us_audit()</a></code>)</td>
+<strong>composite PK</strong> (grain asserted by <code><a href="../reference/us_audit.html">us_audit()</a></code>)</td>
 </tr>
 <tr class="even">
 <td>
-<code>obligation_positive</code> /
-<code>obligation_negative</code>
+<code>obligation_positive</code> / <code>obligation_negative</code>
 </td>
 <td>gross components — never dropped</td>
 </tr>
@@ -465,35 +415,19 @@ dictionary, 30 fields</a>):</p>
 <tr class="even">
 <td><code>flags</code></td>
 <td>
-<code>subawards_out_not_fetched</code> ⇒
-<code>net_revenue = obligation_net</code>
+<code>subawards_out_not_fetched</code> ⇒ <code>net_revenue = obligation_net</code>
 </td>
 </tr>
 </tbody>
 </table>
-<p><strong><code>$awards</code></strong> — the spine (<a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/awards.csv" class="external-link">full
-dictionary, 33 fields</a>): attributes as of the latest action,
-<code>total_obligated</code> (the reconciliation target),
-<code>obligated_in_extract</code> (what this window saw), and
-<code>n_recipients</code> (&gt; 1 flags PI-transfer awards).</p>
-<p><strong><code>$transactions</code> / <code>$subawards</code></strong>
-— the normalized inputs, same shapes as §2 plus normalization flags
-(<code>is_zero_dollar</code>, <code>is_deobligation</code>,
-<code>is_stray_uei</code>, …) and assigned <code>direction</code>.</p>
-<p><strong><code>$subawards_in</code></strong> — org × year inbound
-revenue (<a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/subawards_in.csv" class="external-link">dictionary</a>):
-<code>subaward_in_amount</code>, <code>n_subawards_in</code>. Folded
-into totals by <code><a href="../reference/us_rollup.html">us_rollup()</a></code> as
-<code>total_net = obligation_net + subaward_in − subaward_out</code>.</p>
+<p><strong><code>$awards</code></strong> — the spine (<a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/awards.csv" class="external-link">full dictionary, 33 fields</a>): attributes as of the latest action, <code>total_obligated</code> (the reconciliation target), <code>obligated_in_extract</code> (what this window saw), and <code>n_recipients</code> (&gt; 1 flags PI-transfer awards).</p>
+<p><strong><code>$transactions</code> / <code>$subawards</code></strong> — the normalized inputs, same shapes as §2 plus normalization flags (<code>is_zero_dollar</code>, <code>is_deobligation</code>, <code>is_stray_uei</code>, …) and assigned <code>direction</code>.</p>
+<p><strong><code>$subawards_in</code></strong> — org × year inbound revenue (<a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/subawards_in.csv" class="external-link">dictionary</a>): <code>subaward_in_amount</code>, <code>n_subawards_in</code>. Folded into totals by <code><a href="../reference/us_rollup.html">us_rollup()</a></code> as <code>total_net = obligation_net + subaward_in − subaward_out</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="code-values-award-types-and-families">4. Code values: award types and families<a class="anchor" aria-label="anchor" href="#code-values-award-types-and-families"></a>
 </h2>
-<p>The full award-type taxonomy, classified live from the package
-(<code><a href="../reference/us_classify_award_type.html">us_classify_award_type()</a></code> over every code), with each
-type’s footprint in the 50-nonprofit pilot. A zero is informative: loan
-guarantees (08) and insurance (09) exist in the taxonomy but never
-appear in this population.</p>
+<p>The full award-type taxonomy, classified live from the package (<code><a href="../reference/us_classify_award_type.html">us_classify_award_type()</a></code> over every code), with each type’s footprint in the 50-nonprofit pilot. A zero is informative: loan guarantees (08) and insurance (09) exist in the taxonomy but never appear in this population.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">codes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_classify_award_type.html">us_classify_award_type</a></span><span class="op">(</span><span class="fu"><a href="../reference/us_award_type_codes.html">us_award_type_codes</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"data-dictionary/pilot-descriptives.csv"</span><span class="op">)</span></span>
@@ -509,14 +443,6 @@ appear in this population.</p>
 <span><span class="va">tab</span><span class="op">$</span><span class="va">`pilot awards`</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">tab</span><span class="op">$</span><span class="va">`pilot awards`</span>,  big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span></span>
 <span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">tab</span>, row.names <span class="op">=</span> <span class="cn">FALSE</span>, align <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"l"</span>, <span class="st">"l"</span>, <span class="st">"l"</span>, <span class="st">"l"</span>, <span class="st">"r"</span>, <span class="st">"r"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
-<colgroup>
-<col width="11%">
-<col width="15%">
-<col width="8%">
-<col width="37%">
-<col width="14%">
-<col width="13%">
-</colgroup>
 <thead><tr class="header">
 <th align="left">group</th>
 <th align="left">family</th>
@@ -729,8 +655,7 @@ appear in this population.</p>
 </tr>
 <tr class="even">
 <td><code>direct_payment</code></td>
-<td>usually excluded — student aid flowing <em>through</em> the
-institution</td>
+<td>usually excluded — student aid flowing <em>through</em> the institution</td>
 </tr>
 <tr class="odd">
 <td><code>loan</code></td>
@@ -738,8 +663,7 @@ institution</td>
 </tr>
 <tr class="even">
 <td><code>idv</code></td>
-<td>a vehicle: obligations only, never ceilings; money is on the
-delivery orders</td>
+<td>a vehicle: obligations only, never ceilings; money is on the delivery orders</td>
 </tr>
 </tbody>
 </table>
@@ -747,18 +671,10 @@ delivery orders</td>
 <div class="section level2">
 <h2 id="code-values-action-types-and-classes">5. Code values: action types and classes<a class="anchor" aria-label="anchor" href="#code-values-action-types-and-classes"></a>
 </h2>
-<p>Action codes <strong>collide across families</strong> — the same
-letter means different things — so classification always takes the
-family:</p>
+<p>Action codes <strong>collide across families</strong> — the same letter means different things — so classification always takes the family:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="../reference/us_classify_action.html">us_classify_action</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span>, <span class="st">"D"</span><span class="op">)</span>, <span class="st">"assistance"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
-<colgroup>
-<col width="16%">
-<col width="23%">
-<col width="41%">
-<col width="18%">
-</colgroup>
 <thead><tr class="header">
 <th align="left">award_group</th>
 <th align="left">action_type_code</th>
@@ -795,12 +711,6 @@ family:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="../reference/us_classify_action.html">us_classify_action</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span>, <span class="st">"D"</span>, <span class="st">"G"</span>, <span class="st">"K"</span>, <span class="st">"M"</span><span class="op">)</span>, <span class="st">"contract"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
-<colgroup>
-<col width="15%">
-<col width="21%">
-<col width="45%">
-<col width="18%">
-</colgroup>
 <thead><tr class="header">
 <th align="left">award_group</th>
 <th align="left">action_type_code</th>
@@ -852,16 +762,12 @@ family:</p>
 </tr>
 </tbody>
 </table>
-<p><code>action_class</code> describes <em>intent</em>, never sign: a
-<code>continuation</code> can carry a negative amount and a
-<code>termination</code> can carry zero. De-obligations are identified
-from the amount’s sign alone.</p>
+<p><code>action_class</code> describes <em>intent</em>, never sign: a <code>continuation</code> can carry a negative amount and a <code>termination</code> can carry zero. De-obligations are identified from the amount’s sign alone.</p>
 </div>
 <div class="section level2">
 <h2 id="code-values-subaward-direction">6. Code values: subaward direction<a class="anchor" aria-label="anchor" href="#code-values-subaward-direction"></a>
 </h2>
-<p>Direction exists only relative to an organization’s UEI set, which is
-why <code><a href="../reference/us_normalize_subawards.html">us_normalize_subawards()</a></code> requires one:</p>
+<p>Direction exists only relative to an organization’s UEI set, which is why <code><a href="../reference/us_normalize_subawards.html">us_normalize_subawards()</a></code> requires one:</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -878,8 +784,7 @@ why <code><a href="../reference/us_normalize_subawards.html">us_normalize_subawa
 <td><code>out</code></td>
 <td>the org is the prime — pass-through it owes onward</td>
 <td>
-<strong>subtracted</strong>:
-<code>net_revenue = obligation_net − subaward_out</code>
+<strong>subtracted</strong>: <code>net_revenue = obligation_net − subaward_out</code>
 </td>
 </tr>
 <tr class="even">
@@ -889,14 +794,12 @@ why <code><a href="../reference/us_normalize_subawards.html">us_normalize_subawa
 </tr>
 <tr class="odd">
 <td><code>internal</code></td>
-<td>both sides belong to the org (e.g. NYU → NYU School of
-Medicine)</td>
+<td>both sides belong to the org (e.g. NYU → NYU School of Medicine)</td>
 <td>excluded from both flows</td>
 </tr>
 <tr class="even">
 <td><code>unrelated</code></td>
-<td>neither side is the org (multi-recipient award now held
-elsewhere)</td>
+<td>neither side is the org (multi-recipient award now held elsewhere)</td>
 <td>excluded</td>
 </tr>
 </tbody>
@@ -905,10 +808,7 @@ elsewhere)</td>
 <div class="section level2">
 <h2 id="the-pilot-summarized-at-this-grain">7. The pilot, summarized at this grain<a class="anchor" aria-label="anchor" href="#the-pilot-summarized-at-this-grain"></a>
 </h2>
-<p>The 50-nonprofit pilot (FY2008–FY2025; 302,025 transactions; outbound
-pass-through fetched per prime award), by award group, family, and type.
-Static snapshot computed by <a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/data-raw/make-pilot-descriptives.R" class="external-link"><code>data-raw/make-pilot-descriptives.R</code></a>;
-also available as <a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/pilot-descriptives.csv" class="external-link">CSV</a>.</p>
+<p>The 50-nonprofit pilot (FY2008–FY2025; 302,025 transactions; outbound pass-through fetched per prime award), by award group, family, and type. Static snapshot computed by <a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/data-raw/make-pilot-descriptives.R" class="external-link"><code>data-raw/make-pilot-descriptives.R</code></a>; also available as <a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/pilot-descriptives.csv" class="external-link">CSV</a>.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"data-dictionary/pilot-descriptives.csv"</span><span class="op">)</span></span>
 <span><span class="co">## dollars in billions; "\\$" keeps pandoc from pairing the dollar signs</span></span>
@@ -1150,17 +1050,8 @@ also available as <a href="https://github.com/Nonprofit-Open-Data-Collective/usa
 </tr>
 </tbody>
 </table>
-<p>Dollar figures are billions. The <code>family</code> column implies
-the award group: <code>grant</code>, <code>direct_payment</code>,
-<code>loan</code>, and <code>other</code> are assistance awards;
-<code>contract</code> and <code>idv</code> are contracts.
-(<code>awards</code> in the TOTAL row slightly overcounts distinct
-awards, since a few span families.)</p>
-<p>The table is the whole accounting argument in one place: project
-grants and cooperative agreements carry both the dollars and nearly all
-the pass-through; direct payments are student aid; loans net to zero
-obligations by design; IDVs hold no money of their own. Total net
-revenue: <strong>$105.9bn</strong> on $118.5bn of net obligations.</p>
+<p>Dollar figures are billions. The <code>family</code> column implies the award group: <code>grant</code>, <code>direct_payment</code>, <code>loan</code>, and <code>other</code> are assistance awards; <code>contract</code> and <code>idv</code> are contracts. (<code>awards</code> in the TOTAL row slightly overcounts distinct awards, since a few span families.)</p>
+<p>The table is the whole accounting argument in one place: project grants and cooperative agreements carry both the dollars and nearly all the pass-through; direct payments are student aid; loans net to zero obligations by design; IDVs hold no money of their own. Total net revenue: <strong>$105.9bn</strong> on $118.5bn of net obligations.</p>
 <script type="module">
   import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
   mermaid.initialize({ startOnLoad: true, theme: "neutral" });
@@ -1177,7 +1068,7 @@ revenue: <strong>$105.9bn</strong> on $118.5bn of net obligations.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer>

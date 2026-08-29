@@ -1,0 +1,136 @@
+---
+title: "Fitting an outlay-imputation model"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Fitting an outlay-imputation model}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>",
+                      fig.width = 7.2, fig.height = 4, dpi = 96)
+options(datatable.print.trunc.cols = TRUE, width = 90)
+```
+
+The bundled `outlay_model` was fitted on 1,184 ground-truth awards from 51
+nonprofits. If your portfolio looks different — other agencies, other award
+durations, another era — refit on your own ground truth. The whole pipeline
+is three calls: **retrieve** (`us_outlay_training()`), **inspect/extend
+features** (`us_outlay_features()`), **fit and evaluate**
+(`us_impute_fit()`, `us_impute_eval()`).
+
+```{r setup, message = FALSE}
+library(usaspend)
+library(data.table)
+```
+
+## 1. Retrieve: build a training set
+
+`us_outlay_training()` does the whole ground-truth screen: award features
+from your transaction ledger, annual File C outlays per award (fetched via
+`us_fetch_outlays()`, one paged request per candidate — sustained pulls
+beyond ~1,000 requests can trip a temporary host block, so large pulls are
+worth caching), linkage, and the two truth tiers.
+
+```{r fetch, eval = FALSE}
+tx <- us_normalize_transactions(my_extract$transactions)
+tr <- us_outlay_training(tx)          # fetches File C for every candidate
+# or, with a cached pull:
+tr <- us_outlay_training(tx, funding = my_cached_funding)
+```
+
+This vignette works offline with the bundled set:
+
+```{r training}
+tr <- outlay_training
+tr
+tr$awards[!is.na(tier), .N, by = .(tier, mod_class)][order(tier, -N)]
+```
+
+The screens are deliberate, not incidental — an award whose File C records
+don't reconcile with its own ledger, or whose cash story is censored,
+teaches the model the reporting system instead of the spending. Tiers,
+thresholds and rationale are specified in `IMPUTATION.md` §1.
+
+## 2. Features
+
+`us_outlay_features()` is the shared feature layer — the training builder
+calls it, and `us_impute_outlays()` calls it again at prediction time, so
+anything you compute here is available on both sides.
+
+```{r features, message = FALSE}
+f <- us_outlay_features(us_normalize_transactions(vumc_transactions))
+f[, .N, by = .(dur_bin, late_start)][order(dur_bin, late_start)][1:8]
+```
+
+The default model cells are `dur_bin` (award duration in fiscal years,
+capped at 6) × `late_start` (first obligated April–September). The
+experiment tested award *type* as a third dimension and found it added
+nearly nothing beyond duration in a grant-dominated sample — but the
+`cells` argument takes any feature columns present in the grid, so a
+portfolio where type matters can use them.
+
+## 3. Fit
+
+```{r fit}
+m <- us_impute_fit(tr, cells = c("dur_bin", "late_start"), min_cell = 8)
+m
+```
+
+The fitted object is transparent — plain curve tables you can inspect and
+plot. The duration-4 curves show both regularities the model banks on: the
+lag (mass at years 1–2) and the late-start shift (the `TRUE` curve barely
+spends in year 0):
+
+```{r curves-plot, eval = requireNamespace("ggplot2", quietly = TRUE)}
+library(ggplot2)
+cc <- m$curves_cell[dur_bin == 4 & n >= m$min_cell]
+ggplot(cc, aes(t, share, linetype = late_start)) +
+  geom_line(colour = "#1a5276", linewidth = 0.8) +
+  geom_point(colour = "#1a5276", size = 2) +
+  labs(title = "Duration-4 liquidation curves",
+       subtitle = "share of net obligations outlaid per event-year; the curve sums to the cell's outlay/obligation ratio",
+       x = "years since first obligation", y = "share of net obligations",
+       linetype = "late start (Apr–Sep)") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "bottom", panel.grid.minor = element_blank())
+```
+
+## 4. Evaluate
+
+`us_impute_eval()` refits out-of-fold and scores against the two reference
+rules on both metrics — `timing` (misallocation share, level normalized
+away) and `level_timing` (the method is charged for missing the cash level
+too).
+
+```{r eval, message = FALSE}
+ev <- us_impute_eval(tr, folds = 5)
+ev$summary
+ev$by_class
+```
+
+Read `ev$by_class` before trusting the model on a skewed portfolio:
+`reduced` awards are the hardest class for every method, and a portfolio
+dominated by them deserves wider error bars, not a better point estimate.
+
+## 5. Use it
+
+A fitted model drops into the imputation functions anywhere the bundled
+one would be used:
+
+```{r use, message = FALSE}
+tx  <- us_normalize_transactions(us_sample_extract()$transactions)
+imp <- us_impute_outlays(tx, model = m)
+imp[, .(dollars = round(sum(outlay_imputed))), by = imputation_method]
+```
+
+```{r save, eval = FALSE}
+saveRDS(m, "outlay-model-2026.rds")          # reuse across sessions
+p <- us_panel(my_extract, period = "fiscal")
+p <- us_add_imputed_outlays(p, model = m)
+```
+
+Refit when your ground truth grows — every fiscal year that closes moves
+more awards through the truth screens, and the support envelope (the
+durations the model will speak for) widens with it.

@@ -47,6 +47,10 @@
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul>
 </li>
       </ul>
@@ -81,8 +85,7 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nonprofit-open-data-collective.github.io/usaspend/">usaspend</a></span><span class="op">)</span></span>
 <span><span class="va">ex</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_sample_extract.html">us_sample_extract</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">p</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_panel.html">us_panel</a></span><span class="op">(</span><span class="va">ex</span><span class="op">)</span></span></code></pre></div>
-<p>USAspending publishes award data at three grains, and almost every
-analytic mistake with this data comes from mixing them up.</p>
+<p>USAspending publishes award data at three grains, and almost every analytic mistake with this data comes from mixing them up.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -97,8 +100,7 @@ analytic mistake with this data comes from mixing them up.</p>
 <tbody>
 <tr class="odd">
 <td><strong>transaction</strong></td>
-<td>one award <em>action</em> — a new award, a modification, a
-correction</td>
+<td>one award <em>action</em> — a new award, a modification, a correction</td>
 <td>a signed dollar amount and a date</td>
 </tr>
 <tr class="even">
@@ -109,17 +111,14 @@ correction</td>
 <tr class="odd">
 <td><strong>subaward</strong></td>
 <td>one FSRS report line</td>
-<td>prime → subrecipient flows (see
-<code><a href="../articles/subawards.html">vignette("subawards")</a></code>)</td>
+<td>prime → subrecipient flows (see <code><a href="../articles/subawards.html">vignette("subawards")</a></code>)</td>
 </tr>
 </tbody>
 </table>
 <div class="section level2">
 <h2 id="an-award-is-a-ledger-not-a-payment">An award is a ledger, not a payment<a class="anchor" aria-label="anchor" href="#an-award-is-a-ledger-not-a-payment"></a>
 </h2>
-<p>The award grain looks like the natural unit, but an award is a
-<em>container</em>. Its life is written at the transaction grain — and
-most of that life is paperwork:</p>
+<p>The award grain looks like the natural unit, but an award is a <em>container</em>. Its life is written at the transaction grain — and most of that life is paperwork:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tx</span> <span class="op">&lt;-</span> <span class="va">p</span><span class="op">$</span><span class="va">transactions</span></span>
 <span><span class="va">tx</span><span class="op">[</span><span class="va">award_key</span> <span class="op">==</span> <span class="st">"ASST_NON_HDTRA12310001_097"</span>,</span>
@@ -135,35 +134,15 @@ most of that life is paperwork:</p>
 <span><span class="co">#&gt; 6:              P00005  2025-05-06          Revision                         0</span></span>
 <span><span class="co">#&gt; 7:              P00006  2025-08-28          Revision                         0</span></span>
 <span><span class="co">#&gt; 8:              P00007  2025-09-02          Revision                    300000</span></span></code></pre></div>
-<p>Eight actions, four calendar years, three zero-dollar revisions. In
-the sample as a whole, 49% of transactions carry $0 (in the
-contract-heavy sample; 23% in the 50-org pilot) — administrative actions
-and period-of-performance changes. They are the majority of
-<em>modifications</em> and they are how activity gets counted, so the
-package keeps them, flagged.</p>
-<p><strong>Only the transaction grain supports an annual panel.</strong>
-The award grain has one lifetime total and no dates money moved; the
-transaction grain has a signed amount and a date on every action. That
-is the whole reason the package’s pipeline is built on transactions.</p>
+<p>Eight actions, four calendar years, three zero-dollar revisions. In the sample as a whole, 49% of transactions carry $0 (in the contract-heavy sample; 23% in the 50-org pilot) — administrative actions and period-of-performance changes. They are the majority of <em>modifications</em> and they are how activity gets counted, so the package keeps them, flagged.</p>
+<p><strong>Only the transaction grain supports an annual panel.</strong> The award grain has one lifetime total and no dates money moved; the transaction grain has a signed amount and a date on every action. That is the whole reason the package’s pipeline is built on transactions.</p>
 </div>
 <div class="section level2">
 <h2 id="the-dozen-dollar-columns-in-three-groups">The dozen dollar columns, in three groups<a class="anchor" aria-label="anchor" href="#the-dozen-dollar-columns-in-three-groups"></a>
 </h2>
-<p>USAspending rows carry many dollar columns. Only one group is money
-received.</p>
-<p><strong>Revenue — sum these.</strong>
-<code>federal_action_obligation</code>, the signed amount committed by
-each action, is the default measure (with
-<code>pragmatic_obligation</code> as USAspending’s loan-aware
-variant).</p>
-<p><strong>Ceilings — never sum these.</strong>
-<code>potential_total_value_of_award</code>,
-<code>base_and_all_options_value</code>,
-<code>current_total_value_of_award</code>,
-<code>total_funding_amount</code>. These describe <em>capacity</em>. The
-sample carries the cautionary example — an indefinite-delivery vehicle
-with a $40,000,000 potential value and <strong>zero dollars
-obligated</strong> across its modifications:</p>
+<p>USAspending rows carry many dollar columns. Only one group is money received.</p>
+<p><strong>Revenue — sum these.</strong> <code>federal_action_obligation</code>, the signed amount committed by each action, is the default measure (with <code>pragmatic_obligation</code> as USAspending’s loan-aware variant).</p>
+<p><strong>Ceilings — never sum these.</strong> <code>potential_total_value_of_award</code>, <code>base_and_all_options_value</code>, <code>current_total_value_of_award</code>, <code>total_funding_amount</code>. These describe <em>capacity</em>. The sample carries the cautionary example — an indefinite-delivery vehicle with a $40,000,000 potential value and <strong>zero dollars obligated</strong> across its modifications:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tx</span><span class="op">[</span><span class="va">award_key</span> <span class="op">==</span> <span class="st">"CONT_IDV_HHSD200200720032I_7523"</span>,</span>
 <span>   <span class="fu">.</span><span class="op">(</span><span class="va">action_date</span>, <span class="va">award_type_label</span>, <span class="va">federal_action_obligation</span><span class="op">)</span><span class="op">]</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">action_date</span><span class="op">)</span><span class="op">]</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">]</span></span>
@@ -175,70 +154,62 @@ obligated</strong> across its modifications:</p>
 <span><span class="co">#&gt; 4:  2012-02-24              IDC                         0</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">tx</span><span class="op">[</span><span class="va">award_key</span> <span class="op">==</span> <span class="st">"CONT_IDV_HHSD200200720032I_7523"</span><span class="op">]</span><span class="op">$</span><span class="va">federal_action_obligation</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 0</span></span></code></pre></div>
-<p>A ceiling-based panel would credit this organization with $40M it
-never received. (The money flows through the <em>delivery orders
-under</em> the vehicle, which are separate awards — see
-<code><a href="../articles/award-types.html">vignette("award-types")</a></code>.)</p>
-<p><strong>Not revenue at all — separate columns.</strong>
-<code>face_value_of_loan</code> (a liability of the borrower),
-<code>original_loan_subsidy_cost</code> (the government’s expected
-loss), <code>non_federal_funding_amount</code> (someone else’s cost
-share).</p>
+<p>A ceiling-based panel would credit this organization with $40M it never received. (The money flows through the <em>delivery orders under</em> the vehicle, which are separate awards — see <code><a href="../articles/award-types.html">vignette("award-types")</a></code>.)</p>
+<p><strong>Not revenue at all — separate columns.</strong> <code>face_value_of_loan</code> (a liability of the borrower), <code>original_loan_subsidy_cost</code> (the government’s expected loss), <code>non_federal_funding_amount</code> (someone else’s cost share).</p>
 </div>
 <div class="section level2">
-<h2 id="obligations-are-promises-outlays-are-cash-only-promises-are-annual">Obligations are promises; outlays are cash; only promises are
-annual<a class="anchor" aria-label="anchor" href="#obligations-are-promises-outlays-are-cash-only-promises-are-annual"></a>
+<h2 id="obligations-are-promises-outlays-are-cash-only-promises-are-annual">Obligations are promises; outlays are cash; only promises are annual<a class="anchor" aria-label="anchor" href="#obligations-are-promises-outlays-are-cash-only-promises-are-annual"></a>
 </h2>
-<p><code>federal_action_obligation</code> is a <em>commitment</em>. The
-disbursement — the outlay — happens later, often across years. And the
-award data carries <strong>no annual outlay figure at all</strong>:
-<code>total_outlayed_amount_for_overall_award</code> is lifetime-to-date
-and blank on most rows (annual outlays live in account-level extracts
-the award endpoints do not expose). So an annual panel from this data
-measures obligations, and honest analysis says so. The package enforces
-the honesty: <code>us_money_column("outlay")</code> errors rather than
-substituting something close, and <code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> reports
-each award’s obligation-to-outlay ratio so the size of the gap stays
-visible.</p>
+<p><code>federal_action_obligation</code> is a <em>commitment</em>. The disbursement — the outlay — happens later, often across years, and within any given year the two differ <strong>widely</strong>. Measured on the FY2022+ VUMC awards whose account-level (File C) records reconcile with their award transactions: obligations put a median 90% of an award’s dollars in its first fiscal year while outlays put 2% there; the dollar-weighted center of cash lags the center of commitment by roughly one year; and about two-thirds of an award’s dollars land in a <em>different year</em> under outlays than under obligations. An obligations panel and a cash panel are different objects, and neither approximates the other.</p>
+<p>The award data carries <strong>no annual outlay figure at all</strong>: <code>total_outlayed_amount_for_overall_award</code> is lifetime-to-date and blank on most rows. Annual outlays exist only in the account-level File C data (exposed per award at <code>POST /awards/funding/</code>, absent from every bulk transaction file), and their coverage follows the reporting mandates: quarterly and effectively optional from FY2017, required for COVID-supplemental awards from April 2020, monthly and mandatory for all agencies only from FY2022. Lifetime outlay totals therefore <em>undercount</em> any award straddling those dates — pre-mandate disbursements were never reported, not merely not yet paid.</p>
+<p>Nor is coverage just an era problem. On the VUMC sample data, the share of awards carrying a nonzero lifetime outlay:</p>
+<table class="table">
+<thead><tr class="header">
+<th>first action</th>
+<th>assistance</th>
+<th>contracts</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>pre-FY2017</td>
+<td>33%</td>
+<td>0%</td>
+</tr>
+<tr class="even">
+<td>FY2017–21</td>
+<td>78%</td>
+<td>15%</td>
+</tr>
+<tr class="odd">
+<td>FY2022+</td>
+<td>91%</td>
+<td>14%</td>
+</tr>
+</tbody>
+</table>
+<p>The contract gap is an <em>agency</em> gap: post-FY2022, 98% of HHS awards carry an outlay against 0% of VA contracts and 2% of DoD awards. Whether outlays exist for a portfolio depends on who funds it.</p>
+<p>So an annual panel from this data measures obligations, and honest analysis says so. The package enforces the honesty: <code>us_money_column("outlay")</code> errors rather than substituting something close, and <code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> reports each award’s obligation-to-outlay ratio so the size of the gap stays visible. For portfolios where cash genuinely matters, <code><a href="../reference/us_add_outlays.html">us_add_outlays()</a></code> attaches annual File C outlays to a fiscal panel as a <em>separate</em> column — fetched per award with <code><a href="../reference/us_fetch_outlays.html">us_fetch_outlays()</a></code>, graded per award for era, agency, and linkage coverage, and never substituted into <code>obligation_net</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="award-attributes-are-a-moving-target">Award attributes are a moving target<a class="anchor" aria-label="anchor" href="#award-attributes-are-a-moving-target"></a>
 </h2>
-<p>Award-level fields — recipient, agency, even lifetime totals — are
-stamped onto every transaction row <em>as of file generation</em>, and
-they change over an award’s life. Two consequences, both measured:</p>
+<p>Award-level fields — recipient, agency, even lifetime totals — are stamped onto every transaction row <em>as of file generation</em>, and they change over an award’s life. Two consequences, both measured:</p>
 <ul>
 <li>
-<strong>Take attributes from the latest action</strong>, never from
-an arbitrary row — <code><a href="../reference/us_normalize_awards.html">us_normalize_awards()</a></code> does this. On many
-rows the award-level fields are simply blank.</li>
+<strong>Take attributes from the latest action</strong>, never from an arbitrary row — <code><a href="../reference/us_normalize_awards.html">us_normalize_awards()</a></code> does this. On many rows the award-level fields are simply blank.</li>
 <li>
-<strong>The recipient itself can change.</strong> NIH awards follow
-the principal investigator between institutions, so one award’s history
-can span organizations. This is why the panel’s grain is
-<em>organization</em> × award × year, and why a UEI-filtered extract
-legitimately fails the lifetime identity on such awards
-(<code><a href="../articles/reconciliation.html">vignette("reconciliation")</a></code>).</li>
+<strong>The recipient itself can change.</strong> NIH awards follow the principal investigator between institutions, so one award’s history can span organizations. This is why the panel’s grain is <em>organization</em> × award × year, and why a UEI-filtered extract legitimately fails the lifetime identity on such awards (<code><a href="../articles/reconciliation.html">vignette("reconciliation")</a></code>).</li>
 </ul>
 </div>
 <div class="section level2">
 <h2 id="where-to-find-every-field">Where to find every field<a class="anchor" aria-label="anchor" href="#where-to-find-every-field"></a>
 </h2>
-<p>The reference companion to this vignette is
-<code><a href="../articles/data-dictionary.html">vignette("data-dictionary")</a></code>: entity-relationship diagrams
-of the source database, the extract, and the panel; keys and
-cardinality; the accounting-critical fields of every table; the
-award-type, action-class, and direction code tables; and links to full
-per-table dictionaries as CSV.</p>
+<p>The reference companion to this vignette is <code><a href="../articles/data-dictionary.html">vignette("data-dictionary")</a></code>: entity-relationship diagrams of the source database, the extract, and the panel; keys and cardinality; the accounting-critical fields of every table; the award-type, action-class, and direction code tables; and links to full per-table dictionaries as CSV.</p>
 </div>
 <div class="section level2">
 <h2 id="transactions-come-dirty">Transactions come dirty<a class="anchor" aria-label="anchor" href="#transactions-come-dirty"></a>
 </h2>
-<p>The raw ledger needs cleaning before it can be netted — duplicates
-from overlapping download batches, correction and delete indicator
-codes, county-level aggregate records with no identified recipient. The
-rules, each grounded in measured pilot data, are the subject of
-<code><a href="../articles/accounting.html">vignette("accounting")</a></code>.</p>
+<p>The raw ledger needs cleaning before it can be netted — duplicates from overlapping download batches, correction and delete indicator codes, county-level aggregate records with no identified recipient. The rules, each grounded in measured pilot data, are the subject of <code><a href="../articles/accounting.html">vignette("accounting")</a></code>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
@@ -251,7 +222,7 @@ rules, each grounded in measured pilot data, are the subject of
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer>

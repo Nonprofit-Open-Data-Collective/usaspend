@@ -36,6 +36,10 @@ and visibly rather than being buried in an aggregation."></head><body>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -91,11 +95,20 @@ obligation otherwise. In the pilot the two are identical on every
 non-loan row.</p></dd>
 
 <dt><code>"outlay"</code></dt>
-<dd><p>Not available. <code>award_total_outlayed</code> exists but is
-award-lifetime and mostly missing – 91% of pilot awards starting before
-2017 report no outlay at all. There is no transaction-level or annual
-outlay in the award data. Requesting this raises an error rather than
-returning something misleading.</p></dd>
+<dd><p>Not available. There is no transaction-level or annual
+outlay in the award data, and <code>award_total_outlayed</code> is lifetime-to-date,
+not annual. Its coverage follows the reporting mandates: account-level
+(File C) outlay reporting was quarterly and optional from FY2017,
+required for COVID-supplemental awards from April 2020, and monthly and
+mandatory for all agencies only from FY2022 – so lifetime outlays
+undercount any award straddling those dates (91% of pilot awards
+starting before 2017 report no outlay at all), and coverage varies by
+agency and award family, not just era: post-FY2022 in the VUMC pilot,
+98% of HHS awards carry an outlay against 0% of VA contracts.
+Requesting this raises an error rather than returning something
+misleading. Annual outlays can be attached to a fiscal panel as a
+separate, coverage-graded column with <code><a href="us_add_outlays.html">us_add_outlays()</a></code> – they are
+an additional measure, never the panel measure.</p></dd>
 
 
 </dl><p>The measures that must never be summed as revenue: <code>potential_value</code>,
@@ -121,7 +134,7 @@ magnitude.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer></div>

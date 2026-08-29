@@ -47,6 +47,10 @@
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul>
 </li>
       </ul>
@@ -80,12 +84,7 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nonprofit-open-data-collective.github.io/usaspend/">usaspend</a></span><span class="op">)</span></span>
 <span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_panel.html">us_panel</a></span><span class="op">(</span><span class="fu"><a href="../reference/us_sample_extract.html">us_sample_extract</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>Every rule in this package is a choice, and a choice that cannot be
-checked against an independent figure is an assumption. USAspending
-happens to provide the independent figure: <strong>award-lifetime totals
-computed by a different system than the transactions.</strong>
-<code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> tests, for every award, whether the summed
-transaction obligations come back to that total.</p>
+<p>Every rule in this package is a choice, and a choice that cannot be checked against an independent figure is an assumption. USAspending happens to provide the independent figure: <strong>award-lifetime totals computed by a different system than the transactions.</strong> <code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> tests, for every award, whether the summed transaction obligations come back to that total.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_reconcile.html">us_reconcile</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Reconciled 18 awards: 15 exact (83%).</span></span>
@@ -134,23 +133,12 @@ transaction obligations come back to that total.</p>
 <div class="section level2">
 <h2 id="reading-a-break">Reading a break<a class="anchor" aria-label="anchor" href="#reading-a-break"></a>
 </h2>
-<p>The sample reconciles 15 of 18 exactly. The classified exceptions
-teach the two lessons that matter:</p>
+<p>The sample reconciles 15 of 18 exactly. The classified exceptions teach the two lessons that matter:</p>
 <ul>
 <li>
-<strong><code>no_reported_total</code></strong> — some awards simply
-publish no lifetime total to check against. Not a failure; a coverage
-fact.</li>
+<strong><code>no_reported_total</code></strong> — some awards simply publish no lifetime total to check against. Not a failure; a coverage fact.</li>
 <li>
-<strong><code><a href="https://rdrr.io/r/base/Control.html" class="external-link">break</a></code></strong> — the interesting one. Here the
-claw-back award shows <code>tx_sum = −$310,999</code> against a lifetime
-total of $1.39M, because this extract’s window holds only the reversal —
-the original obligations predate it. The identity <em>should</em> fail:
-<strong>a UEI-filtered extract is an organization-eye view, not an
-award-eye view.</strong> The panel measures what this organization was
-obligated in these years, which legitimately differs from the award’s
-whole-life total whenever the award’s history extends beyond the window
-or the award moved between institutions.</li>
+<strong><code><a href="https://rdrr.io/r/base/Control.html" class="external-link">break</a></code></strong> — the interesting one. Here the claw-back award shows <code>tx_sum = −$310,999</code> against a lifetime total of $1.39M, because this extract’s window holds only the reversal — the original obligations predate it. The identity <em>should</em> fail: <strong>a UEI-filtered extract is an organization-eye view, not an award-eye view.</strong> The panel measures what this organization was obligated in these years, which legitimately differs from the award’s whole-life total whenever the award’s history extends beyond the window or the award moved between institutions.</li>
 </ul>
 </div>
 <div class="section level2">
@@ -197,18 +185,12 @@ or the award moved between institutions.</li>
 <tr class="even">
 <td>unexplained</td>
 <td>~10%</td>
-<td>API audit says: mostly the same mechanisms mid-window, dominated by
-NIH awards following a PI between institutions</td>
+<td>API audit says: mostly the same mechanisms mid-window, dominated by NIH awards following a PI between institutions</td>
 </tr>
 </tbody>
 </table>
-<p>72% exact — with every exception <em>classified</em> — is a strong
-result for a UEI-filtered extract, and the classification is the point:
-a falling “ok” share on a rebuild is the earliest sign of a broken rule,
-and an unclassified break is a real question, not noise.</p>
-<p>De-duplication is what makes the number possible at all: before the
-duplicate rule (<code><a href="../articles/accounting.html">vignette("accounting")</a></code>), 5,754 additional
-pilot awards failed the identity.</p>
+<p>72% exact — with every exception <em>classified</em> — is a strong result for a UEI-filtered extract, and the classification is the point: a falling “ok” share on a rebuild is the earliest sign of a broken rule, and an unclassified break is a real question, not noise.</p>
+<p>De-duplication is what makes the number possible at all: before the duplicate rule (<code><a href="../articles/accounting.html">vignette("accounting")</a></code>), 5,754 additional pilot awards failed the identity.</p>
 </div>
 <div class="section level2">
 <h2 id="the-other-checks-us_audit">The other checks — <code>us_audit()</code><a class="anchor" aria-label="anchor" href="#the-other-checks-us_audit"></a>
@@ -228,29 +210,17 @@ pilot awards failed the identity.</p>
 <span><span class="co">#&gt;  8:                   transactions carrying anomaly flags         8   info</span></span>
 <span><span class="co">#&gt;  9:                                         years covered 2008-2025   info</span></span>
 <span><span class="co">#&gt; 10:                            outbound subawards fetched     FALSE   warn</span></span></code></pre></div>
-<p>No transaction key twice, no award attributed to two organizations,
-one row per org-award-year — plus the descriptive counters worth
-watching over time (negative years, zero-dollar share, anomaly flags)
-and a warning whenever outbound subawards were never fetched, so
-<code>net_revenue = obligation_net</code> cannot pass silently as a
-netted figure.</p>
+<p>No transaction key twice, no award attributed to two organizations, one row per org-award-year — plus the descriptive counters worth watching over time (negative years, zero-dollar share, anomaly flags) and a warning whenever outbound subawards were never fetched, so <code>net_revenue = obligation_net</code> cannot pass silently as a netted figure.</p>
 </div>
 <div class="section level2">
 <h2 id="the-outlay-gap">The outlay gap<a class="anchor" aria-label="anchor" href="#the-outlay-gap"></a>
 </h2>
-<p><code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> also reports <code>outlay_ratio</code> —
-lifetime outlays over lifetime obligations — where USAspending provides
-outlays (mostly post-FY2017 awards). This is the promise-versus-payment
-gap: the number that tells a reader how far an obligations panel is from
-a cash panel (<code><a href="../articles/data-model.html">vignette("data-model")</a></code> explains why no annual
-cash figure exists).</p>
+<p><code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> also reports <code>outlay_ratio</code> — lifetime outlays over lifetime obligations — where USAspending provides outlays. Interpret it against the reporting mandates: account-level outlay reporting was quarterly and optional from FY2017, required for COVID-supplemental awards from April 2020, and monthly and mandatory only from FY2022. For an award straddling those dates the ratio <em>understates</em> payments — the pre-mandate outlays were never reported, not merely not yet paid — and for whole agencies it is missing outright (VA and DoD in the VUMC pilot, versus 98% coverage for post-FY2022 HHS awards). This is the promise-versus-payment gap: the number that tells a reader how far an obligations panel is from a cash panel (<code><a href="../articles/data-model.html">vignette("data-model")</a></code> explains why no annual cash figure exists in award data).</p>
 </div>
 <div class="section level2">
 <h2 id="practice">Practice<a class="anchor" aria-label="anchor" href="#practice"></a>
 </h2>
-<p>Run both checks on every rebuild and diff against the previous run,
-so a change in the data or in a rule shows up as a change in the audit
-rather than as a quietly different number.</p>
+<p>Run both checks on every rebuild and diff against the previous run, so a change in the data or in a rule shows up as a change in the audit rather than as a quietly different number.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
@@ -263,7 +233,7 @@ rather than as a quietly different number.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer>

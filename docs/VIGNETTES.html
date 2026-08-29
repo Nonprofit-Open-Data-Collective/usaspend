@@ -32,6 +32,10 @@
     <li><a class="dropdown-item" href="articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
@@ -49,12 +53,11 @@
     </div>
 
 <div id="usaspend--vignette-plan" class="section level1">
-
 <p>What the package documentation has to teach, and the measured material to teach it with. Written 2026-08-27; numbers are from the 50-nonprofit pilot (302,025 prime transactions, 39,243 subaward rows) unless marked otherwise.</p>
 <p>This is the content bank behind <code>vignettes/</code>: the facts a reader has to be told, in the order that makes them land, so the arguing is done before the user-facing text is written. All ten vignettes now exist; §1 tracks status.</p>
 <p>Companion documents: <code>ACCOUNTING.md</code> (the rules), <code>PLAN.md</code> (the pipeline).</p>
 <hr><div class="section level2">
-<h2 id="id_1-the-planned-set">1. The planned set<a class="anchor" aria-label="anchor" href="#id_1-the-planned-set"></a></h2>
+<h2 id="1-the-planned-set">1. The planned set<a class="anchor" aria-label="anchor" href="#1-the-planned-set"></a></h2>
 <p>Status as of 2026-08-28: <strong>all ten vignettes are written</strong> and render offline from <code><a href="reference/us_sample_extract.html">us_sample_extract()</a></code>. <code>VignetteBuilder: knitr</code> is in <code>DESCRIPTION</code>; the pkgdown <code>articles</code> index groups them (“The data” / “The pipeline”, with <code>usaspend.Rmd</code> as the Get-started page). This file remains the content bank behind them.</p>
 <table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>vignette</th>
 <th>status</th>
@@ -110,15 +113,15 @@
 <p>Teaching order matters more than completeness. A reader who has not yet internalised “an award is a ledger of modifications, not a payment” will misread every number in every other vignette, so the intro vignette must carry the worked eight-modification example from <code>ACCOUNTING.md</code> §1 before it shows a single aggregate.</p>
 <hr></div>
 <div class="section level2">
-<h2 id="id_2-what-subaward-means-here">2. What “subaward” means here<a class="anchor" aria-label="anchor" href="#id_2-what-subaward-means-here"></a></h2>
+<h2 id="2-what-subaward-means-here">2. What “subaward” means here<a class="anchor" aria-label="anchor" href="#2-what-subaward-means-here"></a></h2>
 <p><strong>The definition to lead with:</strong> a subaward row is an organization receiving part of an award from the <em>prime recipient</em>. These are FSRS (FFATA Subaward Reporting System) records. The prime awardee reports each first-tier subrecipient once a subaward crosses the <strong>$30,000</strong> reporting threshold. Both parties — prime and sub — are named with UEIs on every row, which is what makes direction recoverable at all.</p>
 <div class="section level3">
-<h3 id="id_21-what-it-is-not">2.1 What it is not<a class="anchor" aria-label="anchor" href="#id_21-what-it-is-not"></a></h3>
+<h3 id="21-what-it-is-not">2.1 What it is not<a class="anchor" aria-label="anchor" href="#21-what-it-is-not"></a></h3>
 <p>It is <strong>not</strong> the federal → state → local chain. When CMS pays a state Medicaid agency and the state pays a hospital, USAspending sees only the federal → state prime award. The state’s onward payment is not a subaward record: states are not required to file FSRS on those flows the same way, and Medicaid provider payments never appear at all.</p>
 <p>This is the single most common misreading of the data and the vignette should say it in the first paragraph, before the reader builds a mental model that has to be dismantled later.</p>
 </div>
 <div class="section level3">
-<h3 id="id_22-the-partial-exception-which-is-worth-showing">2.2 The partial exception, which is worth showing<a class="anchor" aria-label="anchor" href="#id_22-the-partial-exception-which-is-worth-showing"></a></h3>
+<h3 id="22-the-partial-exception-which-is-worth-showing">2.2 The partial exception, which is worth showing<a class="anchor" aria-label="anchor" href="#22-the-partial-exception-which-is-worth-showing"></a></h3>
 <p>The pass-through <em>does</em> surface where the pass-through entity is itself a federal prime grantee that files FSRS. The pilot’s inbound subawards make this concrete: the largest primes paying the 50 orgs are state agencies passing federal grant money down —</p>
 <ul><li>California Governor’s Office of Emergency Services (FEMA)</li>
 <li>Florida Department of Education (ED)</li>
@@ -126,7 +129,7 @@
 </ul><p>So the data gives you state-conduit flows when the state is a prime grantee and reports — a <strong>meaningful but incomplete</strong> slice of intergovernmental transfer. “Incomplete” is the operative word: any analysis that treats observed subawards as the population of pass-through is wrong by an unmeasured amount.</p>
 </div>
 <div class="section level3">
-<h3 id="id_23-direction-confirmed-at-scale">2.3 Direction, confirmed at scale<a class="anchor" aria-label="anchor" href="#id_23-direction-confirmed-at-scale"></a></h3>
+<h3 id="23-direction-confirmed-at-scale">2.3 Direction, confirmed at scale<a class="anchor" aria-label="anchor" href="#23-direction-confirmed-at-scale"></a></h3>
 <p>Across all 39,243 pilot subaward rows, <strong>every row is inbound or internal</strong>:</p>
 <table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr class="header"><th>direction</th>
 <th>rows (post-dedupe)</th>
@@ -147,7 +150,7 @@
 <hr></div>
 </div>
 <div class="section level2">
-<h2 id="id_3-what-is-actually-in-the-transaction-data">3. What is actually in the transaction data<a class="anchor" aria-label="anchor" href="#id_3-what-is-actually-in-the-transaction-data"></a></h2>
+<h2 id="3-what-is-actually-in-the-transaction-data">3. What is actually in the transaction data<a class="anchor" aria-label="anchor" href="#3-what-is-actually-in-the-transaction-data"></a></h2>
 <p>The pilot’s 302,025 prime transactions, by award type. This table is the spine of <code>award-types.Rmd</code>.</p>
 <table class="table"><colgroup><col width="20%"><col width="20%"><col width="20%"><col width="20%"><col width="20%"></colgroup><thead><tr class="header"><th>type</th>
 <th>rows</th>
@@ -198,7 +201,7 @@
 <td>—</td>
 </tr></tbody></table><p>Two ratios in that table are the whole argument for the package, and the vignette should put them side by side: <strong>$626bn of loan face value</strong> and <strong>$115bn of IDV ceiling</strong>, against <strong>$118.5bn</strong> of actual net obligation. A naive sum over the wrong dollar column overstates the pilot by a factor of six.</p>
 <div class="section level3">
-<h3 id="id_31-two-shape-facts-that-surprise-everyone">3.1 Two shape facts that surprise everyone<a class="anchor" aria-label="anchor" href="#id_31-two-shape-facts-that-surprise-everyone"></a></h3>
+<h3 id="31-two-shape-facts-that-surprise-everyone">3.1 Two shape facts that surprise everyone<a class="anchor" aria-label="anchor" href="#31-two-shape-facts-that-surprise-everyone"></a></h3>
 <ul><li>
 <strong>23% of all transactions are $0.</strong> Administrative actions, period-of- performance changes. They are the majority of <em>modifications</em> and they are how activity gets counted — never drop them.</li>
 <li>
@@ -207,7 +210,7 @@
 <hr></div>
 </div>
 <div class="section level2">
-<h2 id="id_4-api-vs-archive-equivalence--measured-2026-08-27">4. API vs archive equivalence — measured 2026-08-27<a class="anchor" aria-label="anchor" href="#id_4-api-vs-archive-equivalence--measured-2026-08-27"></a></h2>
+<h2 id="4-api-vs-archive-equivalence--measured-2026-08-27">4. API vs archive equivalence — measured 2026-08-27<a class="anchor" aria-label="anchor" href="#4-api-vs-archive-equivalence--measured-2026-08-27"></a></h2>
 <p>Material for <code>acquisition.Rmd</code> (already written into it) and for anyone auditing the pipeline. Real FY2015 + FY2024 archives (generated 2026-08-06) filtered to the 130 pilot UEIs, against the same-window slice of the pilot API pull (2026-08-27):</p>
 <table class="table"><colgroup><col width="20%"><col width="20%"><col width="20%"><col width="20%"><col width="20%"></colgroup><thead><tr class="header"><th>cell</th>
 <th>rows api = archive</th>
@@ -249,7 +252,7 @@
 <strong>The archives carry no subawards in either direction and nothing before FY2008.</strong> Outbound: append from either path with <code>subawards = "out"</code>. Inbound: requires the API (bulk-download by-product).</li>
 </ol><hr></div>
 <div class="section level2">
-<h2 id="id_5-notes-for-whoever-writes-these">5. Notes for whoever writes these<a class="anchor" aria-label="anchor" href="#id_5-notes-for-whoever-writes-these"></a></h2>
+<h2 id="5-notes-for-whoever-writes-these">5. Notes for whoever writes these<a class="anchor" aria-label="anchor" href="#5-notes-for-whoever-writes-these"></a></h2>
 <ul><li>Every number above is reproducible from the pilot extract. When the vignettes are written, they should be <strong>computed in the <code>.Rmd</code></strong> from <code><a href="reference/us_sample_extract.html">us_sample_extract()</a></code> where the fixture supports it, and quoted as measured pilot figures where it does not — not hard-coded silently.</li>
 <li>The fixture (<code>inst/extdata/sample/</code>, 152 rows, three UEIs) already contains a reconciling eight-modification award, a −$310,999 revision, 30 zero-dollar administrative actions, and a $40M IDV ceiling against $0 obligated. That is enough to demonstrate §3.1 and most of <code>ACCOUNTING.md</code> §5 live, without a network call. Vignettes must build offline.</li>
 <li>Packaging is done: <code>VignetteBuilder: knitr</code> is in <code>DESCRIPTION</code> (<code>knitr</code> and <code>rmarkdown</code> were already in <code>Suggests</code>), and <code>_pkgdown.yml</code> carries an <code>articles</code> index ordering structure -&gt; acquisition -&gt; panel.</li>
@@ -268,7 +271,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer></div>

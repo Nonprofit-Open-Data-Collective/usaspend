@@ -47,6 +47,10 @@
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul>
 </li>
       </ul>
@@ -79,106 +83,55 @@
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nonprofit-open-data-collective.github.io/usaspend/">usaspend</a></span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="../reference/us_extract.html">us_extract()</a></code> is the single entry point for acquisition,
-and it can fetch the same data two very different ways:</p>
+<p><code><a href="../reference/us_extract.html">us_extract()</a></code> is the single entry point for acquisition, and it can fetch the same data two very different ways:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># one organization -- the API path</span></span>
 <span><span class="va">ex</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_extract.html">us_extract</a></span><span class="op">(</span><span class="st">"CFFMYPABYAG3"</span>, years <span class="op">=</span> <span class="fl">2015</span><span class="op">:</span><span class="fl">2025</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># thousands of organizations -- the archive path</span></span>
 <span><span class="va">ex</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_extract.html">us_extract</a></span><span class="op">(</span><span class="va">ueis</span>, years <span class="op">=</span> <span class="fl">2008</span><span class="op">:</span><span class="fl">2025</span>, source <span class="op">=</span> <span class="st">"archive"</span><span class="op">)</span></span></code></pre></div>
-<p>Both paths land on the same canonical tables, so nothing downstream
-knows or cares which was used. But their costs scale on different axes,
-and picking wrong can turn minutes into days. This vignette explains the
-mechanics of each, and how <code><a href="../reference/us_extract_plan.html">us_extract_plan()</a></code> chooses
-between them.</p>
-<p>Every constraint quoted below was <strong>measured live</strong>
-against <code>api.usaspending.gov</code>, not read off the
-documentation.</p>
+<p>Both paths land on the same canonical tables, so nothing downstream knows or cares which was used. But their costs scale on different axes, and picking wrong can turn minutes into days. This vignette explains the mechanics of each, and how <code><a href="../reference/us_extract_plan.html">us_extract_plan()</a></code> chooses between them.</p>
+<p>Every constraint quoted below was <strong>measured live</strong> against <code>api.usaspending.gov</code>, not read off the documentation.</p>
 <div class="section level2">
 <h2 id="path-a-api-download-jobs-cost-scales-with-the-number-of-ueis">Path A — API download jobs: cost scales with the number of UEIs<a class="anchor" aria-label="anchor" href="#path-a-api-download-jobs-cost-scales-with-the-number-of-ueis"></a>
 </h2>
-<p><code>us_extract(source = "api")</code> submits bulk-download jobs to
-<code>POST /api/v2/download/transactions/</code>, polls until the server
-has built the files, fetches and unzips them, and harmonizes the CSVs.
-Each job covers a small batch of UEIs and takes 9–85 seconds
-server-side.</p>
+<p><code>us_extract(source = "api")</code> submits bulk-download jobs to <code>POST /api/v2/download/transactions/</code>, polls until the server has built the files, fetches and unzips them, and harmonizes the CSVs. Each job covers a small batch of UEIs and takes 9–85 seconds server-side.</p>
 <p>What the measurements say about how to drive it:</p>
 <ul>
 <li>
-<strong><code>recipient_search_text</code> accepts about 20 values
-per job.</strong> 20 succeeds, 25 fails — the cap is undocumented. In
-practice large recipients time out server-side well below it, so the
-package’s default batch is <strong>5</strong>, and a failed batch is
-retried one UEI at a time so a single oversized recipient cannot poison
-its whole batch.</li>
+<strong><code>recipient_search_text</code> accepts about 20 values per job.</strong> 20 succeeds, 25 fails — the cap is undocumented. In practice large recipients time out server-side well below it, so the package’s default batch is <strong>5</strong>, and a failed batch is retried one UEI at a time so a single oversized recipient cannot poison its whole batch.</li>
 <li>
-<strong>The job state machine is
-<code>ready → running → finished | failed</code></strong>, and
-<code>ready</code> means <em>queued</em>, not done. (Treating anything
-other than <code>running</code> as terminal — a natural mistake — reads
-a freshly-queued job as complete and throws the download away.)</li>
+<strong>The job state machine is <code>ready → running → finished | failed</code></strong>, and <code>ready</code> means <em>queued</em>, not done. (Treating anything other than <code>running</code> as terminal — a natural mistake — reads a freshly-queued job as complete and throws the download away.)</li>
 <li>
-<strong>The search endpoint (<code>spending_by_award</code>)
-silently caps at 10,000 records.</strong> Extraction always uses the
-download endpoint, which has no cap.</li>
+<strong>The search endpoint (<code>spending_by_award</code>) silently caps at 10,000 records.</strong> Extraction always uses the download endpoint, which has no cap.</li>
 <li>
-<strong>Sustained calls get rate-limited.</strong> The client
-throttles to 2 requests/s with exponential backoff, and failures are
-recorded explicitly in the job manifest — a swallowed error looks
-exactly like a recipient with no awards.</li>
+<strong>Sustained calls get rate-limited.</strong> The client throttles to 2 requests/s with exponential backoff, and failures are recorded explicitly in the job manifest — a swallowed error looks exactly like a recipient with no awards.</li>
 <li>
-<strong>Search is floored at 2007-10-01.</strong> Earlier fiscal
-years are not reachable on either path.</li>
+<strong>Search is floored at 2007-10-01.</strong> Earlier fiscal years are not reachable on either path.</li>
 </ul>
-<p>The by-product that matters: a recipient-filtered download also
-returns subaward rows <strong>where the queried UEI is the
-subawardee</strong> — inbound revenue you cannot get from the archives
-at all.</p>
+<p>The by-product that matters: a recipient-filtered download also returns subaward rows <strong>where the queried UEI is the subawardee</strong> — inbound revenue you cannot get from the archives at all.</p>
 </div>
 <div class="section level2">
-<h2 id="path-b-annual-archives-cost-is-fixed-in-the-number-of-fiscal-years">Path B — annual archives: cost is fixed in the number of fiscal
-years<a class="anchor" aria-label="anchor" href="#path-b-annual-archives-cost-is-fixed-in-the-number-of-fiscal-years"></a>
+<h2 id="path-b-annual-archives-cost-is-fixed-in-the-number-of-fiscal-years">Path B — annual archives: cost is fixed in the number of fiscal years<a class="anchor" aria-label="anchor" href="#path-b-annual-archives-cost-is-fixed-in-the-number-of-fiscal-years"></a>
 </h2>
-<p><code>us_extract(source = "archive")</code> downloads USAspending’s
-whole-fiscal-year Award Data Archive files and filters them locally with
-duckdb:</p>
+<p><code>us_extract(source = "archive")</code> downloads USAspending’s whole-fiscal-year Award Data Archive files and filters them locally with duckdb:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">man</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_archive_manifest.html">us_archive_manifest</a></span><span class="op">(</span><span class="fl">2008</span><span class="op">:</span><span class="fl">2025</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/us_archive_download.html">us_archive_download</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">tx</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_archive_filter.html">us_archive_filter</a></span><span class="op">(</span><span class="va">ueis</span>, <span class="va">man</span><span class="op">$</span><span class="va">csv_dir</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, group <span class="op">=</span> <span class="st">"assistance"</span><span class="op">)</span></span></code></pre></div>
-<p>Two archives exist per fiscal year — <code>assistance</code> and
-<code>contracts</code> (direct payments, loans, and “other” are folded
-into assistance). A full-year assistance archive is ~1.4 GB compressed
-and unpacks to several CSV parts; the duckdb scan then filters on
-<code>recipient_uei</code> at roughly a gigabyte a minute. The
-whole-history cost is a few hours of downloading and scanning —
-<strong>whether you want 100 UEIs or 100,000</strong>.</p>
+<p>Two archives exist per fiscal year — <code>assistance</code> and <code>contracts</code> (direct payments, loans, and “other” are folded into assistance). A full-year assistance archive is ~1.4 GB compressed and unpacks to several CSV parts; the duckdb scan then filters on <code>recipient_uei</code> at roughly a gigabyte a minute. The whole-history cost is a few hours of downloading and scanning — <strong>whether you want 100 UEIs or 100,000</strong>.</p>
 <p>Two things the archives do not contain:</p>
 <ul>
 <li>
-<strong>Subawards, in either direction.</strong> The archive files
-are prime transactions only.</li>
+<strong>Subawards, in either direction.</strong> The archive files are prime transactions only.</li>
 <li>Nothing before FY2008 (the same floor as the API).</li>
 </ul>
 </div>
 <div class="section level2">
-<h2 id="do-the-two-paths-return-the-same-data-measured-yes-with-three-caveats">Do the two paths return the same data? Measured: yes, with three
-caveats<a class="anchor" aria-label="anchor" href="#do-the-two-paths-return-the-same-data-measured-yes-with-three-caveats"></a>
+<h2 id="do-the-two-paths-return-the-same-data-measured-yes-with-three-caveats">Do the two paths return the same data? Measured: yes, with three caveats<a class="anchor" aria-label="anchor" href="#do-the-two-paths-return-the-same-data-measured-yes-with-three-caveats"></a>
 </h2>
-<p>Because the paths draw from the same database through different
-generators, the package’s whole design rests on them being
-interchangeable. That was tested directly: real FY2015 and FY2024
-archives (generated 2026-08-06) were filtered to 130 pilot UEIs and
-compared row-by-row against the same-window slice of a same-month API
-pull (2026-08-27).</p>
+<p>Because the paths draw from the same database through different generators, the package’s whole design rests on them being interchangeable. That was tested directly: real FY2015 and FY2024 archives (generated 2026-08-06) were filtered to 130 pilot UEIs and compared row-by-row against the same-window slice of a same-month API pull (2026-08-27).</p>
 <p><strong>Where it matters, they are identical.</strong></p>
 <table class="table">
-<colgroup>
-<col width="25%">
-<col width="25%">
-<col width="25%">
-<col width="25%">
-</colgroup>
 <thead><tr class="header">
 <th>cell</th>
 <th>rows (API vs archive)</th>
@@ -212,57 +165,16 @@ pull (2026-08-27).</p>
 </tr>
 </tbody>
 </table>
-<p>Settled years match key-for-key and dollar-for-dollar. Archive files
-partition time exactly like an API pull filtered on
-<code>action_date</code>: every row in an FY file has an action date
-inside that fiscal year. All mapped column names are present in
-both.</p>
-<p><strong>Caveat one: archive contract files transpose two column
-pairs.</strong> In the archives, <code>action_type_code</code> carries
-the <em>description</em> (<code>FUNDING ONLY ACTION</code>) and
-<code>action_type</code> carries the <em>code</em> (<code>C</code>);
-likewise <code>idv_type_code</code> holds the mnemonic
-(<code>IDC</code>) and <code>idv_type</code> the letter
-(<code>B</code>). The column names match perfectly, so a name-based
-check cannot see it — and before the package handled it, 78% of archive
-contract actions silently misclassified.
-<code><a href="../reference/us_harmonize_transactions.html">us_harmonize_transactions()</a></code> now detects the transposition
-from the value shapes and un-swaps it, so either layout classifies
-identically; <code><a href="../reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code> warns when it
-samples a transposed archive. Assistance files are unaffected.</p>
-<p><strong>Caveat two: award-level derived stamps drift between
-generation dates.</strong> Transaction facts (dates, amounts, parties)
-matched exactly. Two columns did not, on a handful of rows:
-<code>award_total_obligated</code> (an award-<em>lifetime</em> figure
-recomputed at file-generation time — the two files were generated three
-weeks apart, and the diffs were concentrated in NIH awards, whose
-lifetime totals move as awards continue elsewhere), and
-<code>award_id_uri</code>, whose numeric suffix is a generated
-identifier that is simply not stable across systems. Key on
-<code>award_key</code>, never on <code>award_id_uri</code>; treat
-award-lifetime columns as a property of the <em>pull date</em>, not of
-the transaction.</p>
-<p><strong>Caveat three: at the leading edge, the archive is up to a
-month stale.</strong> The archives regenerate monthly; corrections
-posted after generation reach the API first. Measured across the
-three-week gap, the entire divergence on FY2024 was <strong>one
-row</strong> — a NASA de-obligation of −$4,125.69 modified fifteen days
-after the archive was cut — plus re-corrected fields on six of 17,224
-common rows: 0.00008% of that year’s dollars. Settled years show zero.
-If the last few weeks matter for your analysis, refresh the leading
-fiscal year over the API (or apply the archive <code>Delta</code>
-files); for anything historical, the archive is exact.</p>
-<p><code><a href="../reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code> runs the name check and the
-transposition probe against any unpacked archive in one call — still
-worth running on a fiscal year the package has not seen before.</p>
+<p>Settled years match key-for-key and dollar-for-dollar. Archive files partition time exactly like an API pull filtered on <code>action_date</code>: every row in an FY file has an action date inside that fiscal year. All mapped column names are present in both.</p>
+<p><strong>Caveat one: archive contract files transpose two column pairs.</strong> In the archives, <code>action_type_code</code> carries the <em>description</em> (<code>FUNDING ONLY ACTION</code>) and <code>action_type</code> carries the <em>code</em> (<code>C</code>); likewise <code>idv_type_code</code> holds the mnemonic (<code>IDC</code>) and <code>idv_type</code> the letter (<code>B</code>). The column names match perfectly, so a name-based check cannot see it — and before the package handled it, 78% of archive contract actions silently misclassified. <code><a href="../reference/us_harmonize_transactions.html">us_harmonize_transactions()</a></code> now detects the transposition from the value shapes and un-swaps it, so either layout classifies identically; <code><a href="../reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code> warns when it samples a transposed archive. Assistance files are unaffected.</p>
+<p><strong>Caveat two: award-level derived stamps drift between generation dates.</strong> Transaction facts (dates, amounts, parties) matched exactly. Two columns did not, on a handful of rows: <code>award_total_obligated</code> (an award-<em>lifetime</em> figure recomputed at file-generation time — the two files were generated three weeks apart, and the diffs were concentrated in NIH awards, whose lifetime totals move as awards continue elsewhere), and <code>award_id_uri</code>, whose numeric suffix is a generated identifier that is simply not stable across systems. Key on <code>award_key</code>, never on <code>award_id_uri</code>; treat award-lifetime columns as a property of the <em>pull date</em>, not of the transaction.</p>
+<p><strong>Caveat three: at the leading edge, the archive is up to a month stale.</strong> The archives regenerate monthly; corrections posted after generation reach the API first. Measured across the three-week gap, the entire divergence on FY2024 was <strong>one row</strong> — a NASA de-obligation of −$4,125.69 modified fifteen days after the archive was cut — plus re-corrected fields on six of 17,224 common rows: 0.00008% of that year’s dollars. Settled years show zero. If the last few weeks matter for your analysis, refresh the leading fiscal year over the API (or apply the archive <code>Delta</code> files); for anything historical, the archive is exact.</p>
+<p><code><a href="../reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code> runs the name check and the transposition probe against any unpacked archive in one call — still worth running on a fiscal year the package has not seen before.</p>
 </div>
 <div class="section level2">
 <h2 id="the-crossover">The crossover<a class="anchor" aria-label="anchor" href="#the-crossover"></a>
 </h2>
-<p>API cost grows with UEIs; archive cost is flat. They cross somewhere
-in the low thousands of UEIs. <code><a href="../reference/us_extract_plan.html">us_extract_plan()</a></code> computes
-the comparison from the measured constants — it makes no network calls,
-so you can plan offline:</p>
+<p>API cost grows with UEIs; archive cost is flat. They cross somewhere in the low thousands of UEIs. <code><a href="../reference/us_extract_plan.html">us_extract_plan()</a></code> computes the comparison from the measured constants — it makes no network calls, so you can plan offline:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># a batch of 40 organizations</span></span>
 <span><span class="fu"><a href="../reference/us_extract_plan.html">us_extract_plan</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"DEMO%08d"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">40</span><span class="op">)</span>, years <span class="op">=</span> <span class="fl">2008</span><span class="op">:</span><span class="fl">2025</span><span class="op">)</span></span>
@@ -310,48 +222,16 @@ so you can plan offline:</p>
 </tr>
 </tbody>
 </table>
-<p><code>us_extract(source = "auto")</code> runs the plan and follows
-its recommendation.</p>
+<p><code>us_extract(source = "auto")</code> runs the plan and follows its recommendation.</p>
 </div>
 <div class="section level2">
 <h2 id="what-neither-path-gives-you-pass-through">What neither path gives you: pass-through<a class="anchor" aria-label="anchor" href="#what-neither-path-gives-you-pass-through"></a>
 </h2>
-<p>Netting out pass-through — computing
-<code>net_revenue = obligation_net − subaward_out_amount</code> — needs
-subawards where your organization is the <strong>prime</strong>. A
-recipient-filtered API pull never returns those (it matches on the
-subawardee), and the archives carry no subawards at all. Outbound
-subawards must be fetched per prime award:</p>
+<p>Netting out pass-through — computing <code>net_revenue = obligation_net − subaward_out_amount</code> — needs subawards where your organization is the <strong>prime</strong>. A recipient-filtered API pull never returns those (it matches on the subawardee), and the archives carry no subawards at all. Outbound subawards must be fetched per prime award:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ex</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_extract.html">us_extract</a></span><span class="op">(</span><span class="va">ueis</span>, years <span class="op">=</span> <span class="fl">2008</span><span class="op">:</span><span class="fl">2025</span>, source <span class="op">=</span> <span class="st">"archive"</span>, subawards <span class="op">=</span> <span class="st">"out"</span><span class="op">)</span></span></code></pre></div>
-<p><code>subawards = "out"</code> walks the extracted award keys through
-<code><a href="../reference/us_fetch_subawards_out.html">us_fetch_subawards_out()</a></code> — batched about 400 award ids per
-request, with a count-first screen so awards reporting no subawards are
-skipped. Budget roughly one extra API call per few hundred awards. Until
-that pass runs, <code>net_revenue</code> in the panel equals
-<code>obligation_net</code>, and the panel’s <code>flags</code> column
-says so.</p>
-<p>Inbound subawards — revenue received as a subrecipient — are a free
-by-product on the API path but absent from an archive extract. Passing
-<code>subawards = "in"</code> (or <code>"both"</code>) with
-<code>source = "archive"</code> appends them through
-<code><a href="../reference/us_fetch_subawards_in.html">us_fetch_subawards_in()</a></code>, which searches the subaward
-endpoint by subawardee UEI: each batch of UEIs is <strong>counted
-first</strong>, so an organization with no inbound subawards — the
-common case at crosswalk scale — costs one cheap request, and only the
-organizations with hits pay for a full fetch. Measured constraints it
-absorbs: the ~20-UEI filter cap, server-side timeouts on batches of very
-large organizations (batches split recursively, then by time period;
-transient failures retry once automatically), the required
-one-pass-per-family rule, and the 10k result cap. UEIs that cannot be
-resolved are reported in a <code>failures</code> attribute — a failure
-is never allowed to read as zero. Validated against the 130-UEI pilot
-bulk pull: <strong>100.00% of FSRS lines recovered</strong> (21,759 of
-21,760), amounts matching to the cent on 97.2% of lines with the
-remainder being FSRS restatements between the two pulls’ vintages — the
-search route is the fresher source. (A download-job route survives as
-<code>via = "download"</code>, the only route that carries FSRS
-report-period columns.)</p>
+<p><code>subawards = "out"</code> walks the extracted award keys through <code><a href="../reference/us_fetch_subawards_out.html">us_fetch_subawards_out()</a></code> — batched about 400 award ids per request, with a count-first screen so awards reporting no subawards are skipped. Budget roughly one extra API call per few hundred awards. Until that pass runs, <code>net_revenue</code> in the panel equals <code>obligation_net</code>, and the panel’s <code>flags</code> column says so.</p>
+<p>Inbound subawards — revenue received as a subrecipient — are a free by-product on the API path but absent from an archive extract. Passing <code>subawards = "in"</code> (or <code>"both"</code>) with <code>source = "archive"</code> appends them through <code><a href="../reference/us_fetch_subawards_in.html">us_fetch_subawards_in()</a></code>, which searches the subaward endpoint by subawardee UEI: each batch of UEIs is <strong>counted first</strong>, so an organization with no inbound subawards — the common case at crosswalk scale — costs one cheap request, and only the organizations with hits pay for a full fetch. Measured constraints it absorbs: the ~20-UEI filter cap, server-side timeouts on batches of very large organizations (batches split recursively, then by time period; transient failures retry once automatically), the required one-pass-per-family rule, and the 10k result cap. UEIs that cannot be resolved are reported in a <code>failures</code> attribute — a failure is never allowed to read as zero. Validated against the 130-UEI pilot bulk pull: <strong>100.00% of FSRS lines recovered</strong> (21,759 of 21,760), amounts matching to the cent on 97.2% of lines with the remainder being FSRS restatements between the two pulls’ vintages — the search route is the fresher source. (A download-job route survives as <code>via = "download"</code>, the only route that carries FSRS report-period columns.)</p>
 <p>The full append matrix:</p>
 <table class="table">
 <colgroup>
@@ -401,8 +281,7 @@ report-period columns.)</p>
 <tr class="even">
 <td>up to ~2,000 UEIs</td>
 <td>
-<code>source = "api"</code> (check
-<code><a href="../reference/us_extract_plan.html">us_extract_plan()</a></code>)</td>
+<code>source = "api"</code> (check <code><a href="../reference/us_extract_plan.html">us_extract_plan()</a></code>)</td>
 </tr>
 <tr class="odd">
 <td>thousands of UEIs or more</td>
@@ -414,8 +293,7 @@ report-period columns.)</p>
 </tr>
 <tr class="odd">
 <td>you need outbound subawards / true net revenue</td>
-<td>either path <strong>plus</strong>
-<code>subawards = "out"</code>
+<td>either path <strong>plus</strong> <code>subawards = "out"</code>
 </td>
 </tr>
 <tr class="even">
@@ -424,9 +302,7 @@ report-period columns.)</p>
 </tr>
 </tbody>
 </table>
-<p>Both paths cache downloads under <code><a href="../reference/us_cache_dir.html">us_cache_dir()</a></code>, so
-re-runs skip completed work; <code><a href="../reference/us_cache_dir.html">us_cache_status()</a></code> shows what
-is already on disk.</p>
+<p>Both paths cache downloads under <code><a href="../reference/us_cache_dir.html">us_cache_dir()</a></code>, so re-runs skip completed work; <code><a href="../reference/us_cache_dir.html">us_cache_status()</a></code> shows what is already on disk.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
@@ -439,7 +315,7 @@ is already on disk.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer>

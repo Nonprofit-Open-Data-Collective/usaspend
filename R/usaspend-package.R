@@ -38,5 +38,21 @@ utils::globalVariables(c(
   "subaward_out_amount", "subaward_year", "subaward_key", "total_obligated",
   "total_outlayed", "transaction_key", "tx_sum", "V1", "is_zero_dollar",
   "amount_sign", "in_revenue", "obligated_in_extract", "last_modified_date",
-  "recipient_state", "org_state", "w", "total_net", "index", "n_org_rows"
+  "recipient_state", "org_state", "w", "total_net", "index", "n_org_rows",
+  ## outlays (File C)
+  "reporting_fiscal_year", "reporting_fiscal_month", "gross_outlay_amount",
+  "transaction_obligated_amount", "fiscal_year", "outlay", "filec_obligation",
+  "has_outlay_rows", "outlay_amount", "outlay_coverage", "first_year",
+  "oblig", "filec",
+  ## outlay imputation
+  ".fy_month", ".share", "first_fy", "last_oblig_fy", "first_month",
+  "late_start", "dur_bin", "duration", "pop_end_fy", "pop0_end_fy",
+  "ext_days", "ext_fy", "money_after_ext", "extended", "funded_ext",
+  "reduced", "mod_class", "oblig_positive", "oblig_negative", "tier",
+  "linked", "outlay_total", "last_outlay_fy", "sh_prev", "sh_cur",
+  "actual", "oblig_fy", "fy", "t", "share", "share_dur", "share_glob",
+  "sh", "tmax", "end_fy", "n_periods", "n_awards", "method",
+  "outlay_imputed", "imputation_method", "imputation_flags", "fold",
+  "in_pop", "pop_n", "timing_model", "timing_as_obligated",
+  "timing_even_spread", "y0", "y1"
 ))

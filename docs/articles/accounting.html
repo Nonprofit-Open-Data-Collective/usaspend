@@ -47,6 +47,10 @@
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul>
 </li>
       </ul>
@@ -80,11 +84,7 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nonprofit-open-data-collective.github.io/usaspend/">usaspend</a></span><span class="op">)</span></span>
 <span><span class="va">ex</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_sample_extract.html">us_sample_extract</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="../reference/us_panel.html">us_panel()</a></code> runs a fixed sequence of accounting rules
-between the raw transaction ledger and the org × award × year panel.
-This vignette walks the rules in order, with the measured pilot evidence
-behind each. (The full specification lives in the repository’s
-<code>ACCOUNTING.md</code>.)</p>
+<p><code><a href="../reference/us_panel.html">us_panel()</a></code> runs a fixed sequence of accounting rules between the raw transaction ledger and the org × award × year panel. This vignette walks the rules in order, with the measured pilot evidence behind each. (The full specification lives in the repository’s <code>ACCOUNTING.md</code>.)</p>
 <div class="section level2">
 <h2 id="clean-the-ledger-us_normalize_transactions">1. Clean the ledger — <code>us_normalize_transactions()</code><a class="anchor" aria-label="anchor" href="#clean-the-ledger-us_normalize_transactions"></a>
 </h2>
@@ -96,42 +96,25 @@ behind each. (The full specification lives in the repository’s
 <p>Five rules, each grounded in the 50-org pilot (302,025 rows):</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>De-duplicate on the transaction key.</strong> Download
-batches overlap and one organization’s several UEIs can appear in
-multiple jobs. The pilot carried 6.9% exact duplicates; removing them
-recovered 5,754 awards that had been failing the lifetime
-reconciliation.</li>
+<strong>De-duplicate on the transaction key.</strong> Download batches overlap and one organization’s several UEIs can appear in multiple jobs. The pilot carried 6.9% exact duplicates; removing them recovered 5,754 awards that had been failing the lifetime reconciliation.</li>
 <li>
-<strong>Corrections are kept; deletes are dropped.</strong>
-Assistance rows carry <code>correction_delete_indicator_code</code>:
-<code>D</code> withdraws a record; <code>C</code> marks the row as
-<em>being</em> the current correction. <strong>37.6% of pilot assistance
-rows carry <code>C</code></strong> — a pipeline that misreads
-<code>C</code> as “superseded” throws away a third of the ledger.</li>
+<strong>Corrections are kept; deletes are dropped.</strong> Assistance rows carry <code>correction_delete_indicator_code</code>: <code>D</code> withdraws a record; <code>C</code> marks the row as <em>being</em> the current correction. <strong>37.6% of pilot assistance rows carry <code>C</code></strong> — a pipeline that misreads <code>C</code> as “superseded” throws away a third of the ledger.</li>
 <li>
-<strong>Drop county-level aggregate records</strong> (assistance
-<code>record_type_code</code>
+<strong>Drop county-level aggregate records</strong> (assistance <code>record_type_code</code>
 <ol style="list-style-type: decimal">
-<li>— they have no identified recipient and double-count entity-level
-money.</li>
+<li>— they have no identified recipient and double-count entity-level money.</li>
 </ol>
 </li>
 <li>
-<strong>Keep zero-dollar actions, flagged.</strong> They carry
-period-of-performance changes and they are how activity is counted.</li>
+<strong>Keep zero-dollar actions, flagged.</strong> They carry period-of-performance changes and they are how activity is counted.</li>
 <li>
-<strong>Flag anomalies, never silently repair</strong> — a non-zero
-amount on an administrative action, dates outside the period of
-performance, a recipient UEI that was never requested.</li>
+<strong>Flag anomalies, never silently repair</strong> — a non-zero amount on an administrative action, dates outside the period of performance, a recipient UEI that was never requested.</li>
 </ol>
 </div>
 <div class="section level2">
 <h2 id="the-sign-is-the-truth">2. The sign is the truth<a class="anchor" aria-label="anchor" href="#the-sign-is-the-truth"></a>
 </h2>
-<p>Action-type labels describe <em>intent</em>; the amount’s sign
-describes what happened. The sample shows both mismatches at once — a
-<code>CONTINUATION</code> carrying $0 and a <code>REVISION</code>
-carrying a claw-back:</p>
+<p>Action-type labels describe <em>intent</em>; the amount’s sign describes what happened. The sample shows both mismatches at once — a <code>CONTINUATION</code> carrying $0 and a <code>REVISION</code> carrying a claw-back:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tx</span><span class="op">[</span><span class="va">award_key</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ASST_NON_HDTRA12310001_097"</span>, <span class="st">"ASST_NON_D8732143_075"</span><span class="op">)</span> <span class="op">&amp;</span></span>
 <span>   <span class="va">action_type_label</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Continuation"</span>, <span class="st">"Revision"</span><span class="op">)</span>,</span>
@@ -146,20 +129,12 @@ carrying a claw-back:</p>
 <span><span class="co">#&gt; 6: ASST_NON_HDTRA12310001_097  2025-05-06          Revision                         0</span></span>
 <span><span class="co">#&gt; 7: ASST_NON_HDTRA12310001_097  2025-08-28          Revision                         0</span></span>
 <span><span class="co">#&gt; 8: ASST_NON_HDTRA12310001_097  2025-09-02          Revision                    300000</span></span></code></pre></div>
-<p>In the pilot, 8.6% of all transactions are negative, and
-de-obligations arrive under <strong>every</strong> action-type label. So
-the ledger (<code><a href="../reference/us_ledger.html">us_ledger()</a></code>) classifies money by sign and keeps
-<code>action_class</code> as context — and negatives are <em>kept</em>:
-dropping them inflates every affected year.</p>
+<p>In the pilot, 8.6% of all transactions are negative, and de-obligations arrive under <strong>every</strong> action-type label. So the ledger (<code><a href="../reference/us_ledger.html">us_ledger()</a></code>) classifies money by sign and keeps <code>action_class</code> as context — and negatives are <em>kept</em>: dropping them inflates every affected year.</p>
 </div>
 <div class="section level2">
-<h2 id="net-by-year-keeping-gross-and-net-us_net_by_year">3. Net by year, keeping gross and net —
-<code>us_net_by_year()</code><a class="anchor" aria-label="anchor" href="#net-by-year-keeping-gross-and-net-us_net_by_year"></a>
+<h2 id="net-by-year-keeping-gross-and-net-us_net_by_year">3. Net by year, keeping gross and net — <code>us_net_by_year()</code><a class="anchor" aria-label="anchor" href="#net-by-year-keeping-gross-and-net-us_net_by_year"></a>
 </h2>
-<p>Every org-award-year carries <code>obligation_positive</code>,
-<code>obligation_negative</code>, and <code>obligation_net</code>. A
-cell netting to $1M from +$5M and −$4M is a different fact from a clean
-$1M, and the panel never carries the net alone:</p>
+<p>Every org-award-year carries <code>obligation_positive</code>, <code>obligation_negative</code>, and <code>obligation_net</code>. A cell netting to $1M from +$5M and −$4M is a different fact from a clean $1M, and the panel never carries the net alone:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_panel.html">us_panel</a></span><span class="op">(</span><span class="va">ex</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Normalized 120 -&gt; 120 transactions.</span></span>
@@ -178,9 +153,7 @@ $1M, and the panel never carries the net alone:</p>
 <div class="section level2">
 <h2 id="which-year-does-a-claw-back-belong-to">4. Which year does a claw-back belong to?<a class="anchor" aria-label="anchor" href="#which-year-does-a-claw-back-belong-to"></a>
 </h2>
-<p>The hard question. The sample’s claw-back — $310,999 reversed in 2024
-against money obligated years earlier — can be booked two defensible
-ways, and the package implements both rather than choosing silently:</p>
+<p>The hard question. The sample’s claw-back — $310,999 reversed in 2024 against money obligated years earlier — can be booked two defensible ways, and the package implements both rather than choosing silently:</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -197,8 +170,7 @@ ways, and the package implements both rather than choosing silently:</p>
 <td>
 <code>as_posted</code> (default)</td>
 <td>the year it happened</td>
-<td>cash-like; matches USAspending’s own presentation; each year
-reproducible from that year’s transactions</td>
+<td>cash-like; matches USAspending’s own presentation; each year reproducible from that year’s transactions</td>
 </tr>
 <tr class="even">
 <td><code>restate</code></td>
@@ -228,44 +200,22 @@ reproducible from that year’s transactions</td>
 <span><span class="co">#&gt;     year obligation_net</span></span>
 <span><span class="co">#&gt;    &lt;int&gt;          &lt;num&gt;</span></span>
 <span><span class="co">#&gt; 1:  2024        -310999</span></span></code></pre></div>
-<p>Here the two agree — the obligation being reversed predates this
-extract’s window, so <code>restate</code> has nothing in-window to push
-the reversal onto and correctly leaves it where it was posted.
-<strong>Measured on the pilot</strong> ($118.5bn, 2007–2025):
-<code>restate</code> moves most years by under 1%; the policies
-genuinely diverge only at the data’s leading edge (2024 −$460m, 2025
-+$646m), which is where the numbers are still moving anyway.
-<code>as_posted</code> is therefore a safe default for historical work.
-Under it, about 10% of pilot org-award-years net negative — real, and
-kept.</p>
+<p>Here the two agree — the obligation being reversed predates this extract’s window, so <code>restate</code> has nothing in-window to push the reversal onto and correctly leaves it where it was posted. <strong>Measured on the pilot</strong> ($118.5bn, 2007–2025): <code>restate</code> moves most years by under 1%; the policies genuinely diverge only at the data’s leading edge (2024 −$460m, 2025 +$646m), which is where the numbers are still moving anyway. <code>as_posted</code> is therefore a safe default for historical work. Under it, about 10% of pilot org-award-years net negative — real, and kept.</p>
 </div>
 <div class="section level2">
 <h2 id="year-basis">5. Year basis<a class="anchor" aria-label="anchor" href="#year-basis"></a>
 </h2>
-<p><code>period = "calendar"</code> (default) books on the calendar year
-of <code>action_date</code>; <code>"fiscal"</code> uses the federal
-fiscal year (starting 1 October). Both are recomputed from
-<code>action_date</code> rather than trusting the source’s fiscal-year
-column, so the two bases are guaranteed consistent with each other and
-with the dates.</p>
+<p><code>period = "calendar"</code> (default) books on the calendar year of <code>action_date</code>; <code>"fiscal"</code> uses the federal fiscal year (starting 1 October). Both are recomputed from <code>action_date</code> rather than trusting the source’s fiscal-year column, so the two bases are guaranteed consistent with each other and with the dates.</p>
 </div>
 <div class="section level2">
 <h2 id="what-the-panel-then-is">6. What the panel then is<a class="anchor" aria-label="anchor" href="#what-the-panel-then-is"></a>
 </h2>
-<p><code>obligation_net</code> per org-award-year, minus pass-through
-where fetched (<code><a href="../articles/subawards.html">vignette("subawards")</a></code>), with every rule
-above checkable after the fact: <code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> tests each
-award’s summed actions against USAspending’s independently computed
-lifetime total (<code><a href="../articles/reconciliation.html">vignette("reconciliation")</a></code>).</p>
+<p><code>obligation_net</code> per org-award-year, minus pass-through where fetched (<code><a href="../articles/subawards.html">vignette("subawards")</a></code>), with every rule above checkable after the fact: <code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> tests each award’s summed actions against USAspending’s independently computed lifetime total (<code><a href="../articles/reconciliation.html">vignette("reconciliation")</a></code>).</p>
 </div>
 <div class="section level2">
 <h2 id="inside-the-object-us_panel-returns">7. Inside the object <code>us_panel()</code> returns<a class="anchor" aria-label="anchor" href="#inside-the-object-us_panel-returns"></a>
 </h2>
-<p><code><a href="../reference/us_panel.html">us_panel()</a></code> returns a list of class
-<code>usaspend_panel</code> holding six elements. The first five are
-tables; <code>meta</code> records the choices the build was made under
-(year basis, money measure, de-obligation policy, whether outbound
-subawards were fetched).</p>
+<p><code><a href="../reference/us_panel.html">us_panel()</a></code> returns a list of class <code>usaspend_panel</code> holding six elements. The first five are tables; <code>meta</code> records the choices the build was made under (year basis, money measure, de-obligation policy, whether outbound subawards were fetched).</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -282,14 +232,12 @@ subawards were fetched).</p>
 <td><code>panel</code></td>
 <td>org × award × year</td>
 <td>
-<strong>the deliverable</strong> — net dollars per award per
-year</td>
+<strong>the deliverable</strong> — net dollars per award per year</td>
 </tr>
 <tr class="even">
 <td><code>awards</code></td>
 <td>award</td>
-<td>the spine: one row per award with its attributes and lifetime
-totals</td>
+<td>the spine: one row per award with its attributes and lifetime totals</td>
 </tr>
 <tr class="odd">
 <td><code>transactions</code></td>
@@ -299,14 +247,12 @@ totals</td>
 <tr class="even">
 <td><code>subawards</code></td>
 <td>FSRS report line</td>
-<td>subaward rows with <code>direction</code> assigned
-(<code>in</code>/<code>out</code>/<code>internal</code>/<code>unrelated</code>)</td>
+<td>subaward rows with <code>direction</code> assigned (<code>in</code>/<code>out</code>/<code>internal</code>/<code>unrelated</code>)</td>
 </tr>
 <tr class="odd">
 <td><code>subawards_in</code></td>
 <td>org × year</td>
-<td>subaward revenue <em>received</em> — money invisible in prime
-data</td>
+<td>subaward revenue <em>received</em> — money invisible in prime data</td>
 </tr>
 <tr class="even">
 <td><code>meta</code></td>
@@ -315,9 +261,7 @@ data</td>
 </tr>
 </tbody>
 </table>
-<p>The previews below use the packaged Vanderbilt University Medical
-Center data (<code><a href="../reference/vumc_transactions.html">?vumc_transactions</a></code>), rebuilt into a full panel
-object:</p>
+<p>The previews below use the packaged Vanderbilt University Medical Center data (<code><a href="../reference/vumc_transactions.html">?vumc_transactions</a></code>), rebuilt into a full panel object:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-datatable.com" class="external-link">data.table</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vumc_transactions</span><span class="op">)</span>; <span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vumc_subawards</span><span class="op">)</span></span>
@@ -383,8 +327,7 @@ Contract vs assistance, and the finer type.
 </tr>
 <tr>
 <td style="text-align:left;">
-awarding_agency_code / awarding_agency_name / awarding_sub_agency_name /
-funding_agency_name
+awarding_agency_code / awarding_agency_name / awarding_sub_agency_name / funding_agency_name
 </td>
 <td style="text-align:left;">
 Who awarded and who funded.
@@ -411,8 +354,7 @@ Activity counts. n_transactions = 0 marks a fill-gaps placeholder row.
 obligation_positive / obligation_negative / obligation_net
 </td>
 <td style="text-align:left;">
-Gross new money, gross claw-backs, and their sum. Never carried as net
-alone.
+Gross new money, gross claw-backs, and their sum. Never carried as net alone.
 </td>
 </tr>
 <tr>
@@ -444,8 +386,7 @@ Pass-through paid onward under this award-year.
 subaward_in_amount / n_subawards_in
 </td>
 <td style="text-align:left;">
-Subawards received under this award (rare at award grain; see
-subawards_in).
+Subawards received under this award (rare at award grain; see subawards_in).
 </td>
 </tr>
 <tr>
@@ -1479,8 +1420,7 @@ TN
 <div class="section level3">
 <h3 id="awards-the-spine">7.2 <code>awards</code> — the spine<a class="anchor" aria-label="anchor" href="#awards-the-spine"></a>
 </h3>
-<p>One row per award, each attribute taken from the latest action that
-reports it (award-level fields are sparse across modifications).</p>
+<p>One row per award, each attribute taken from the latest action that reports it (award-level fields are sparse across modifications).</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">p</span><span class="op">$</span><span class="va">awards</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 2166   32</span></span></code></pre></div>
@@ -1521,8 +1461,7 @@ Recipient as of the latest action.
 </tr>
 <tr>
 <td style="text-align:left;">
-awarding_agency_code / awarding_agency_name / awarding_sub_agency_name /
-funding_agency_name
+awarding_agency_code / awarding_agency_name / awarding_sub_agency_name / funding_agency_name
 </td>
 <td style="text-align:left;">
 Agencies, as of the latest action.
@@ -1557,8 +1496,7 @@ Period of performance.
 total_obligated / total_outlayed
 </td>
 <td style="text-align:left;">
-USAspending’s own lifetime totals — the reconciliation reference
-(outlays mostly missing pre-2017).
+USAspending’s own lifetime totals — the reconciliation reference (outlays mostly missing pre-2017).
 </td>
 </tr>
 <tr>
@@ -1582,8 +1520,7 @@ From the award overview endpoint when enriched.
 n_transactions / n_years / n_recipients
 </td>
 <td style="text-align:left;">
-Ledger footprint. n_recipients &gt; 1 marks awards that moved between
-institutions.
+Ledger footprint. n_recipients &gt; 1 marks awards that moved between institutions.
 </td>
 </tr>
 </tbody>
@@ -2677,9 +2614,7 @@ NA
 <div class="section level3">
 <h3 id="transactions-the-normalized-ledger">7.3 <code>transactions</code> — the normalized ledger<a class="anchor" aria-label="anchor" href="#transactions-the-normalized-ledger"></a>
 </h3>
-<p>Same schema as <code>vumc_transactions</code> (see
-<code><a href="../reference/vumc_transactions.html">?vumc_transactions</a></code> for the full field dictionary) plus the
-normalization columns:</p>
+<p>Same schema as <code>vumc_transactions</code> (see <code><a href="../reference/vumc_transactions.html">?vumc_transactions</a></code> for the full field dictionary) plus the normalization columns:</p>
 <div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:260px; overflow-x: scroll; width:100%; ">
 <table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
 <thead><tr>
@@ -2696,8 +2631,7 @@ meaning
 is_zero_dollar
 </td>
 <td style="text-align:left;">
-TRUE on $0 actions — kept, because they carry period-of-performance
-changes and activity counts.
+TRUE on $0 actions — kept, because they carry period-of-performance changes and activity counts.
 </td>
 </tr>
 <tr>
@@ -2729,8 +2663,7 @@ Recipient UEI was never requested (API text-matching stray).
 flags
 </td>
 <td style="text-align:left;">
-Semicolon-joined anomaly markers (money on an admin action, action after
-period of performance, …).
+Semicolon-joined anomaly markers (money on an admin action, action after period of performance, …).
 </td>
 </tr>
 </tbody>
@@ -3575,8 +3508,7 @@ Department of Health and Human Services
 93.638
 </td>
 <td style="text-align:left;">
-ACA-TRANSFORMING CLINICAL PRACTICE INITIATIVE: PRACTICE TRANSFORMATION
-NETWORKS (PTNS)
+ACA-TRANSFORMING CLINICAL PRACTICE INITIATIVE: PRACTICE TRANSFORMATION NETWORKS (PTNS)
 </td>
 <td style="text-align:left;">
 NA
@@ -4352,11 +4284,7 @@ FALSE
 <span><span class="co">#&gt; 1:        in  2498       613</span></span>
 <span><span class="co">#&gt; 2:       out  7088      2156</span></span>
 <span><span class="co">#&gt; 3:  internal    17         4</span></span></code></pre></div>
-<p><code>in</code> rows are revenue (VUMC as subawardee);
-<code>out</code> rows are pass-through (VUMC as prime);
-<code>internal</code> rows move money between an organization’s own UEIs
-and are excluded from both flows; <code>unrelated</code> rows sit on
-multi-recipient awards whose current holder is someone else.</p>
+<p><code>in</code> rows are revenue (VUMC as subawardee); <code>out</code> rows are pass-through (VUMC as prime); <code>internal</code> rows move money between an organization’s own UEIs and are excluded from both flows; <code>unrelated</code> rows sit on multi-recipient awards whose current holder is someone else.</p>
 <div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:300px; overflow-x: scroll; width:100%; ">
 <table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
 <thead><tr>
@@ -5181,10 +5109,7 @@ api:spending_by_award:subawards
 <div class="section level3">
 <h3 id="subawards_in-inbound-revenue-by-org-year">7.5 <code>subawards_in</code> — inbound revenue by org-year<a class="anchor" aria-label="anchor" href="#subawards_in-inbound-revenue-by-org-year"></a>
 </h3>
-<p>Money received as a subrecipient never appears in prime award data —
-an organization funded purely this way looks like a non-recipient. It is
-therefore kept as its own org × year table rather than being forced onto
-award rows.</p>
+<p>Money received as a subrecipient never appears in prime award data — an organization funded purely this way looks like a non-recipient. It is therefore kept as its own org × year table rather than being forced onto award rows.</p>
 <div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:220px; overflow-x: scroll; width:100%; ">
 <table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
 <thead><tr>
@@ -5357,16 +5282,13 @@ n_subawards_in
 <span><span class="co">#&gt;  $ deobligation_policy  : chr "as_posted"</span></span>
 <span><span class="co">#&gt;  $ subawards_out_fetched: logi TRUE</span></span>
 <span><span class="co">#&gt;  $ n_orgs               : int 1</span></span>
-<span><span class="co">#&gt;  $ built_at             : POSIXct[1:1], format: "2026-08-27 10:38:34"</span></span></code></pre></div>
+<span><span class="co">#&gt;  $ built_at             : POSIXct[1:1], format: "2026-08-29 13:02:16"</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
-<h2 id="one-organization-end-to-end-vanderbilt-university-medical-center">8. One organization end to end: Vanderbilt University Medical
-Center<a class="anchor" aria-label="anchor" href="#one-organization-end-to-end-vanderbilt-university-medical-center"></a>
+<h2 id="one-organization-end-to-end-vanderbilt-university-medical-center">8. One organization end to end: Vanderbilt University Medical Center<a class="anchor" aria-label="anchor" href="#one-organization-end-to-end-vanderbilt-university-medical-center"></a>
 </h2>
-<p>VUMC (EIN 35-2528741) is the packaged example because it exercises
-every rule at once: the highest pass-through share in the 50-org pilot,
-claw-backs in every year, and both subaward directions at scale.</p>
+<p>VUMC (EIN 35-2528741) is the packaged example because it exercises every rule at once: the highest pass-through share in the 50-org pilot, claw-backs in every year, and both subaward directions at scale.</p>
 <div class="section level3">
 <h3 id="the-raw-ledger">8.1 The raw ledger<a class="anchor" aria-label="anchor" href="#the-raw-ledger"></a>
 </h3>
@@ -5382,10 +5304,7 @@ claw-backs in every year, and both subaward directions at scale.</p>
 <span><span class="co">#&gt; 1:     zero  2816</span></span>
 <span><span class="co">#&gt; 2: positive  7847</span></span>
 <span><span class="co">#&gt; 3: negative  1422</span></span></code></pre></div>
-<p>Of 12085 raw transactions, about a quarter are zero-dollar
-administrative actions and 1422 are de-obligations — real claw-backs,
-arriving under every action-type label. On the subaward side (after
-normalization assigns direction):</p>
+<p>Of 12085 raw transactions, about a quarter are zero-dollar administrative actions and 1422 are de-obligations — real claw-backs, arriving under every action-type label. On the subaward side (after normalization assigns direction):</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p</span><span class="op">$</span><span class="va">subawards</span><span class="op">[</span><span class="va">direction</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"in"</span>, <span class="st">"out"</span><span class="op">)</span>,</span>
 <span>            <span class="fu">.</span><span class="op">(</span>rows <span class="op">=</span> <span class="va">.N</span>,</span>
@@ -5399,11 +5318,7 @@ normalization assigns direction):</p>
 <div class="section level3">
 <h3 id="what-a-claw-back-looks-like">8.2 What a claw-back looks like<a class="anchor" aria-label="anchor" href="#what-a-claw-back-looks-like"></a>
 </h3>
-<p>Award <code>ASST_NON_U54CA280915_075</code> (an NIH cooperative
-agreement) obligates across several years and then loses $3.8M in a
-single action. Note that the sign carries the truth: the claw-back
-arrives as an ordinary <code>REVISION</code>, not under any special
-cancellation type.</p>
+<p>Award <code>ASST_NON_U54CA280915_075</code> (an NIH cooperative agreement) obligates across several years and then loses $3.8M in a single action. Note that the sign carries the truth: the claw-back arrives as an ordinary <code>REVISION</code>, not under any special cancellation type.</p>
 <div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:220px; overflow-x: scroll; width:100%; ">
 <table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
 <thead><tr>
@@ -5550,9 +5465,7 @@ revision
 </tbody>
 </table>
 </div>
-<p>Summed, the transactions still reconcile to the award’s reported
-lifetime total — the claw-back is part of the award’s true value, not
-noise:</p>
+<p>Summed, the transactions still reconcile to the award’s reported lifetime total — the claw-back is part of the award’s true value, not noise:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vumc_transactions</span><span class="op">[</span><span class="va">award_key</span> <span class="op">==</span> <span class="st">"ASST_NON_U54CA280915_075"</span>,</span>
 <span>                  <span class="fu">.</span><span class="op">(</span>tx_sum <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">federal_action_obligation</span><span class="op">)</span>,</span>
@@ -5564,12 +5477,7 @@ noise:</p>
 <div class="section level3">
 <h3 id="how-pass-through-is-structured">8.3 How pass-through is structured<a class="anchor" aria-label="anchor" href="#how-pass-through-is-structured"></a>
 </h3>
-<p>Pass-through is not on the transaction rows at all. It arrives as
-separate FSRS report lines keyed to the <em>prime award</em>, each
-naming a subawardee, an amount, and a commitment date. VUMC’s largest
-conduit is <code>ASST_NON_NU2GGH001943_075</code> — a CDC global-health
-cooperative agreement under which VUMC passes onward far more than it
-keeps:</p>
+<p>Pass-through is not on the transaction rows at all. It arrives as separate FSRS report lines keyed to the <em>prime award</em>, each naming a subawardee, an amount, and a commitment date. VUMC’s largest conduit is <code>ASST_NON_NU2GGH001943_075</code> — a CDC global-health cooperative agreement under which VUMC passes onward far more than it keeps:</p>
 <div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:220px; overflow-x: scroll; width:100%; ">
 <table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
 <thead><tr>
@@ -5767,11 +5675,7 @@ SERVICO DISTRITAL DE SAUDE MULHER ACCAO SOCIAL DE NAMACURRA
 <div class="section level3">
 <h3 id="when-a-placeholder-is-created">8.4 When a placeholder is created<a class="anchor" aria-label="anchor" href="#when-a-placeholder-is-created"></a>
 </h3>
-<p>FSRS reports trail the obligations they draw on, so pass-through
-often lands in an award-year with no prime activity. With
-<code>fill_gaps = TRUE</code>, such years get a zero-obligation
-placeholder row (<code>n_transactions = 0</code>) so the dollars have
-somewhere to land instead of being dropped:</p>
+<p>FSRS reports trail the obligations they draw on, so pass-through often lands in an award-year with no prime activity. With <code>fill_gaps = TRUE</code>, such years get a zero-obligation placeholder row (<code>n_transactions = 0</code>) so the dollars have somewhere to land instead of being dropped:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p</span><span class="op">$</span><span class="va">panel</span><span class="op">[</span><span class="va">n_transactions</span> <span class="op">==</span> <span class="fl">0</span>, <span class="va">.N</span><span class="op">]</span>                      <span class="co"># placeholder rows</span></span>
 <span><span class="co">#&gt; [1] 1630</span></span>
@@ -5795,8 +5699,7 @@ somewhere to land instead of being dropped:</p>
 <span><span class="co">#&gt;         &lt;char&gt;  &lt;int&gt;</span></span>
 <span><span class="co">#&gt; 1:  assistance   1845</span></span>
 <span><span class="co">#&gt; 2:    contract    321</span></span></code></pre></div>
-<p>2166 awards collapse to 9290 org-award-year rows, funded by 11
-federal agencies:</p>
+<p>2166 awards collapse to 9290 org-award-year rows, funded by 11 federal agencies:</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p</span><span class="op">$</span><span class="va">panel</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span>awards <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/data.table/man/duplicated.html" class="external-link">uniqueN</a></span><span class="op">(</span><span class="va">award_key</span><span class="op">)</span>,</span>
 <span>            net_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">obligation_net</span><span class="op">)</span> <span class="op">/</span> <span class="fl">1e6</span><span class="op">)</span><span class="op">)</span>,</span>
@@ -5830,11 +5733,7 @@ federal agencies:</p>
 <h3 id="the-trend-and-what-pass-through-does-to-it">8.8 The trend, and what pass-through does to it<a class="anchor" aria-label="anchor" href="#the-trend-and-what-pass-through-does-to-it"></a>
 </h3>
 <p><img src="accounting_files/figure-html/fig-trend-1.png" alt="" width="720"></p>
-<p>The two lines are the whole argument for fetching outbound subawards:
-by obligations alone, VUMC looks roughly twice as large as the revenue
-it actually retains. The finished versions of these tables ship in the
-package: <code>data(vumc_transactions)</code>,
-<code>data(vumc_subawards)</code>, <code>data(vumc_panel)</code>.</p>
+<p>The two lines are the whole argument for fetching outbound subawards: by obligations alone, VUMC looks roughly twice as large as the revenue it actually retains. The finished versions of these tables ship in the package: <code>data(vumc_transactions)</code>, <code>data(vumc_subawards)</code>, <code>data(vumc_panel)</code>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
@@ -5848,7 +5747,7 @@ package: <code>data(vumc_transactions)</code>,
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer>

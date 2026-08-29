@@ -1,0 +1,249 @@
+---
+title: "Imputing outlays: turning promises into a cash calendar"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Imputing outlays: turning promises into a cash calendar}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>",
+                      fig.width = 7.2, fig.height = 4, dpi = 96)
+options(datatable.print.trunc.cols = TRUE, width = 90)
+has_ggplot <- requireNamespace("ggplot2", quietly = TRUE)
+```
+
+Federal award data reports **obligations** — the year money was promised.
+The cash — the **outlay** — arrives on its own schedule, and the two differ
+widely: measured on the package's ground truth, obligations put a median
+90% of an award's dollars in its first fiscal year while cash puts 2%
+there, lags the commitment by roughly a year, and totals a median 94 cents
+per obligated dollar. Real annual outlays exist only in account-level File
+C data, complete only from the FY2022 monthly mandate and missing for whole
+agencies (`vignette("data-model")`). For everything else, this vignette's
+tools *impute* a cash calendar from the obligations side.
+
+Everything here runs offline on two bundled objects: `outlay_training`
+(1,184 awards whose File C cash story is fully trustworthy — the ground
+truth of the experiment documented in `IMPUTATION.md`) and `outlay_model`
+(the default model fitted on it).
+
+```{r setup, message = FALSE}
+library(usaspend)
+library(data.table)
+outlay_model
+```
+
+## The model: a liquidation curve
+
+For each award-duration × start-timing cell, the model stores the mean
+share of an award's **net obligations** outlaid in each event-year `t`
+(years since first obligation). One object carries all three measured
+regularities:
+
+* **the lag** — the curve's mass sits in years 1–2, not year 0;
+* **the late-start shift** — an award first obligated April–September
+  pushes most of its first-year cash into the next fiscal year, so
+  `late_start` cells have flatter year-0 shares;
+* **the outlay/obligation ratio** — the curve's *sum* is the cell's
+  liquidation ratio (globally `r round(usaspend::outlay_model$global_ratio, 2)`),
+  so imputed totals land at realistic cash levels, not at the obligation
+  level.
+
+```{r curve}
+outlay_model$curves_dur[dur_bin == 4]
+```
+
+The scoring metric is the **misallocation share** — the fraction of an
+award's dollars placed in the wrong fiscal year (`us_misallocation()`;
+`IMPUTATION.md` §3 explains why this beats correlation for an allocation
+task). Cross-validated on the ground truth, the model scores 0.33
+(timing) and 0.35 (level + timing) against 0.41/0.43 for even spread and
+0.75/0.85 for booking cash in the commitment year.
+
+## Imputing
+
+`us_impute_outlays()` takes any canonical transaction table and returns
+imputed dollars per award × fiscal year. It never returns `NA` dollars:
+awards outside the model's *support envelope* — durations the training
+data cannot vouch for, missing period-of-performance dates — fall back to
+the basic rule *global ratio × (net obligations / performance periods)*,
+and `imputation_method` says which rule produced each row.
+
+```{r impute, message = FALSE}
+tx  <- us_normalize_transactions(us_sample_extract()$transactions)
+imp <- us_impute_outlays(tx)
+imp[, .(awards = uniqueN(award_key), dollars = round(sum(outlay_imputed))),
+    by = imputation_method]
+```
+
+`us_add_imputed_outlays()` appends the same numbers to a fiscal panel as
+`outlay_imputed`, adding rows (flagged `imputed_outlay_only_year`) for
+years the curve allocates cash to but the panel has no activity row for —
+including *future* years of ongoing awards, which is the point.
+
+```{r panel, message = FALSE}
+p <- us_panel(us_sample_extract(), period = "fiscal")
+p <- us_add_imputed_outlays(p)
+p$panel[, .(obligations = round(sum(obligation_net)),
+            imputed_cash = round(sum(outlay_imputed))), by = year][order(year)][1:8]
+```
+
+## Four cases, drawn
+
+Each panel below shows the same three series for one real award:
+**obligations** as booked (bars), the **model's imputed outlays** (solid
+line), and the naive **even spread** — average annual net obligation
+scaled by the global ratio (dashed). For the first three cases the award
+is in the ground truth, so the **actual File C outlays** (points) referee.
+
+```{r case-helper, include = FALSE, eval = has_ggplot}
+library(ggplot2)
+aw <- outlay_training$awards
+gr <- outlay_training$grid
+
+case_frame <- function(key) {
+  a   <- aw[award_key == key]
+  imp <- suppressMessages(us_impute_outlays(a))
+  g   <- gr[award_key == key]
+  yrs <- sort(unique(c(g$fy, imp$fy)))
+  f <- data.table(fy = yrs)
+  f <- merge(f, g[, .(fy, oblig_fy, actual)], by = "fy", all.x = TRUE)
+  f <- merge(f, imp[, .(fy, model = outlay_imputed)], by = "fy", all.x = TRUE)
+  for (cc in c("oblig_fy", "actual", "model")) f[is.na(get(cc)), (cc) := 0]
+  n_pop <- max(a$pop_end_fy, a$first_fy, na.rm = TRUE) - a$first_fy + 1L
+  f[, even := fifelse(fy < a$first_fy + n_pop,
+                      outlay_model$global_ratio * a$oblig / n_pop, 0)]
+  f[]
+}
+
+case_plot <- function(key, title, subtitle, show_actual = TRUE) {
+  f <- case_frame(key)
+  m <- melt(f, id.vars = "fy",
+            measure.vars = c("model", "even", if (show_actual) "actual"))
+  labs_map <- c(model = "model imputed", even = "even spread x ratio",
+                actual = "actual outlays")
+  m[, series := factor(labs_map[as.character(variable)], levels = labs_map)]
+  ggplot() +
+    geom_col(data = f, aes(fy, oblig_fy / 1e3), fill = "#1a5276",
+             alpha = 0.35, width = 0.6) +
+    geom_line(data = m[variable != "actual"],
+              aes(fy, value / 1e3, linetype = series), colour = "#1a5276",
+              linewidth = 0.8) +
+    { if (show_actual)
+        geom_point(data = m[variable == "actual"],
+                   aes(fy, value / 1e3, shape = series), colour = "#9a6a1f",
+                   size = 2.6, stroke = 1.1) } +
+    scale_linetype_manual(values = c("model imputed" = "solid",
+                                     "even spread x ratio" = "dashed"),
+                          name = NULL) +
+    scale_shape_manual(values = c("actual outlays" = 16), name = NULL) +
+    scale_x_continuous(breaks = f$fy) +
+    labs(title = title, subtitle = subtitle,
+         x = "federal fiscal year", y = "$ thousands",
+         caption = "bars: net obligations as booked") +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "bottom", panel.grid.minor = element_blank())
+}
+
+pick <- function(class, tier_want = "reconciled", dur = 4L) {
+  cand <- aw[mod_class == class & tier == tier_want & dur_bin == dur &
+             oblig > 2e5][order(-oblig)]
+  if (!nrow(cand)) cand <- aw[mod_class == class & !is.na(tier)][order(-oblig)]
+  cand$award_key[1]
+}
+```
+
+### 1. Baseline: a multi-year incremental award
+
+The planned rhythm — obligations arrive as annual continuations, cash
+shadows them a year behind. The model's curve reproduces both the lag and
+the sub-1.0 level; even spread gets the level roughly right but flattens
+the shape.
+
+```{r case-baseline, echo = FALSE, eval = has_ggplot}
+case_plot(pick("multi_year_incremental"),
+          "Baseline: multi-year incremental",
+          "obligations lead, cash follows ~1 year behind at ~0.94 on the dollar")
+```
+
+### 2. An extended award
+
+The period of performance was pushed out past the original end date. The
+obligations stop but the cash keeps flowing through the extension — the
+liquidation curve's tail covers exactly those trailing years, where the
+even spread (built on the *final* window) dilutes every year instead.
+
+```{r case-extension, echo = FALSE, eval = has_ggplot}
+## a visibly incremental extended award: 2+ years each holding >= 20% of money
+ext_pool <- gr[award_key %in% aw[mod_class == "extension_timeline" &
+                                 tier == "reconciled" & dur_bin >= 4]$award_key]
+ext_ok <- ext_pool[, .(spread = sum(oblig_fy > 0.2 * sum(oblig_fy))), by = award_key][spread >= 2]
+ext_key <- aw[award_key %in% ext_ok$award_key][order(-oblig)]$award_key[1]
+case_plot(ext_key,
+          "Extension: more time, same money",
+          "a no-cost extension is 'cash lags plan' -- the curve's home turf")
+```
+
+### 3. A reduced award
+
+De-obligations claw money back (the negative bar). Net obligations
+overstate what was ever going to be spent, and this is the hardest class
+for every method — the honest read is the imputation plus a wider error
+bar, which is why `us_outlay_features()` flags `mod_class == "reduced"`.
+
+```{r case-reduced, echo = FALSE, eval = has_ggplot}
+case_plot(pick("reduced"),
+          "Reduction: a claw-back mid-life",
+          "imputation allocates dollars the cash never fully delivered")
+```
+
+### 4. Right-censored: an award still in progress
+
+For an ongoing award there is nothing to referee against — that is the
+point of imputation. The curve projects the remaining cash into future
+fiscal years (shaded); the panel gains those rows flagged
+`imputed_outlay_only_year`.
+
+```{r case-censored, echo = FALSE, eval = has_ggplot, message = FALSE}
+vf <- us_outlay_features(us_normalize_transactions(vumc_transactions))
+k  <- vf[first_fy >= 2023 & pop_end_fy >= 2027 & oblig > 1e6 &
+         dur_bin %in% outlay_model$support[n_awards >= 8]$dur_bin][order(-oblig)]$award_key[1]
+a   <- vf[award_key == k]
+imp <- us_impute_outlays(a)
+x   <- as.data.table(vumc_transactions)[award_key == k]
+x[, fy := action_fiscal_year]
+ob  <- x[, .(oblig_fy = sum(federal_action_obligation, na.rm = TRUE)), by = fy]
+f <- merge(data.table(fy = sort(unique(c(imp$fy, ob$fy)))), ob, by = "fy", all.x = TRUE)
+f <- merge(f, imp[, .(fy, model = outlay_imputed)], by = "fy", all.x = TRUE)
+for (cc in c("oblig_fy", "model")) f[is.na(get(cc)), (cc) := 0]
+now_fy <- 2026L
+ggplot(f) +
+  annotate("rect", xmin = now_fy + 0.5, xmax = max(f$fy) + 0.5,
+           ymin = -Inf, ymax = Inf, alpha = 0.08, fill = "#9a6a1f") +
+  geom_col(aes(fy, oblig_fy / 1e3), fill = "#1a5276", alpha = 0.35, width = 0.6) +
+  geom_line(aes(fy, model / 1e3), colour = "#1a5276", linewidth = 0.8) +
+  annotate("text", x = max(f$fy), y = max(f$model) * 0.92 / 1e3, hjust = 1,
+           label = "projected", colour = "#9a6a1f", size = 3.4) +
+  scale_x_continuous(breaks = f$fy) +
+  labs(title = "In progress: the curve projects the remaining cash",
+       subtitle = paste0("shaded region: fiscal years after FY", now_fy,
+                         " -- imputed, not observed"),
+       x = "federal fiscal year", y = "$ thousands",
+       caption = "bars: net obligations as booked; line: model-imputed outlays") +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.minor = element_blank())
+```
+
+## What to remember
+
+* Imputed outlays are a **modelled cash calendar**, good to roughly a
+  quarter of dollars misallocated on trustworthy ground truth. Where real
+  File C outlays exist (`us_add_outlays()`, coverage graded), prefer them;
+  imputation is for everywhere they don't.
+* `imputation_method` and `imputation_flags` travel with every number —
+  report them. A `reduced` award deserves a wider error bar; an
+  `even_spread` row means the model declined to guess beyond its support.
+* Fitting your own model on your own ground truth is a few lines:
+  `vignette("imputation-fitting")`.

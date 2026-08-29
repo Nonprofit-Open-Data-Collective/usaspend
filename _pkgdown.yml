@@ -64,6 +64,33 @@ reference:
   - us_fetch_award
   - us_subaward_by_year
 
+- title: "Annual outlays (File C)"
+  desc: >
+    The optional cash layer. Annual disbursements exist only in account-level
+    File C data, complete only from the FY2022 monthly mandate and absent for
+    whole agencies -- fetched per award, graded for coverage, and attached to
+    a fiscal panel without ever substituting for obligations.
+  contents:
+  - us_fetch_outlays
+  - us_outlays_by_year
+  - us_add_outlays
+
+- title: Outlay imputation
+  desc: >
+    Where real File C outlays don't reach, impute the cash calendar from
+    obligations: liquidation curves fitted on reconciled ground truth, with
+    an explicit even-spread fallback outside the model's support.
+  contents:
+  - us_impute_outlays
+  - us_add_imputed_outlays
+  - us_impute_fit
+  - us_impute_eval
+  - us_outlay_training
+  - us_outlay_features
+  - us_misallocation
+  - outlay_model
+  - outlay_training
+
 - title: Normalization and accounting
   desc: >
     The rules that turn a raw modification ledger into clean signed
@@ -128,3 +155,8 @@ articles:
   - accounting
   - panel
   - reconciliation
+- title: Outlays
+  navbar: Outlays
+  contents:
+  - imputation
+  - imputation-fitting

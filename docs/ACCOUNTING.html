@@ -32,6 +32,10 @@
     <li><a class="dropdown-item" href="articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
@@ -49,11 +53,10 @@
     </div>
 
 <div id="usaspend--accounting-rules" class="section level1">
-
 <p>How raw USAspending transactions become <code>ORG × AWARD × YEAR</code> net revenue.</p>
 <p>Every rule below is numbered by the section the corresponding placeholder function points at. Rules marked <strong>[measured]</strong> are grounded in the bundled sample extract (<code><a href="reference/us_sample_extract.html">us_sample_extract()</a></code>, a real three-UEI pull from 2026-08-27); rules marked <strong>[open]</strong> are decisions the pilot has to settle.</p>
 <hr><div class="section level2">
-<h2 id="id_1-the-problem">1. The problem<a class="anchor" aria-label="anchor" href="#id_1-the-problem"></a></h2>
+<h2 id="1-the-problem">1. The problem<a class="anchor" aria-label="anchor" href="#1-the-problem"></a></h2>
 <p>A federal award is not a payment. It is a running ledger of promises, and the ledger is written in modifications:</p>
 <pre><code>ASST_NON_HDTRA12310001_097                                    [measured]
 
@@ -76,10 +79,10 @@
 <p>A claw-back of $310,999 recorded in 2024 against an award whose lifetime total is $1,388,205. Which year loses the money? §5.4.</p>
 <hr></div>
 <div class="section level2">
-<h2 id="id_2-what-counts-as-money">2. What counts as money<a class="anchor" aria-label="anchor" href="#id_2-what-counts-as-money"></a></h2>
+<h2 id="2-what-counts-as-money">2. What counts as money<a class="anchor" aria-label="anchor" href="#2-what-counts-as-money"></a></h2>
 <p>USAspending carries a dozen dollar columns. Three groups, and only one of them is revenue.</p>
 <div class="section level3">
-<h3 id="id_21-revenue--sum-these">2.1 Revenue — sum these<a class="anchor" aria-label="anchor" href="#id_21-revenue--sum-these"></a></h3>
+<h3 id="21-revenue--sum-these">2.1 Revenue — sum these<a class="anchor" aria-label="anchor" href="#21-revenue--sum-these"></a></h3>
 <table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr class="header"><th>column</th>
 <th>note</th>
 </tr></thead><tbody><tr class="odd"><td><code>federal_action_obligation</code></td>
@@ -90,12 +93,12 @@
 </td>
 </tr></tbody></table></div>
 <div class="section level3">
-<h3 id="id_22-ceilings--never-sum-these">2.2 Ceilings — never sum these<a class="anchor" aria-label="anchor" href="#id_22-ceilings--never-sum-these"></a></h3>
+<h3 id="22-ceilings--never-sum-these">2.2 Ceilings — never sum these<a class="anchor" aria-label="anchor" href="#22-ceilings--never-sum-these"></a></h3>
 <p><code>potential_total_value_of_award</code>, <code>base_and_all_options_value</code>, <code>base_and_exercised_options_value</code>, <code>current_total_value_of_award</code>, <code>total_funding_amount</code> (which includes the non-federal share).</p>
 <p>These describe capacity, not money. <strong>[measured]</strong> The sample contains <code>CONT_IDV_HHSD200200720032I_7523</code>: a $40,000,000 potential value against $0 obligated across seven modifications. A ceiling-based panel would credit that organization with $40M it never received.</p>
 </div>
 <div class="section level3">
-<h3 id="id_23-not-revenue-at-all--separate-columns">2.3 Not revenue at all — separate columns<a class="anchor" aria-label="anchor" href="#id_23-not-revenue-at-all--separate-columns"></a></h3>
+<h3 id="23-not-revenue-at-all--separate-columns">2.3 Not revenue at all — separate columns<a class="anchor" aria-label="anchor" href="#23-not-revenue-at-all--separate-columns"></a></h3>
 <table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr class="header"><th>column</th>
 <th>why</th>
 </tr></thead><tbody><tr class="odd"><td><code>face_value_of_loan</code></td>
@@ -108,13 +111,18 @@
 <td>award-lifetime, not annual — see below</td>
 </tr></tbody></table></div>
 <div class="section level3">
-<h3 id="id_24-outlays-are-not-available-annually">2.4 Outlays are not available annually<a class="anchor" aria-label="anchor" href="#id_24-outlays-are-not-available-annually"></a></h3>
-<p>The award data has no annual disbursement figure. <code>total_outlayed_amount_for_overall_award</code> is lifetime-to-date and blank on most rows <strong>[measured]</strong> — in the sample it is populated on one award of eighteen. Annual outlays live in the account-level File B/C extracts, which the award endpoints do not expose at all.</p>
-<p><code>us_money_column("outlay")</code> therefore <strong>errors</strong> rather than returning a plausible substitute. The panel measures obligations, says so, and reports the obligation-to-outlay gap per award in <code><a href="reference/us_reconcile.html">us_reconcile()</a></code> so the reader can see how far that is from cash.</p>
+<h3 id="24-outlays-are-not-available-annually-in-award-data">2.4 Outlays are not available annually (in award data)<a class="anchor" aria-label="anchor" href="#24-outlays-are-not-available-annually-in-award-data"></a></h3>
+<p>The award data has no annual disbursement figure. <code>total_outlayed_amount_for_overall_award</code> is lifetime-to-date and blank on most rows <strong>[measured]</strong> — in the sample it is populated on one award of eighteen. Annual outlays exist only in the account-level File C data, reachable per award via <code>POST /awards/funding/</code> but absent from every transaction download this package builds on.</p>
+<p>Coverage follows the reporting mandates, and it is not just an era problem <strong>[measured on VUMC, 2026-08-28, <code>data-raw/outlay-timing-analysis.R</code>]</strong>:</p>
+<ul><li>File C outlay reporting was quarterly and optional from FY2017, required for COVID-supplemental awards from April 2020, and monthly and mandatory for all agencies only from FY2022. Lifetime outlay totals <strong>undercount</strong> any award straddling those dates — the pre-mandate outlays were never reported, not merely not yet paid.</li>
+<li>Coverage varies by agency and family as much as by era. Share of VUMC awards with a nonzero lifetime outlay, by first action: assistance 33% / 78% / 91% across pre-FY2017 / FY2017–21 / FY2022+, contracts 0% / 15% / 14%. The contract gap is an agency gap: post-FY2022, HHS 98% versus VA contracts 0% and DoD 2%.</li>
+<li>Where both series exist (FY2022+ VUMC awards whose File C obligations reconcile with their award transactions), within-year obligations and within-year outlays diverge widely: obligations put a median 90% of an award’s dollars in its first fiscal year, outlays 2%; cash lags commitment by roughly one year; about two-thirds of dollars land in a different year under the two measures. Same-year portfolio correlation was 0.37 against 0.74 for outlays-on-prior-year-obligations.</li>
+</ul><p><code>us_money_column("outlay")</code> therefore <strong>errors</strong> rather than returning a plausible substitute. The panel measures obligations, says so, and reports the obligation-to-outlay gap per award in <code><a href="reference/us_reconcile.html">us_reconcile()</a></code> so the reader can see how far that is from cash.</p>
+<p>Annual outlays are available as an <strong>optional, explicitly scoped layer</strong>: <code><a href="reference/us_fetch_outlays.html">us_fetch_outlays()</a></code> walks the per-award File C endpoint, <code><a href="reference/us_outlays_by_year.html">us_outlays_by_year()</a></code> applies the cumulative-within-fiscal-year rule (<code>gross_outlay_amount</code> is reported as of period end and resets at the FY boundary — the annual figure is the last value per account cell, never the period sum), and <code><a href="reference/us_add_outlays.html">us_add_outlays()</a></code> joins the result onto a fiscal panel as <code>outlay_amount</code> plus a per-award <code>outlay_coverage</code> grade (<code>complete</code> / <code>truncated_pre_FY2022</code> / <code>unlinked</code> / <code>no_outlay_rows</code> / <code>no_file_c</code> / <code>fetch_failed</code>). A missing measurement is <code>NA</code>, never a fake zero; <code>obligation_net</code> and <code>net_revenue</code> are never touched.</p>
 </div>
 <div class="section level3">
-<h3 id="id_25-what-the-ledger-actually-contains--measured">2.5 What the ledger actually contains — <strong>[measured]</strong>
-<a class="anchor" aria-label="anchor" href="#id_25-what-the-ledger-actually-contains--measured"></a></h3>
+<h3 id="25-what-the-ledger-actually-contains--measured">2.5 What the ledger actually contains — <strong>[measured]</strong>
+<a class="anchor" aria-label="anchor" href="#25-what-the-ledger-actually-contains--measured"></a></h3>
 <p>The pilot’s 302,025 prime transactions, by award type. The right-hand column is the rule; the dollar column is why the rule matters.</p>
 <table class="table"><colgroup><col width="20%"><col width="20%"><col width="20%"><col width="20%"><col width="20%"></colgroup><thead><tr class="header"><th>type</th>
 <th>rows</th>
@@ -168,8 +176,8 @@
 <hr></div>
 </div>
 <div class="section level2">
-<h2 id="id_3-cleaning-the-transaction-ledger--us_normalize_transactions">3. Cleaning the transaction ledger — <code>us_normalize_transactions()</code>
-<a class="anchor" aria-label="anchor" href="#id_3-cleaning-the-transaction-ledger--us_normalize_transactions"></a></h2>
+<h2 id="3-cleaning-the-transaction-ledger--us_normalize_transactions">3. Cleaning the transaction ledger — <code>us_normalize_transactions()</code>
+<a class="anchor" aria-label="anchor" href="#3-cleaning-the-transaction-ledger--us_normalize_transactions"></a></h2>
 <ol style="list-style-type: decimal"><li><p><strong>De-duplicate on <code>transaction_key</code>.</strong> <code>assistance_transaction_unique_key</code> / <code>contract_transaction_unique_key</code> is genuinely unique per action. Duplicates arrive because download batches overlap and because an organization’s several UEIs can appear in more than one job. Keep the row with the latest <code>last_modified_date</code>. <strong>[measured]</strong> In the pilot, 19,445 of 241,118 assistance rows (8.1%) and 1,383 of 60,907 contract rows (2.3%) were duplicates — every one of them an exact copy (same amount, same <code>last_modified_date</code>), all doubletons. De-duplicating recovered 5,754 awards that had previously failed the lifetime reconciliation identity.</p></li>
 <li><p><strong>Apply corrections and deletes.</strong> Assistance rows carry <code>correction_delete_indicator_code</code>: <code>D</code> withdraws the record — drop it. <code>C</code> marks the row as <em>being</em> a correction: it is the current version and is <strong>kept</strong>. <strong>[measured]</strong> 37.6% of pilot assistance rows carry <code>C</code>; a pipeline that read <code>C</code> as “superseded” and dropped it would discard a third of the ledger. The pilot also surfaced two undocumented values: <code>L</code> (1,719 rows, all Department of Energy, 2008–2017) and <code>_</code> (4 rows, NRC, 2008). Both are kept and flagged <code>is_legacy_cdi</code>. Contracts have no such column; FPDS corrections arrive as new modifications instead, so contract rows are never deleted here.</p></li>
 <li><p><strong>Drop aggregate records.</strong> Assistance <code>record_type_code</code> 1 is a county-level aggregate with no identified recipient. Only 2 and 3 name an entity. Keeping type 1 double-counts money already present at entity level.</p></li>
@@ -179,31 +187,31 @@
 <li><p><strong>Interpret action codes per family.</strong> The codes collide: <code>B</code> is CONTINUATION for assistance and SUPPLEMENTAL AGREEMENT for contracts; <code>C</code> is REVISION versus FUNDING ONLY ACTION; <code>D</code> is ADJUSTMENT TO COMPLETED AWARD versus CHANGE ORDER. Any classifier that ignores <code>award_group</code> is wrong.</p></li>
 </ol><hr></div>
 <div class="section level2">
-<h2 id="id_4-the-award-spine--us_normalize_awards">4. The award spine — <code>us_normalize_awards()</code>
-<a class="anchor" aria-label="anchor" href="#id_4-the-award-spine--us_normalize_awards"></a></h2>
+<h2 id="4-the-award-spine--us_normalize_awards">4. The award spine — <code>us_normalize_awards()</code>
+<a class="anchor" aria-label="anchor" href="#4-the-award-spine--us_normalize_awards"></a></h2>
 <ol style="list-style-type: decimal"><li><p><strong>Award-level fields are sparse across transactions.</strong> <strong>[measured]</strong> <code>total_dollars_obligated</code> and <code>current_total_value_of_award</code> are blank on most contract modification rows and populated on others. Take the value from the latest <code>action_date</code> that has one — never from an arbitrary row.</p></li>
 <li><p><strong>Award attributes change over a life — including the recipient.</strong> Sub-agency, recipient name, even the PIID can be modified. Record the value as of the latest action. <strong>[measured]</strong> This is not an edge case: NIH awards follow the principal investigator between institutions, so one <code>award_key</code> can carry transactions for several recipients over its life. In a pilot audit of 28 breaking awards, 11 turned out to have a <em>current</em> recipient that was never in the pilot at all (Minnesota, Duke, Northwestern, UC campuses…) — the pilot org held only an early slice of the award’s history. This is why the panel grain is org × award × year rather than award × year, why <code>n_recipients</code> is carried on the spine, and why a UEI-filtered extract legitimately fails the lifetime identity on such awards.</p></li>
 <li><p><strong>Blank award type on IDV rows.</strong> <strong>[measured]</strong> Contract IDVs carry an empty <code>award_type_code</code>; the type is in <code>idv_type_code</code>, written as a bare letter (<code>"B"</code>, <code>"E"</code>). Bare <code>"B"</code> collides with Purchase Order, so it must be prefixed <code>IDV_</code> before lookup. This bug was live in the first draft and the fixture caught it.</p></li>
 <li><p><strong>IDV rollup is a modelling choice.</strong> <strong>[open]</strong> Delivery orders under an indefinite-delivery vehicle are separate awards with their own keys and their own obligations. Rolling them into the parent changes the award count and the agency attribution but not the dollar total. The argument exists and defaults to off; the pilot should report what it changes.</p></li>
 </ol><hr></div>
 <div class="section level2">
-<h2 id="id_5-netting--us_ledger-and-us_net_by_year">5. Netting — <code>us_ledger()</code> and <code>us_net_by_year()</code>
-<a class="anchor" aria-label="anchor" href="#id_5-netting--us_ledger-and-us_net_by_year"></a></h2>
+<h2 id="5-netting--us_ledger-and-us_net_by_year">5. Netting — <code>us_ledger()</code> and <code>us_net_by_year()</code>
+<a class="anchor" aria-label="anchor" href="#5-netting--us_ledger-and-us_net_by_year"></a></h2>
 <div class="section level3">
-<h3 id="id_51-the-sign-is-the-truth">5.1 The sign is the truth<a class="anchor" aria-label="anchor" href="#id_51-the-sign-is-the-truth"></a></h3>
+<h3 id="51-the-sign-is-the-truth">5.1 The sign is the truth<a class="anchor" aria-label="anchor" href="#51-the-sign-is-the-truth"></a></h3>
 <p>A negative <code>federal_action_obligation</code> is a de-obligation regardless of what the action type says. <strong>[measured]</strong> In the sample a <code>REVISION</code> carries −$310,999 and a <code>CONTINUATION</code> carries $0. Classify on the amount; use <code>action_class</code> as context only.</p>
 </div>
 <div class="section level3">
-<h3 id="id_52-keep-negatives">5.2 Keep negatives<a class="anchor" aria-label="anchor" href="#id_52-keep-negatives"></a></h3>
+<h3 id="52-keep-negatives">5.2 Keep negatives<a class="anchor" aria-label="anchor" href="#52-keep-negatives"></a></h3>
 <p>Dropping de-obligations inflates every affected year. They are ordinary federal award activity. <code>deobligation_policy = "drop"</code> exists only so the size of that overstatement can be measured, and warns when used.</p>
 </div>
 <div class="section level3">
-<h3 id="id_53-split-gross-from-net">5.3 Split gross from net<a class="anchor" aria-label="anchor" href="#id_53-split-gross-from-net"></a></h3>
+<h3 id="53-split-gross-from-net">5.3 Split gross from net<a class="anchor" aria-label="anchor" href="#53-split-gross-from-net"></a></h3>
 <p>Every award-year carries <code>obligation_positive</code>, <code>obligation_negative</code> and <code>obligation_net</code>. A cell netting to $1M from +$5M and −$4M is a different fact from one netting to $1M from a single clean award. The panel must be able to tell them apart, so it never carries the net alone.</p>
 </div>
 <div class="section level3">
-<h3 id="id_54-the-de-obligation-policy--measured">5.4 The de-obligation policy — <strong>[measured]</strong>
-<a class="anchor" aria-label="anchor" href="#id_54-the-de-obligation-policy--measured"></a></h3>
+<h3 id="54-the-de-obligation-policy--measured">5.4 The de-obligation policy — <strong>[measured]</strong>
+<a class="anchor" aria-label="anchor" href="#54-the-de-obligation-policy--measured"></a></h3>
 <p>A claw-back recorded in 2024 against money obligated in 2021 can be booked two ways. Neither is wrong. The package implements both and refuses to choose silently.</p>
 <table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>policy</th>
 <th>books the reversal in</th>
@@ -225,26 +233,26 @@
 </tr></tbody></table><p><strong>Pilot result:</strong> on $118.5bn of net obligations across 2007–2025, <code>restate</code> moves most years by less than ±$50m (under 1%). The exceptions are exactly where the policy is supposed to matter: 2024 loses $460m and 2025 gains $646m, because recent claw-backs posted in those years get pushed back onto the years that carried the money. The total is conserved to rounding. Conclusion: <strong><code>as_posted</code> is a safe default for historical years; the policies genuinely diverge only near the data’s leading edge</strong>, which is also where the numbers are still moving anyway. 10% of pilot org-award-years net negative under <code>as_posted</code> — real, and kept.</p>
 </div>
 <div class="section level3">
-<h3 id="id_55-year-basis">5.5 Year basis<a class="anchor" aria-label="anchor" href="#id_55-year-basis"></a></h3>
+<h3 id="55-year-basis">5.5 Year basis<a class="anchor" aria-label="anchor" href="#55-year-basis"></a></h3>
 <p><code>period = "calendar"</code> (the default for this project) books on the calendar year of <code>action_date</code>; <code>"fiscal"</code> uses the federal fiscal year, which starts 1 October. Both are <strong>recomputed from <code>action_date</code></strong> rather than read from <code>action_date_fiscal_year</code>, so the two bases are guaranteed consistent with each other and with the dates.</p>
 </div>
 <div class="section level3">
-<h3 id="id_56-loans-and-direct-payments-stay-out-of-revenue">5.6 Loans and direct payments stay out of revenue<a class="anchor" aria-label="anchor" href="#id_56-loans-and-direct-payments-stay-out-of-revenue"></a></h3>
+<h3 id="56-loans-and-direct-payments-stay-out-of-revenue">5.6 Loans and direct payments stay out of revenue<a class="anchor" aria-label="anchor" href="#56-loans-and-direct-payments-stay-out-of-revenue"></a></h3>
 <p><strong>[measured]</strong> In the pilot the loan question resolves cleanly: all 6,496 type-07 rows are <strong>Federal Direct Student Loans (CFDA 84.268)</strong> with <code>federal_action_obligation = $0</code> on every row and $626bn in <code>face_value_of_loan</code>. The universities are conduits — the loans are to students, not to the institution. The obligation column already handles this correctly by being zero; face value and subsidy cost travel in their own columns and must never reach a revenue total.</p>
 <p>Direct payments (06, 10) in the pilot are almost entirely student aid flowing <em>through</em> the institution: Pell grants ($1.2bn, CFDA 84.063), Federal Work-Study, SEOG. These are institutional pass-through of a different kind — booked as obligations to the school but economically belonging to students. They stay in the ledger with their <code>award_family = "direct_payment"</code> so the panel can include or exclude them explicitly; for a nonprofit-revenue analysis excluding them is usually right.</p>
 <p>Type 11 (“other reimbursable, contingent, intangible or indirect”) is small ($277m) and in the pilot is mostly DOE/DOD/USDA cooperative R&amp;D — economically similar to grants. Keep, separable by family.</p>
 <hr></div>
 </div>
 <div class="section level2">
-<h2 id="id_6-subawards--us_normalize_subawards-and-us_subaward_by_year">6. Subawards — <code>us_normalize_subawards()</code> and <code>us_subaward_by_year()</code>
-<a class="anchor" aria-label="anchor" href="#id_6-subawards--us_normalize_subawards-and-us_subaward_by_year"></a></h2>
+<h2 id="6-subawards--us_normalize_subawards-and-us_subaward_by_year">6. Subawards — <code>us_normalize_subawards()</code> and <code>us_subaward_by_year()</code>
+<a class="anchor" aria-label="anchor" href="#6-subawards--us_normalize_subawards-and-us_subaward_by_year"></a></h2>
 <div class="section level3">
-<h3 id="id_60-what-a-subaward-row-is">6.0 What a subaward row is<a class="anchor" aria-label="anchor" href="#id_60-what-a-subaward-row-is"></a></h3>
+<h3 id="60-what-a-subaward-row-is">6.0 What a subaward row is<a class="anchor" aria-label="anchor" href="#60-what-a-subaward-row-is"></a></h3>
 <p>An FSRS (FFATA Subaward Reporting System) record: the prime recipient reporting an organization to which it passed part of a federal award, once that subaward crosses the <strong>$30,000</strong> threshold. Both parties are named with UEIs on every row, which is what makes §6.1 recoverable at all.</p>
 <p>It is <strong>not</strong> the federal → state → local chain. When CMS pays a state Medicaid agency and the state pays a hospital, USAspending sees only the federal → state prime award; the state’s onward payment is not an FSRS record, and Medicaid provider payments never appear at all. The pass-through does surface where the conduit is itself a federal prime grantee that reports — <strong>[measured]</strong> the largest primes paying the pilot’s 50 orgs are state agencies passing FEMA/ED/CMS money down (CA Governor’s Office of Emergency Services, FL Dept of Education, MD Health Benefit Exchange). That is a meaningful but <strong>incomplete</strong> slice of intergovernmental transfer, and no analysis may treat observed subawards as the population of pass-through.</p>
 </div>
 <div class="section level3">
-<h3 id="id_61-direction-is-not-optional">6.1 Direction is not optional<a class="anchor" aria-label="anchor" href="#id_61-direction-is-not-optional"></a></h3>
+<h3 id="61-direction-is-not-optional">6.1 Direction is not optional<a class="anchor" aria-label="anchor" href="#61-direction-is-not-optional"></a></h3>
 <p><strong>[measured]</strong> A bulk download filtered on <code>recipient_search_text</code> returns subawards where the queried UEI is the <strong>subawardee</strong>. A three-UEI pull on 2026-08-27 returned 32 subaward rows: 32 inbound, 0 outbound. Confirmed at scale on the pilot’s 39,243 rows: 36,746 inbound, 2,497 internal (both parties pilot orgs — NYU → NYU School of Medicine and similar), <strong>0 outbound</strong>. The match is on the subawardee, so this is mechanical, not a property of the sample.</p>
 <ul><li>
 <code>direction == "out"</code> — the organization is the prime. This is pass-through: money it is obliged to pay onward, and it must be <strong>subtracted</strong> from revenue. Obtainable only by querying per prime award (<code><a href="reference/us_fetch_subawards_out.html">us_fetch_subawards_out()</a></code>, <code><a href="reference/us_fetch_subawards_batch.html">us_fetch_subawards_batch()</a></code>) — a separate API pass, <strong>not yet run for the pilot</strong>.</li>
@@ -254,40 +262,40 @@
 <p>Direction cannot be inferred from a subaward row alone; it needs the organization’s UEI set. <code><a href="reference/us_subaward_by_year.html">us_subaward_by_year()</a></code> errors rather than guessing.</p>
 </div>
 <div class="section level3">
-<h3 id="id_62-de-duplicate-restatements">6.2 De-duplicate restatements<a class="anchor" aria-label="anchor" href="#id_62-de-duplicate-restatements"></a></h3>
+<h3 id="62-de-duplicate-restatements">6.2 De-duplicate restatements<a class="anchor" aria-label="anchor" href="#62-de-duplicate-restatements"></a></h3>
 <p>FSRS reports are restated month to month, so the same subaward reappears under different <code>report_year</code> / <code>report_month</code>. Keep the latest <code>report_last_modified</code> per <code>subaward_key</code>.</p>
 </div>
 <div class="section level3">
-<h3 id="id_63-year-basis-and-the-reporting-lag">6.3 Year basis, and the reporting lag<a class="anchor" aria-label="anchor" href="#id_63-year-basis-and-the-reporting-lag"></a></h3>
+<h3 id="63-year-basis-and-the-reporting-lag">6.3 Year basis, and the reporting lag<a class="anchor" aria-label="anchor" href="#63-year-basis-and-the-reporting-lag"></a></h3>
 <p>Book on <code>subaward_action_date</code> by default — when the money was committed. <strong>[measured]</strong> Report dates lag, sometimes across a fiscal year: the sample has an action dated 2024-08-21 first reported in FY2025 month 3. The report date is available as an alternative basis so the sensitivity can be measured.</p>
 </div>
 <div class="section level3">
-<h3 id="id_64-coverage-must-travel-with-the-number">6.4 Coverage must travel with the number<a class="anchor" aria-label="anchor" href="#id_64-coverage-must-travel-with-the-number"></a></h3>
+<h3 id="64-coverage-must-travel-with-the-number">6.4 Coverage must travel with the number<a class="anchor" aria-label="anchor" href="#64-coverage-must-travel-with-the-number"></a></h3>
 <p>FSRS reporting is mandatory only above thresholds and is known to be incomplete. Every subaward figure carries <code>n_subawards_out</code> and a coverage flag, so that “no pass-through” and “not reported” stay distinguishable. A zero that is really a missing report, silently netted, understates pass-through and overstates net revenue.</p>
 </div>
 <div class="section level3">
-<h3 id="id_65-pass-through-can-be-large">6.5 Pass-through can be large<a class="anchor" aria-label="anchor" href="#id_65-pass-through-can-be-large"></a></h3>
+<h3 id="65-pass-through-can-be-large">6.5 Pass-through can be large<a class="anchor" aria-label="anchor" href="#65-pass-through-can-be-large"></a></h3>
 <p><strong>[measured]</strong> <code>ASST_NON_4482DRCAP00000001_070</code> (FEMA California public assistance): $14.74 bn obligated, 2,330 subawards totalling $9.97 bn — 68 % passed through. For pass-through entities the prime obligation is close to meaningless as a revenue measure.</p>
 <p>Full pilot outbound fetch (2026-08-27, <code><a href="reference/us_fetch_subawards_batch.html">us_fetch_subawards_batch()</a></code>): 50,218 outbound subawards worth <strong>$12.6bn against $118.5bn of net obligations</strong> — 10.7% of the pilot’s federal money is committed onward. Concentration is extreme: 25 of 45 organizations report any outbound at all, and the top four carry over half the dollars. One research institute passes through <strong>45% of everything it receives</strong>; org-years exist where pass-through <em>exceeds</em> the year’s new obligations (a $540m outbound year against $326m of new money), which is why <code>net_revenue</code> legitimately goes negative on 7,409 pilot org-award-years and why the panel always carries the components, never the net alone.</p>
 <p><strong>Attachment requires <code>fill_gaps = TRUE</code>.</strong> FSRS subawards trail the obligations they draw on, so 13% of outbound dollars in the pilot were dated in org-award-years with no prime activity at all. <code>us_panel(fill_gaps = TRUE)</code> gives them zero-obligation rows (4,380 in the pilot) so that <code>sum(subaward_out_amount)</code> equals the dollars fetched exactly; without it the panel’s pass-through is a floor, not a total. Conservation is exact because a multi-recipient award-year attaches its pass-through once — to the org-row with the dominant activity — never to both.</p>
 </div>
 <div class="section level3">
-<h3 id="id_66-the-endpoint-that-serves-the-outbound-fetch--measured">6.6 The endpoint that serves the outbound fetch — <strong>[measured]</strong>
-<a class="anchor" aria-label="anchor" href="#id_66-the-endpoint-that-serves-the-outbound-fetch--measured"></a></h3>
+<h3 id="66-the-endpoint-that-serves-the-outbound-fetch--measured">6.6 The endpoint that serves the outbound fetch — <strong>[measured]</strong>
+<a class="anchor" aria-label="anchor" href="#66-the-endpoint-that-serves-the-outbound-fetch--measured"></a></h3>
 <p><code>POST /api/v2/search/spending_by_award/</code> with <code>subawards = true</code> and batched <code>award_ids</code>. Traps, all live in the pilot run:<br>
 - <strong>Mixed award-type families 422.</strong> The <em>result</em> endpoint rejects an <code>award_type_codes</code> list spanning assistance and contracts — while the <em>count</em> endpoint accepts it, so an unhandled mix fails silently as “no subawards”. One pass per family. - <strong><code>award_ids</code> matches bare FAINs/PIIDs, which agencies reuse.</strong> The pilot fetch returned 267,351 rows of which only 55,631 belonged to our awards once filtered on <code>prime_award_generated_internal_id</code>. Four out of five raw rows were strays. Filter on the generated key, always. - <strong>Batch caps:</strong> 500 ids per request works, 1,000 returns 503. The 10k result cap is guarded by counting first and splitting recursively. - Rows on multi-recipient awards whose <em>current</em> holder is outside the org set classify as <code>unrelated</code> ($127m in the pilot) — conservatively excluded from pass-through, since the subaward cannot be dated to our tenure of the award.</p>
 <hr></div>
 </div>
 <div class="section level2">
-<h2 id="id_7-assembly--us_panel">7. Assembly — <code>us_panel()</code>
-<a class="anchor" aria-label="anchor" href="#id_7-assembly--us_panel"></a></h2>
+<h2 id="7-assembly--us_panel">7. Assembly — <code>us_panel()</code>
+<a class="anchor" aria-label="anchor" href="#7-assembly--us_panel"></a></h2>
 <pre><code>net_revenue = obligation_net − subaward_out_amount</code></pre>
 <p><code>net_revenue</code> can go negative for legitimate reasons: subawards are booked on their own action dates, and a large pass-through can land in a year with little new prime money. The panel therefore always carries both components and never the net alone.</p>
 <p>Organizations, not UEIs, are the unit. Large nonprofits hold several SAM registrations and USAspending splits their awards across them — NYU has three UEIs holding 2,687 / 4,721 / 9 awards. Supply a crosswalk to <code><a href="reference/us_org_map.html">us_org_map()</a></code> and every table is keyed on <code>org_id</code>; without one, each UEI is its own organization.</p>
 <hr></div>
 <div class="section level2">
-<h2 id="id_8-reconciliation--us_reconcile-and-us_audit">8. Reconciliation — <code>us_reconcile()</code> and <code>us_audit()</code>
-<a class="anchor" aria-label="anchor" href="#id_8-reconciliation--us_reconcile-and-us_audit"></a></h2>
+<h2 id="8-reconciliation--us_reconcile-and-us_audit">8. Reconciliation — <code>us_reconcile()</code> and <code>us_audit()</code>
+<a class="anchor" aria-label="anchor" href="#8-reconciliation--us_reconcile-and-us_audit"></a></h2>
 <p>These matter more than they look. Every rule above is a choice, and a choice that cannot be checked against an independent figure is an assumption. USAspending publishes award-lifetime totals computed by a different system from the transactions, which makes them a genuine external check.</p>
 <ol style="list-style-type: decimal"><li>
 <p><strong>The lifetime identity.</strong> For an award whose actions all fall inside the window, summed <code>federal_action_obligation</code> must equal <code>total_obligated_amount</code>. <strong>[measured]</strong> On the full pilot after normalization: <strong>44,680 of 61,738 awards (72%) reconcile to the dollar.</strong> The classified remainder: 4,955 report no lifetime total to check against; 4,133 are recent/open awards (corrections keep arriving after the pull — an API audit of sampled breaks confirmed post-window transactions on the full award record); 1,564 start at the window edge (pre-2008 history is below the search floor); 129 are multi-recipient awards whose other slice belongs to another organization. That leaves ~10% genuinely unexplained, which the API audit suggests is mostly the same two mechanisms operating mid-window (PI transfers between institutions dominate). Every extract should publish this table; a falling “ok” share is the earliest sign of a broken rule.</p>
@@ -311,7 +319,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer></div>

@@ -49,6 +49,10 @@
     <li><a class="dropdown-item" href="articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul>
 </li>
       </ul>
@@ -68,9 +72,7 @@
 <div class="page-header"><h1 id="usaspend">usaspend<a class="anchor" aria-label="anchor" href="#usaspend"></a>
 </h1></div>
 <p>An R package that takes a list of SAM.gov UEIs and returns a clean, normalized panel of federal award activity from USAspending.gov, at <strong>organization × award × year</strong> grain.</p>
-<blockquote>
-<p><strong>Status: acquisition layer works; the accounting layer is specified but not yet implemented.</strong> The normalization and netting functions are documented placeholders that fail loudly with a pointer to their specification. They are being written against a 50-nonprofit pilot extract. See <a href="PLAN.html">PLAN.md</a> §7 for the roadmap.</p>
-</blockquote>
+<blockquote><p><strong>Status: acquisition layer works; the accounting layer is specified but not yet implemented.</strong> The normalization and netting functions are documented placeholders that fail loudly with a pointer to their specification. They are being written against a 50-nonprofit pilot extract. See <a href="PLAN.html">PLAN.md</a> §7 for the roadmap.</p></blockquote>
 <div class="section level2">
 <h2 id="what-it-does">What it does<a class="anchor" aria-label="anchor" href="#what-it-does"></a>
 </h2>
@@ -131,7 +133,7 @@
 </h2>
 <ol style="list-style-type: decimal">
 <li>
-<strong>Obligations are not payments.</strong> The panel measures commitments. Federal award data carries no annual cash figure — lifetime outlays only, mostly blank before FY2017. <code>us_money_column("outlay")</code> errors rather than substituting something close.</li>
+<strong>Obligations are not payments.</strong> The panel measures commitments. Federal award data carries no annual cash figure — lifetime outlays only, and those are complete only for awards begun after the FY2022 monthly reporting mandate (for some agencies not even then). <code>us_money_column("outlay")</code> errors rather than substituting something close; <code><a href="reference/us_add_outlays.html">us_add_outlays()</a></code> can attach account-level annual outlays to a fiscal panel as a separate, coverage-graded column.</li>
 <li>
 <strong>Bulk subawards run the wrong way.</strong> Filtering on <code>recipient_search_text</code> returns subawards where your UEI is the <em>subawardee</em>, not the prime. A three-UEI test pull returned 32 subaward rows, all 32 inbound. Pass-through has to be queried per prime award — <code><a href="reference/us_fetch_subawards_out.html">us_fetch_subawards_out()</a></code>.</li>
 <li>
@@ -194,7 +196,7 @@
 <div class="developers">
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
-<li>Jesse Lecy <br><small class="roles"> Author, maintainer </small>  </li>
+<li>Jesse Lecy <br><small class="roles"> Author, maintainer </small>   </li>
 <li><a href="authors.html">More about authors...</a></li>
 </ul>
 </div>
@@ -210,7 +212,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer>

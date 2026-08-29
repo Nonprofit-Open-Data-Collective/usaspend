@@ -47,6 +47,10 @@
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
+    <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
+    <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
   </ul>
 </li>
       </ul>
@@ -83,21 +87,9 @@
 <div class="section level2">
 <h2 id="what-a-subaward-row-is-and-is-not">What a subaward row is — and is not<a class="anchor" aria-label="anchor" href="#what-a-subaward-row-is-and-is-not"></a>
 </h2>
-<p>A subaward row is an <strong>FSRS report</strong>: the prime awardee
-naming a first-tier subrecipient, required once a subaward crosses the
-<strong>$30,000</strong> threshold. Both parties carry UEIs, which is
-what makes direction recoverable at all.</p>
-<p>It is <strong>not</strong> the federal → state → local funding chain
-in general. When CMS pays a state Medicaid agency and the state pays a
-hospital, USAspending sees only the federal → state prime award; the
-state’s onward payment is not an FSRS record, and Medicaid provider
-payments never appear at all. This is the single most common misreading
-of the data.</p>
-<p>The pattern <em>does</em> surface where the pass-through entity is
-itself a federal prime grantee that files FSRS — and the sample catches
-it live. Its largest inbound subaward is FEMA disaster money reaching
-Kaiser <strong>through the California Governor’s Office of Emergency
-Services</strong>, a state agency that is the prime grantee:</p>
+<p>A subaward row is an <strong>FSRS report</strong>: the prime awardee naming a first-tier subrecipient, required once a subaward crosses the <strong>$30,000</strong> threshold. Both parties carry UEIs, which is what makes direction recoverable at all.</p>
+<p>It is <strong>not</strong> the federal → state → local funding chain in general. When CMS pays a state Medicaid agency and the state pays a hospital, USAspending sees only the federal → state prime award; the state’s onward payment is not an FSRS record, and Medicaid provider payments never appear at all. This is the single most common misreading of the data.</p>
+<p>The pattern <em>does</em> surface where the pass-through entity is itself a federal prime grantee that files FSRS — and the sample catches it live. Its largest inbound subaward is FEMA disaster money reaching Kaiser <strong>through the California Governor’s Office of Emergency Services</strong>, a state agency that is the prime grantee:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">om</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_org_map.html">us_org_map</a></span><span class="op">(</span><span class="va">ex</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">uei</span><span class="op">)</span></span>
 <span><span class="va">sb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_normalize_subawards.html">us_normalize_subawards</a></span><span class="op">(</span><span class="va">ex</span><span class="op">$</span><span class="va">subawards</span>, org_uei <span class="op">=</span> <span class="va">om</span><span class="op">$</span><span class="va">uei</span><span class="op">)</span></span>
@@ -108,20 +100,12 @@ Services</strong>, a state agency that is the prime grantee:</p>
 <span><span class="co">#&gt;                      prime_name subawardee_uei subaward_amount subaward_action_date</span></span>
 <span><span class="co">#&gt;                          &lt;char&gt;         &lt;char&gt;           &lt;num&gt;               &lt;Date&gt;</span></span>
 <span><span class="co">#&gt; 1: OFFICE OF EMERGENCY SERVICES   CFFMYPABYAG3        24070665           2025-01-15</span></span></code></pre></div>
-<p>So state-conduit flows appear exactly when the state is a prime
-grantee that reports — a meaningful but <strong>incomplete</strong>
-slice of intergovernmental transfers. No analysis may treat observed
-subawards as the population of pass-through.</p>
+<p>So state-conduit flows appear exactly when the state is a prime grantee that reports — a meaningful but <strong>incomplete</strong> slice of intergovernmental transfers. No analysis may treat observed subawards as the population of pass-through.</p>
 </div>
 <div class="section level2">
 <h2 id="direction-is-the-whole-problem">Direction is the whole problem<a class="anchor" aria-label="anchor" href="#direction-is-the-whole-problem"></a>
 </h2>
-<p>A recipient-filtered bulk pull matches on the
-<strong>subawardee</strong>, so it returns only rows where your
-organization <em>receives</em>. Measured twice: this sample’s 32 rows
-are all inbound; the full pilot’s 39,243 rows split 29,319 inbound,
-2,497 internal (both sides pilot orgs — NYU → NYU School of Medicine and
-the like), and <strong>zero outbound</strong>.</p>
+<p>A recipient-filtered bulk pull matches on the <strong>subawardee</strong>, so it returns only rows where your organization <em>receives</em>. Measured twice: this sample’s 32 rows are all inbound; the full pilot’s 39,243 rows split 29,319 inbound, 2,497 internal (both sides pilot orgs — NYU → NYU School of Medicine and the like), and <strong>zero outbound</strong>.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sb</span><span class="op">[</span>, <span class="va">.N</span>, by <span class="op">=</span> <span class="va">direction</span><span class="op">]</span></span>
 <span><span class="co">#&gt;    direction     N</span></span>
@@ -145,8 +129,7 @@ the like), and <strong>zero outbound</strong>.</p>
 <code>out</code> — org is prime</td>
 <td>pass-through obligation</td>
 <td>
-<strong>subtracted</strong>:
-<code>net_revenue = obligation_net − subaward_out</code>
+<strong>subtracted</strong>: <code>net_revenue = obligation_net − subaward_out</code>
 </td>
 </tr>
 <tr class="even">
@@ -168,74 +151,38 @@ the like), and <strong>zero outbound</strong>.</p>
 </tr>
 </tbody>
 </table>
-<p>Direction cannot be read off a row alone — it needs the
-organization’s UEI set, which is why
-<code><a href="../reference/us_normalize_subawards.html">us_normalize_subawards()</a></code> takes <code>org_uei</code> and
-<code><a href="../reference/us_subaward_by_year.html">us_subaward_by_year()</a></code> errors rather than guessing.</p>
-<p><strong>The asymmetry to remember:</strong> inbound arrives free with
-your extract; outbound costs a separate fetch by prime award; and only
-outbound changes <code>net_revenue</code>.</p>
+<p>Direction cannot be read off a row alone — it needs the organization’s UEI set, which is why <code><a href="../reference/us_normalize_subawards.html">us_normalize_subawards()</a></code> takes <code>org_uei</code> and <code><a href="../reference/us_subaward_by_year.html">us_subaward_by_year()</a></code> errors rather than guessing.</p>
+<p><strong>The asymmetry to remember:</strong> inbound arrives free with your extract; outbound costs a separate fetch by prime award; and only outbound changes <code>net_revenue</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="fetching-outbound-at-scale">Fetching outbound at scale<a class="anchor" aria-label="anchor" href="#fetching-outbound-at-scale"></a>
 </h2>
-<p><code>us_extract(subawards = "out")</code> walks the extracted award
-keys through <code><a href="../reference/us_fetch_subawards_batch.html">us_fetch_subawards_batch()</a></code> — batched ~400
-prime award ids per request. The pilot’s 61,738 awards ran in 147
-batches × 2 families, ~65 minutes, zero failures. Two traps it absorbs,
-both hit live: mixing assistance and contract type codes in one request
-makes the results endpoint fail <em>silently</em> (counts say subawards
-exist; results return none), so it runs one pass per family; and
-<code>award_ids</code> matches bare FAINs/PIIDs, which agencies reuse —
-four of five raw rows returned were strays belonging to other awards, so
-results are filtered back to the exact generated prime-award key.
-Without that filter, pass-through inflates roughly fivefold.</p>
+<p><code>us_extract(subawards = "out")</code> walks the extracted award keys through <code><a href="../reference/us_fetch_subawards_batch.html">us_fetch_subawards_batch()</a></code> — batched ~400 prime award ids per request. The pilot’s 61,738 awards ran in 147 batches × 2 families, ~65 minutes, zero failures. Two traps it absorbs, both hit live: mixing assistance and contract type codes in one request makes the results endpoint fail <em>silently</em> (counts say subawards exist; results return none), so it runs one pass per family; and <code>award_ids</code> matches bare FAINs/PIIDs, which agencies reuse — four of five raw rows returned were strays belonging to other awards, so results are filtered back to the exact generated prime-award key. Without that filter, pass-through inflates roughly fivefold.</p>
 </div>
 <div class="section level2">
 <h2 id="tabulating-so-the-numbers-reconcile">Tabulating so the numbers reconcile<a class="anchor" aria-label="anchor" href="#tabulating-so-the-numbers-reconcile"></a>
 </h2>
 <ul>
 <li>
-<strong>De-duplicate restatements.</strong> FSRS reports are
-restated month to month; 19% of pilot bulk rows were the same subaward
-re-reported. Keep the latest report per composite key.</li>
+<strong>De-duplicate restatements.</strong> FSRS reports are restated month to month; 19% of pilot bulk rows were the same subaward re-reported. Keep the latest report per composite key.</li>
 <li>
-<strong>Book on <code>subaward_action_date</code></strong>, not the
-report date — reports lag, sometimes across fiscal years.</li>
+<strong>Book on <code>subaward_action_date</code></strong>, not the report date — reports lag, sometimes across fiscal years.</li>
 <li>
-<strong>Attach with
-<code>us_panel(fill_gaps = TRUE)</code>.</strong> FSRS reports trail the
-obligations they draw on: 13% of pilot outbound dollars ($1.7bn) were
-dated in org-award-years with <em>no prime activity at all</em>. Without
-synthetic zero-obligation rows those dollars silently drop.</li>
+<strong>Attach with <code>us_panel(fill_gaps = TRUE)</code>.</strong> FSRS reports trail the obligations they draw on: 13% of pilot outbound dollars ($1.7bn) were dated in org-award-years with <em>no prime activity at all</em>. Without synthetic zero-obligation rows those dollars silently drop.</li>
 <li>
-<strong>Never attach one subaward to two organizations</strong> —
-multi-recipient awards would double-count it; the panel attaches once,
-to the dominant org-row.</li>
+<strong>Never attach one subaward to two organizations</strong> — multi-recipient awards would double-count it; the panel attaches once, to the dominant org-row.</li>
 </ul>
-<p>Reconciliation target, asserted in the package tests: the panel’s
-<code>subaward_out_amount</code> sums to exactly the dollars
-fetched.</p>
+<p>Reconciliation target, asserted in the package tests: the panel’s <code>subaward_out_amount</code> sums to exactly the dollars fetched.</p>
 </div>
 <div class="section level2">
 <h2 id="what-it-amounts-to">What it amounts to<a class="anchor" aria-label="anchor" href="#what-it-amounts-to"></a>
 </h2>
-<p>Pilot magnitudes: <strong>$12.6bn outbound and $14.0bn inbound
-against $118.5bn of net prime obligations</strong> — net revenue
-$105.9bn after pass-through. Concentration is extreme (the top four orgs
-carry over half the outbound dollars; one research institute passes
-through 45% of everything it receives), and an organization funded
-purely as a subrecipient looks like a non-recipient in prime data.</p>
+<p>Pilot magnitudes: <strong>$12.6bn outbound and $14.0bn inbound against $118.5bn of net prime obligations</strong> — net revenue $105.9bn after pass-through. Concentration is extreme (the top four orgs carry over half the outbound dollars; one research institute passes through 45% of everything it receives), and an organization funded purely as a subrecipient looks like a non-recipient in prime data.</p>
 </div>
 <div class="section level2">
 <h2 id="known-limits-carry-these-next-to-any-subaward-number">Known limits — carry these next to any subaward number<a class="anchor" aria-label="anchor" href="#known-limits-carry-these-next-to-any-subaward-number"></a>
 </h2>
-<p>First-tier only (no sub-sub-awards); under-$30k censored, so
-pass-through is a lower bound everywhere; reporting compliance is
-uneven, so “zero subawards” and “never reported” are indistinguishable
-at the row level (keep counts alongside dollars); the subawardee UEI is
-often null for government subawardees; and FSRS amounts are commitments,
-not disbursements.</p>
+<p>First-tier only (no sub-sub-awards); under-$30k censored, so pass-through is a lower bound everywhere; reporting compliance is uneven, so “zero subawards” and “never reported” are indistinguishable at the row level (keep counts alongside dollars); the subawardee UEI is often null for government subawardees; and FSRS amounts are commitments, not disbursements.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
@@ -248,7 +195,7 @@ not disbursements.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer>

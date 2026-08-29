@@ -147,3 +147,51 @@
 #' vumc_panel[, .(obligated = sum(obligation_net),
 #'                passed_through = sum(subaward_out_amount))]
 "vumc_panel"
+
+#' Outlay-imputation ground truth
+#'
+#' The training set behind the bundled [outlay_model]: 1,184 awards from
+#' VUMC plus the 50-nonprofit pilot whose annual File C outlays are fully
+#' trustworthy -- File C obligations reconcile with the award's own ledger,
+#' and either lifetime outlays match lifetime obligations within 10%
+#' (`tier = "reconciled"`, 905 awards) or the award began inside the FY2022
+#' monthly reporting mandate with a completed, plateaued cash series
+#' (`tier = "shape_complete"`, 279). Built by
+#' `data-raw/make-outlay-model.R`; the experiment that designed the screens
+#' and picked the model is documented in `IMPUTATION.md`.
+#'
+#' @format A list of class `usaspend_outlay_training`:
+#' \describe{
+#'   \item{awards}{One row per candidate award (7,853): the features from
+#'     [us_outlay_features()], File C lifetime figures, `linked`, and `tier`
+#'     (`NA` for awards that failed the truth screen).}
+#'   \item{grid}{One row per ground-truth award x fiscal year: `oblig_fy`
+#'     (net obligations booked that year), `actual` (File C outlays), event
+#'     time `t`.}
+#'   \item{meta}{Screen parameters and build time (`as_of` FY2026).}
+#' }
+#' @seealso [outlay_model], [us_outlay_training()], [us_impute_fit()],
+#'   [us_impute_eval()]
+#' @examples
+#' outlay_training
+#' outlay_training$awards[!is.na(tier), .N, by = .(tier, mod_class)]
+"outlay_training"
+
+#' The default liquidation-curve outlay model
+#'
+#' The model [us_impute_outlays()] uses when none is supplied: empirical
+#' liquidation curves (share of net obligations outlaid per event-year, by
+#' award duration x late-fiscal-year start) fitted on [outlay_training].
+#' Cross-validated performance: mean misallocation 0.33 (timing) and 0.35
+#' (level + timing) against 0.41/0.43 for even spread and 0.75/0.85 for
+#' treating obligations as cash. Durations of 1-5 years are inside the
+#' support envelope; longer awards fall back to even spread.
+#'
+#' @format A list of class `usaspend_outlay_model`; see [us_impute_fit()].
+#' @seealso [us_impute_outlays()], [us_add_imputed_outlays()],
+#'   [us_impute_fit()], [outlay_training]
+#' @examples
+#' outlay_model
+#' # the duration-4 liquidation curve
+#' outlay_model$curves_dur[dur_bin == 4]
+"outlay_model"
