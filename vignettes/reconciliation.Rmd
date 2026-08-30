@@ -1,8 +1,8 @@
 ---
-title: "Reconciliation: why 72% is a good number"
+title: "Reconciliation: accounting identities"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Reconciliation: why 72% is a good number}
+  %\VignetteIndexEntry{Reconciliation: accounting identities}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -17,86 +17,218 @@ library(usaspend)
 p <- us_panel(us_sample_extract())
 ```
 
-Every rule in this package is a choice, and a choice that cannot be checked
-against an independent figure is an assumption. USAspending happens to
-provide the independent figure: **award-lifetime totals computed by a
-different system than the transactions.** `us_reconcile()` tests, for every
-award, whether the summed transaction obligations come back to that total.
+The goal of this package is to start from a **complex transaction ledger**
+— tens of thousands of modification rows carrying corrections, restated
+duplicates, zero-dollar administrative actions, claw-backs, and ceilings
+that are not money — and convert it into an **accounting ledger**: one row
+per organization × award × year whose dollars add up under stated rules.
+"Under stated rules" is the whole game. Every rule is a choice, and a
+choice that cannot be checked against an independent figure is an
+assumption. This vignette lays out the identities the package imposes,
+then shows how they are tested.
+
+## The identities
+
+### What adds, what subtracts, what has no effect
+
+The money column is `federal_action_obligation`, and **the sign is the
+truth** — the action-type code describes intent, never direction
+(a CONTINUATION can carry negative dollars; 6,344 did in the pilot).
+
+* **Adds to net**: any positive obligation — originations (assistance `A`,
+  contract base awards), funded continuations (assistance `B`, contract
+  option exercises `G`), positive revisions and funding-only actions
+  (contract `C`). A *program expansion* looks like this: new positive
+  obligations, usually alongside a period extension.
+* **Subtracts from net**: any negative obligation — de-obligations and
+  claw-backs, arriving under every action class (terminations, negative
+  continuations, negative revisions, closeout adjustments). The
+  `deobligation_policy` argument of `us_panel()` chooses *when* they
+  subtract: the year posted (`as_posted`), restated LIFO against the
+  award's earlier positive years (`restate`), or measured-and-discarded
+  (`drop`).
+* **No effect on net**: zero-dollar actions — 20–30% of all rows. These
+  carry the administrative record: period-of-performance changes,
+  closeouts, vendor and transfer updates. A *timeline-only extension* is
+  the canonical case: the end date moves, the money does not, net is
+  untouched. (A non-zero amount on an administrative action is flagged
+  `money_on_admin_action` rather than silently trusted.)
+* **Never in net at all**: loan face value (the borrower's liability),
+  loan subsidy cost, non-federal cost share, and every ceiling —
+  `potential_value`, IDV vehicle totals. The pilot holds $115bn of IDV
+  ceiling against $0.75bn actually obligated on those vehicles.
+
+### The award window, and whether it binds
+
+The **period of performance** (`pop_start_date` → `pop_end_date`) is the
+award's declared window. It is *descriptive, not binding*: transactions
+legitimately post after the end date (corrections, closeout adjustments),
+and the normalizer only flags actions landing more than a year past it
+(`action_after_pop`) rather than rejecting them.
+
+The window also **moves**. The data signature of a period change is a
+`pop_end_date` that differs across an award's transaction sequence — the
+first reported value is the original plan, the last is the final window,
+and `us_outlay_features()` classifies the difference: an extension past 90
+days with material new money is `extension_funded` (an expansion), without
+new money `extension_timeline` (a no-cost extension), and a shortened
+window usually rides along with a `reduced` award's de-obligations.
+
+**Closeout is a third clock.** The closeout action (contract code `K`,
+assistance `D` "Adjustment to Completed Award") follows neither the
+performance end nor the last payment: measured on File C ground truth,
+cash is still arriving a year after the performance end (outlay/obligation
+ratio 0.90 at one year, 1.00 only at three), and de-obligations of genuine
+underspend post later still. Performance end → final drawdowns → audit and
+closeout is a sequence spanning years, and each stage leaves rows.
+
+### Two year definitions
+
+Every transaction carries both `action_year` (calendar) and
+`action_fiscal_year` (federal fiscal: October–September), and `us_panel()`
+builds on either (`period =`). The choice is an accounting decision:
+October–December actions belong to different years under the two
+definitions, so panels built on different bases do not reconcile
+year-by-year, only in lifetime totals. Match the basis to the linked data
+— calendar for IRS Form 990 and most organizational outcomes, fiscal for
+anything meeting the federal ledgers (File C outlays exist *only* in
+fiscal periods, which is why `us_add_outlays()` and
+`us_add_imputed_outlays()` require a fiscal panel).
+
+### Pass-through: the prime's ledger and the sub's
+
+A prime award's obligations are the organization's **gross** federal
+revenue. What it is obliged to pay onward to subrecipients is measured
+separately (`subaward_out_amount`), and the identity
+
+> `net_revenue = obligation_net − subaward_out_amount`
+
+defines the **retained** column: what the prime keeps after pass-through.
+The same dollar deliberately appears twice in the system — once in the
+prime's gross, once as the subrecipient's inbound revenue
+(`subaward_in_amount`, kept in the separate org-year `subawards_in` table)
+— because both ledgers are true at their own level. What the package never
+does is add them in one total.
+
+### Why a subaward row will not reconcile
+
+Subaward data is **not a transaction ledger**. FSRS rows are *report
+lines*: one line per subaward as last restated, no modification history,
+no de-obligations, reported only above the $30k threshold, and lagging the
+obligations they draw on (13% of pilot pass-through dollars posted in
+years with no prime activity). There is no lifetime total to test a
+subaward sum against, so subaward figures are treated as **floors**
+carried alongside the reconciled prime ledger — never as a ledger that
+must balance.
+
+## Testing the identities
+
+The tests check two distinct assumptions:
+
+1. **The database and the retrieval are consistent** — the extract holds
+   what USAspending holds, without duplication or loss along the download
+   path.
+2. **The transaction-to-accounting transformation gets the math right** —
+   de-duplication, delete handling, sign netting, and year assignment
+   reproduce the totals they should.
+
+A single external figure tests both at once: USAspending publishes each
+award's **lifetime obligation total, computed by a different system than
+the transactions**. If the extract is complete and the netting is correct,
+summed transactions return to that total. `us_reconcile()` runs the
+identity per award and labels every exception:
 
 ```{r, warning = FALSE}
 r <- us_reconcile(p)
 r[, .(award_key = substr(award_key, 1, 34), total_obligated, tx_sum, gap, status)]
 ```
 
-## Reading a break
+### Reading the labels
 
-The sample reconciles 15 of 18 exactly. The classified exceptions teach the
-two lessons that matter:
+The sample reconciles 15 of 18 exactly, and the exceptions carry the two
+lessons:
 
-- **`no_reported_total`** — some awards simply publish no lifetime total to
-  check against. Not a failure; a coverage fact.
-- **`break`** — the interesting one. Here the claw-back award shows
-  `tx_sum = −$310,999` against a lifetime total of $1.39M, because this
-  extract's window holds only the reversal — the original obligations
-  predate it. The identity *should* fail: **a UEI-filtered extract is an
-  organization-eye view, not an award-eye view.** The panel measures what
-  this organization was obligated in these years, which legitimately differs
-  from the award's whole-life total whenever the award's history extends
-  beyond the window or the award moved between institutions.
+- **`no_reported_total`** — nothing to check against; a coverage fact, not
+  a failure.
+- **`break`** — the claw-back award shows `tx_sum = −$310,999` against a
+  $1.39M lifetime total because the extract's window holds only the
+  reversal. The identity *should* fail here: **a UEI-filtered extract is
+  an organization-eye view, not an award-eye view**, and the panel
+  measures what this organization was obligated in these years — which
+  legitimately differs from whole-life totals whenever the award's history
+  extends beyond the window (`window_edge`, `recent_open`) or the award
+  moved between institutions (`multi_recipient`).
 
-## The same check at scale
+### The same test at scale
 
 On the full 50-org pilot (61,738 awards), after normalization:
 
 | status | awards | explanation |
 |---|---|---|
-| **ok — exact to the dollar** | 44,680 (72%) | the identity holds |
+| **ok — exact to the dollar** | 44,680 (72%) | both assumptions hold |
 | no reported total | 4,955 | nothing to check against |
 | recent/open award | 4,133 | corrections keep arriving after the pull (API-audited) |
 | window edge | 1,564 | pre-2008 history sits below the search floor |
 | multi-recipient | 129 | the award's other slice belongs to another organization |
-| unexplained | ~10% | API audit says: mostly the same mechanisms mid-window, dominated by NIH awards following a PI between institutions |
+| unexplained | ~10% | API audit: mostly the same mechanisms mid-window, dominated by NIH awards following a PI between institutions |
 
-72% exact — with every exception *classified* — is a strong result for a
-UEI-filtered extract, and the classification is the point: a falling "ok"
-share on a rebuild is the earliest sign of a broken rule, and an
-unclassified break is a real question, not noise.
+72% exact — with every exception *labeled* — is a strong result for a
+UEI-filtered extract, and the labeling is the point: a falling "ok" share
+on a rebuild is the earliest sign of a broken rule, and an unlabeled break
+is a real question, not noise. De-duplication is what makes the number
+possible: before the duplicate rule (`vignette("accounting")`), 5,754
+additional pilot awards failed the identity.
 
-De-duplication is what makes the number possible at all: before the
-duplicate rule (`vignette("accounting")`), 5,754 additional pilot awards
-failed the identity.
+### Structural invariants — `us_audit()`
 
-## The other checks — `us_audit()`
-
-Structural invariants, run on every rebuild:
+Checks needing no external reference:
 
 ```{r, warning = FALSE}
 us_audit(p)
 ```
 
-No transaction key twice, no award attributed to two organizations, one row
-per org-award-year — plus the descriptive counters worth watching over time
+No transaction key twice, no award attributed to two organizations, one
+row per org-award-year — plus the counters worth watching over time
 (negative years, zero-dollar share, anomaly flags) and a warning whenever
 outbound subawards were never fetched, so `net_revenue = obligation_net`
 cannot pass silently as a netted figure.
 
-## The outlay gap
+## Obligations versus outlays
 
-`us_reconcile()` also reports `outlay_ratio` — lifetime outlays over
-lifetime obligations — where USAspending provides outlays. Interpret it
-against the reporting mandates: account-level outlay reporting was
-quarterly and optional from FY2017, required for COVID-supplemental awards
-from April 2020, and monthly and mandatory only from FY2022. For an award
-straddling those dates the ratio *understates* payments — the pre-mandate
-outlays were never reported, not merely not yet paid — and for whole
-agencies it is missing outright (VA and DoD in the VUMC pilot, versus 98%
-coverage for post-FY2022 HHS awards). This is the promise-versus-payment
-gap: the number that tells a reader how far an obligations panel is from a
-cash panel (`vignette("data-model")` explains why no annual cash figure
-exists in award data).
+Everything above concerns the **budget ledger** — obligations, the
+promises. The **payment ledger** — outlays, the cash — is a separate
+system with its own identity: money obligated is eventually either paid
+out or de-obligated, so lifetime outlays converge to lifetime net
+obligations at closeout. The data confirms the identity where measurement
+allows: awards with full reporting coverage and two-plus years to
+liquidate reach a median outlay/obligation ratio of exactly 1.00.
+
+But the payment ledger as *published* cannot be trusted the way the
+budget ledger can (`vignette("obligations-outlays")` has the full story):
+account-level outlay reporting was optional before the FY2022 monthly
+mandate, whole agencies still report obligations without outlays (DoD
+median ratio 0.00, Commerce 0.24, against NSF/USDA/NASA at 1.00), and a
+fifth of fetched awards have File C records that cannot be linked back to
+their own transaction ledger. `us_fetch_outlays()` /`us_add_outlays()`
+retrieve what exists and grade each award's coverage rather than letting
+gaps read as zeros.
+
+Where real outlays don't reach, `us_impute_outlays()` fills in — and it is
+important to be precise about what it returns. The model is fitted on
+awards whose payment ledgers are essentially complete (screened by
+completeness and shape), and it predicts the **typical payment schedule
+conditional on the obligations**: the shape of the cash calendar, at the
+level completed awards actually deliver (~0.94 per obligated dollar), not
+the accounting identity. Passing `reconcile = TRUE` re-imposes the
+identity — each award's imputed series is rescaled to sum exactly to its
+net obligations (for an in-progress award, over its full projected life
+rather than the years observed so far). That is the configuration most
+users modeling government spending or organizational revenue want: the
+dollars tie out to the reconciled obligations ledger, and the model
+contributes what it genuinely knows, the timing.
 
 ## Practice
 
-Run both checks on every rebuild and diff against the previous run, so a
-change in the data or in a rule shows up as a change in the audit rather
-than as a quietly different number.
+Run `us_reconcile()` and `us_audit()` on every rebuild and diff against
+the previous run, so a change in the data or in a rule shows up as a
+change in the audit rather than as a quietly different number.

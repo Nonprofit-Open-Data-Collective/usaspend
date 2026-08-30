@@ -4,15 +4,18 @@
 \alias{us_impute_outlays}
 \title{Impute annual outlays from obligations data}
 \usage{
-us_impute_outlays(transactions, model = NULL)
+us_impute_outlays(transactions, model = NULL, reconcile = FALSE)
 }
 \arguments{
 \item{transactions}{A \code{data.table} matching \code{us_schema("transactions")},
 or a precomputed feature table from \code{\link[=us_outlay_features]{us_outlay_features()}}.}
 
 \item{model}{A \code{usaspend_outlay_model}; \code{NULL} uses the bundled
-\link{outlay_model}, fitted on the packaged experiment's 1,189 ground-truth
-awards.}
+\link{outlay_model}, fitted on the packaged experiment's ground truth.}
+
+\item{reconcile}{Rescale each award's series to sum exactly to its net
+obligations (see the section below). Rows gain the flag
+\code{reconciled_to_obligations}.}
 }
 \value{
 A \code{data.table}, one row per award x fiscal year: \code{outlay_imputed}
@@ -38,6 +41,20 @@ month, durations beyond the envelope -- falls back to even spread, with
 the reason in \code{imputation_flags}. An award still in progress is \emph{not} a
 fallback case: the curve projects its remaining cash, including fiscal
 years after the data pull; those rows simply carry future \code{fy} values.
+}
+
+\section{The \code{reconcile} switch -- typical cash versus the accounting identity}{
+
+By default the imputed series is the \strong{typical payment schedule} given
+the obligations: its total is the model's fitted liquidation ratio times
+net obligations (globally about 0.94), because that is what completed
+awards actually deliver. \code{reconcile = TRUE} rescales each award's series
+so its total equals net obligations \strong{exactly} -- re-imposing the
+accounting identity that money obligated is eventually either paid or
+de-obligated. Use it when the imputed dollars must tie out against the
+obligations ledger (modeling government spending or organization
+revenue); for an award still in progress the identity holds over the
+full projected life, not over any partial window observed to date.
 }
 
 \examples{

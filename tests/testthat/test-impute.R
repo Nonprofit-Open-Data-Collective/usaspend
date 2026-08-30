@@ -32,6 +32,43 @@ test_that("us_impute_fit reproduces the bundled model from bundled training", {
   expect_equal(m$curves_dur$share, outlay_model$curves_dur$share)
 })
 
+test_that("zero-filled curves sum exactly to each cell's mean lifetime ratio", {
+  m <- us_impute_fit(outlay_training)   # zero_fill = TRUE default
+  g <- data.table::as.data.table(outlay_training$grid)[oblig > 0]
+  mr <- g[, .(ratio = sum(actual) / oblig[1]), by = .(award_key, dur_bin)][
+    , .(mean_ratio = mean(ratio)), by = dur_bin]
+  cs <- m$curves_dur[, .(curve_sum = sum(share)), by = dur_bin]
+  chk <- merge(mr, cs, by = "dur_bin")
+  expect_equal(chk$curve_sum, chk$mean_ratio, tolerance = 1e-12)
+  # the survivor estimator does NOT satisfy the identity
+  ms <- us_impute_fit(outlay_training, zero_fill = FALSE)
+  cs2 <- ms$curves_dur[, .(curve_sum = sum(share)), by = dur_bin]
+  expect_false(isTRUE(all.equal(merge(mr, cs2, by = "dur_bin")$curve_sum,
+                                chk$mean_ratio, tolerance = 1e-6)))
+})
+
+test_that("reconcile = TRUE makes every imputed total equal net obligations", {
+  tx <- us_normalize_transactions(us_sample_extract()$transactions)
+  f <- us_outlay_features(tx)
+  imp <- suppressMessages(us_impute_outlays(tx, reconcile = TRUE))
+  tot <- merge(imp[, .(imputed = sum(outlay_imputed)), by = award_key],
+               f[, .(award_key, oblig)], by = "award_key")
+  expect_equal(tot[oblig > 0, imputed], tot[oblig > 0, oblig], tolerance = 1e-9)
+  # flag on every scalable row, method labels untouched
+  expect_true(all(grepl("reconciled_to_obligations",
+                        imp[imputation_method != "none", imputation_flags])))
+  expect_false(any(grepl("reconciled",
+                         imp[imputation_method == "none", imputation_flags])))
+  # panel pass-through
+  p <- suppressMessages(us_panel(us_sample_extract(), period = "fiscal"))
+  p2 <- suppressMessages(us_add_imputed_outlays(p, reconcile = TRUE))
+  aw_tot <- p2$panel[, .(imputed = sum(outlay_imputed)), by = award_key]
+  aw_tot <- merge(aw_tot, f[, .(award_key, oblig)], by = "award_key")
+  expect_equal(aw_tot[oblig > 0, imputed], aw_tot[oblig > 0, oblig],
+               tolerance = 1e-9)
+  expect_true(isTRUE(p2$meta$imputation$reconciled))
+})
+
 test_that("us_misallocation behaves at the boundaries", {
   expect_equal(us_misallocation(c(10, 90), c(10, 90)), 0)
   expect_equal(us_misallocation(c(90, 10), c(10, 90)), 0.8)

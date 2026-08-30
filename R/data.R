@@ -181,11 +181,12 @@
 #'
 #' The model [us_impute_outlays()] uses when none is supplied: empirical
 #' liquidation curves (share of net obligations outlaid per event-year, by
-#' award duration x late-fiscal-year start) fitted on [outlay_training].
-#' Cross-validated performance: mean misallocation 0.33 (timing) and 0.35
-#' (level + timing) against 0.41/0.43 for even spread and 0.75/0.85 for
-#' treating obligations as cash. Durations of 1-5 years are inside the
-#' support envelope; longer awards fall back to even spread.
+#' award duration x late-fiscal-year start, zero-filled estimator) fitted
+#' on [outlay_training]. Cross-validated performance: mean misallocation
+#' 0.28 (timing) and 0.30 (level + timing) against 0.41/0.43 for even
+#' spread and 0.75/0.85 for treating obligations as cash. Durations of 1-5
+#' years are inside the support envelope; longer awards fall back to even
+#' spread.
 #'
 #' @format A list of class `usaspend_outlay_model`; see [us_impute_fit()].
 #' @seealso [us_impute_outlays()], [us_add_imputed_outlays()],

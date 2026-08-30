@@ -4,7 +4,12 @@
 \alias{us_impute_fit}
 \title{Fit a liquidation-curve outlay model}
 \usage{
-us_impute_fit(training, cells = c("dur_bin", "late_start"), min_cell = 8L)
+us_impute_fit(
+  training,
+  cells = c("dur_bin", "late_start"),
+  min_cell = 8L,
+  zero_fill = TRUE
+)
 }
 \arguments{
 \item{training}{A \code{usaspend_outlay_training} from \code{\link[=us_outlay_training]{us_outlay_training()}}.}
@@ -14,6 +19,14 @@ duration x late-start, is what the experiment selected; \code{late_start}
 (first obligated Apr-Sep) shifts cash into the next fiscal year.}
 
 \item{min_cell}{Minimum training awards for a cell to be used.}
+
+\item{zero_fill}{Estimator for the per-event-year mean. \code{TRUE} (default)
+counts every cell award at every event-year, zero share past its own
+end, which makes \verb{sum(curve) == mean lifetime outlay/obligation ratio}
+of the cell an exact identity. \code{FALSE} averages only the awards
+observed at each event-year (the survivor mean), whose tail years are
+estimated from the longer-lived awards only and whose sum can drift
+above the cell's mean ratio.}
 }
 \value{
 A list of class \code{usaspend_outlay_model}: the curve tables,
@@ -34,7 +47,19 @@ Prediction falls back hierarchically: the full cell where it has at least
 \code{min_cell} training awards, then the duration-only curve, then the global
 curve.
 }
+\section{What the model returns}{
+
+The \strong{typical payment schedule} given the observed obligations -- both
+its shape (the lag) and its level (the cell's mean lifetime
+outlay/obligation ratio, below 1 for most cells). It does \emph{not} impose
+the accounting identity that outlays eventually equal net obligations;
+\code{\link[=us_impute_outlays]{us_impute_outlays()}}\code{(reconcile = TRUE)} re-imposes it on the output
+when the analysis wants dollars that tie out to the obligations ledger.
+}
+
 \examples{
 m <- us_impute_fit(outlay_training)
 m
+# the zero-fill identity: each curve sums to its cell's mean ratio
+m$curves_dur[, .(curve_sum = round(sum(share), 3)), by = dur_bin]
 }

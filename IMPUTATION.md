@@ -352,7 +352,14 @@ The winning configuration ships as package features:
 `us_impute_outlays()` / `us_add_imputed_outlays()` (imputation with an
 explicit even-spread fallback outside the model's support envelope — never
 `NA` dollars). The bundled `outlay_model` is M6 fitted on this ground
-truth; `outlay_training` is the ground truth itself. See
+truth with the **zero-filled estimator** (every cell award counted at
+every event-year, zero past its own end), which makes
+`sum(curve) = cell mean lifetime ratio` an exact identity and lifted
+deployed CV to 0.28 mean / 0.22 median timing (0.30 / 0.23 with the level
+charged). The model returns the *typical payment schedule*;
+`reconcile = TRUE` rescales each award's series to sum exactly to net
+obligations for analyses that need the accounting identity.
+`outlay_training` is the ground truth itself. See
 `vignette("imputation")` for the approach with worked graphical cases and
 `vignette("imputation-fitting")` for refitting on your own portfolio.
 

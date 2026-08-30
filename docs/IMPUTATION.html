@@ -25,13 +25,14 @@
     <li><a class="dropdown-item" href="articles/data-dictionary.html">Data dictionary: tables, keys, and relationships</a></li>
     <li><a class="dropdown-item" href="articles/award-types.html">Award types: what is actually in the data</a></li>
     <li><a class="dropdown-item" href="articles/subawards.html">Subawards: pass-through, direction, and what FSRS cannot see</a></li>
+    <li><a class="dropdown-item" href="articles/obligations-outlays.html">Obligations versus outlays: the two ledgers</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
     <li><a class="dropdown-item" href="articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
-    <li><a class="dropdown-item" href="articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><a class="dropdown-item" href="articles/reconciliation.html">Reconciliation: accounting identities</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
@@ -310,7 +311,7 @@
 </div>
 <div class="section level2">
 <h2 id="7-in-the-package">7. In the package<a class="anchor" aria-label="anchor" href="#7-in-the-package"></a></h2>
-<p>The winning configuration ships as package features: <code><a href="reference/us_outlay_features.html">us_outlay_features()</a></code> (the taxonomy in §6.4 as code), <code><a href="reference/us_outlay_training.html">us_outlay_training()</a></code> (the §1 truth screens), <code><a href="reference/us_impute_fit.html">us_impute_fit()</a></code> / <code><a href="reference/us_impute_eval.html">us_impute_eval()</a></code> (M6 fitting and this experiment’s two metrics), and <code><a href="reference/us_impute_outlays.html">us_impute_outlays()</a></code> / <code><a href="reference/us_add_imputed_outlays.html">us_add_imputed_outlays()</a></code> (imputation with an explicit even-spread fallback outside the model’s support envelope — never <code>NA</code> dollars). The bundled <code>outlay_model</code> is M6 fitted on this ground truth; <code>outlay_training</code> is the ground truth itself. See <code><a href="articles/imputation.html">vignette("imputation")</a></code> for the approach with worked graphical cases and <code><a href="articles/imputation-fitting.html">vignette("imputation-fitting")</a></code> for refitting on your own portfolio.</p>
+<p>The winning configuration ships as package features: <code><a href="reference/us_outlay_features.html">us_outlay_features()</a></code> (the taxonomy in §6.4 as code), <code><a href="reference/us_outlay_training.html">us_outlay_training()</a></code> (the §1 truth screens), <code><a href="reference/us_impute_fit.html">us_impute_fit()</a></code> / <code><a href="reference/us_impute_eval.html">us_impute_eval()</a></code> (M6 fitting and this experiment’s two metrics), and <code><a href="reference/us_impute_outlays.html">us_impute_outlays()</a></code> / <code><a href="reference/us_add_imputed_outlays.html">us_add_imputed_outlays()</a></code> (imputation with an explicit even-spread fallback outside the model’s support envelope — never <code>NA</code> dollars). The bundled <code>outlay_model</code> is M6 fitted on this ground truth with the <strong>zero-filled estimator</strong> (every cell award counted at every event-year, zero past its own end), which makes <code>sum(curve) = cell mean lifetime ratio</code> an exact identity and lifted deployed CV to 0.28 mean / 0.22 median timing (0.30 / 0.23 with the level charged). The model returns the <em>typical payment schedule</em>; <code>reconcile = TRUE</code> rescales each award’s series to sum exactly to net obligations for analyses that need the accounting identity. <code>outlay_training</code> is the ground truth itself. See <code><a href="articles/imputation.html">vignette("imputation")</a></code> for the approach with worked graphical cases and <code><a href="articles/imputation-fitting.html">vignette("imputation-fitting")</a></code> for refitting on your own portfolio.</p>
 </div>
 <div class="section level2">
 <h2 id="8-reproduction">8. Reproduction<a class="anchor" aria-label="anchor" href="#8-reproduction"></a></h2>

@@ -1,0 +1,147 @@
+---
+title: "Obligations versus outlays: the two ledgers"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Obligations versus outlays: the two ledgers}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+options(datatable.print.trunc.cols = TRUE, width = 90)
+```
+
+```{r setup, message = FALSE}
+library(usaspend)
+library(data.table)
+```
+
+Federal spending is recorded twice, in two ledgers that answer different
+questions:
+
+* The **budget ledger** records **obligations** — binding commitments
+  against budget authority, booked the day the award action is signed.
+  This is what USAspending's award and transaction tables carry, what
+  `us_panel()` nets, and what `us_reconcile()` can verify to the dollar.
+* The **payment ledger** records **outlays** — Treasury disbursements
+  that liquidate those commitments, arriving on their own schedule, often
+  years later.
+
+In principle the two converge: money obligated is eventually either paid
+or de-obligated, so lifetime outlays equal lifetime net obligations at
+closeout. Measured on this package's ground truth, awards with full
+reporting coverage and two-plus years to liquidate hit a median
+outlay/obligation ratio of exactly 1.00. Within any given *year*, though,
+the ledgers diverge widely — obligations put a median 90% of an award's
+dollars in its first fiscal year, cash puts 2% there — and the published
+payment ledger has serious measurement problems that the budget ledger
+does not.
+
+## What changed in 2022
+
+Account-level reporting of award spending (the "File C" submissions
+agencies make under the DATA Act) followed a staged mandate:
+
+* **FY2017–FY2021** — quarterly submissions, with outlay reporting
+  effectively optional; most agencies reported obligations but not cash.
+* **April 2020** — awards funded by a COVID-19 supplemental were required
+  to report outlays monthly.
+* **FY2022** — all agencies required to submit outlay data for award
+  spending **every month**.
+
+The consequence is a hard information boundary: outlay history before an
+award's applicable mandate was never reported — *not never paid* — and no
+later submission backfills it. An award straddling FY2022 has its early
+cash permanently missing from the record.
+
+## Outlays in the tables you already have — and why not to trust them
+
+The bulk transaction files carry one outlay field,
+`total_outlayed_amount_for_overall_award` (canonical:
+`award_total_outlayed`, surfaced on the award spine as `total_outlayed`).
+It is a **lifetime-to-date snapshot** stamped onto every row at file
+generation — there is no annual form — and it inherits every window
+problem at once:
+
+```{r era-table}
+aw <- outlay_training$awards
+d <- aw[linked == TRUE & oblig > 0 & !is.na(pop_end_fy) & pop_end_fy <= 2025]
+d[, era := fifelse(first_fy >= 2022, "FY2022+", paste0("FY", first_fy))]
+d[, .(awards = .N, median_outlay_over_oblig = round(median(outlay_total / oblig), 2)),
+  keyby = era]
+```
+
+The gradient is the mandate, not the spending: FY2020 starts are missing
+their pre-mandate cash, FY2021 starts part of it, FY2022+ starts almost
+none. On top of the era problem, coverage varies by **agency practice** —
+in the same completed, linked, mandate-era population, DoD reports File C
+obligations but essentially no outlays (median ratio 0.00) and Commerce
+0.24, while NSF, USDA and NASA sit at 1.00 and HHS at 0.91 — and by
+**liquidation lag**: even clean-era awards read 0.90 a year after the
+performance end and reach 1.00 only around three years. `us_reconcile()`
+reports the ratio per award so the gap stays visible, but the lifetime
+field is a floor with unknown slack, never an annual measure.
+
+## Adding real annual outlays
+
+Annual outlays exist in one place: the account-level File C records behind
+`POST /api/v2/awards/funding/`, one row per federal account × object class
+× program activity × reporting period. `us_fetch_outlays()` retrieves them
+per award and `us_outlays_by_year()` collapses them to award × fiscal year
+— applying the rule the raw field requires (`gross_outlay_amount` is
+cumulative within each fiscal year, so the annual figure is the last
+reported value per account cell, never the period sum).
+`us_add_outlays()` attaches the result to a fiscal panel.
+
+```{r, eval = FALSE}
+p <- us_panel(extract, period = "fiscal")
+p <- us_add_outlays(p)
+p$panel[, .N, by = outlay_coverage]
+```
+
+### Limitations of that database and API
+
+* **The era boundary** above: nothing before an award's mandate, ever.
+* **Agency coverage**: for some portfolios (VA contracts, much of DoD)
+  there is simply no cash to fetch, at any date.
+* **Key and linkage challenges**: File C rows are linked to award
+  identifiers by the submitting agency, and the linkage fails in both
+  directions. Some awards return no File C records at all; others return
+  records whose obligations do not reconcile with the award's own
+  transaction ledger — about a fifth of fetched awards in this package's
+  ground-truth pull failed a 10% linkage screen. The funding payload also
+  carries **no recipient dimension**: outlays exist only at award grain,
+  so multi-recipient awards cannot be split by organization from the cash
+  side.
+* **Operational limits**: one paged request per award, and sustained
+  pulls beyond roughly a thousand requests can trip a temporary
+  host-level block — large pulls run best throttled and cached.
+
+`us_add_outlays()` encodes all of this per award as `outlay_coverage`
+(`complete` / `truncated_pre_FY2022` / `unlinked` / `no_outlay_rows` /
+`no_file_c` / `fetch_failed`), with `NA` — never a fake zero — where
+measurement is absent.
+
+## Where real outlays don't reach: imputation
+
+For the majority of awards whose payment ledger is truncated, unlinked, or
+absent, `us_impute_outlays()` estimates the cash calendar from the
+obligations side. Two things matter about what it returns:
+
+* The model is fitted only on awards whose payment ledgers are
+  essentially **complete** (screened by completeness and shape — see
+  `vignette("imputation-fitting")`), and it predicts the **typical
+  payment schedule conditional on the obligations**: the shape of the
+  cash calendar at the level completed awards actually deliver, about
+  0.94 per obligated dollar.
+* `reconcile = TRUE` re-imposes the accounting identity — every imputed
+  series rescaled to sum exactly to net obligations (for in-progress
+  awards, over the full projected life). That configuration makes imputed
+  dollars tie out against the reconciled obligations ledger, which is
+  what most analyses of government spending or organizational revenue
+  want; the model then contributes what it genuinely knows, the timing.
+
+`vignette("imputation")` walks the approach with drawn cases;
+`vignette("reconciliation")` places both ledgers inside the package's
+accounting identities.

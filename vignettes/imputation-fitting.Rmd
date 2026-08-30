@@ -48,10 +48,46 @@ tr
 tr$awards[!is.na(tier), .N, by = .(tier, mod_class)][order(tier, -N)]
 ```
 
+### How the retrieval filters, and why
+
 The screens are deliberate, not incidental — an award whose File C records
 don't reconcile with its own ledger, or whose cash story is censored,
-teaches the model the reporting system instead of the spending. Tiers,
-thresholds and rationale are specified in `IMPUTATION.md` §1.
+teaches the model the reporting system instead of the spending. In order:
+
+1. **Candidates**: first obligated FY2020+ with material net obligations.
+   The floor is not arbitrary — account-level outlay reporting became
+   mandatory (monthly) only in **FY2022**, with COVID awards from April
+   2020 and effectively optional coverage before. Earlier awards have
+   permanently unreported cash and *cannot* be ground truth.
+2. **Linkage**: File C lifetime obligations must reconcile with the
+   award's own transaction ledger within 10%. Unlinkable File C records
+   describe money that cannot be tied to the award.
+3. **A finished cash story**: either lifetime outlays ≈ net obligations
+   with cash no longer flowing (`tier = "reconciled"`), or a
+   mandate-era start with a completed, plateaued series
+   (`tier = "shape_complete"` — the level may fall short but the timing
+   profile is fully observed).
+
+The sample frame is therefore **shaped by the 2022 mandate**: recent,
+shorter awards from agencies that report. That has two consequences worth
+stating before fitting. First, the *support envelope* — long awards are
+scarce (few 5+ year awards have completed inside the window), so the
+model declines to speak for them. Second, **agency selection**: outlay
+coverage varies enormously by agency — DoD reports File C obligations but
+essentially no outlays (median outlay/obligation ratio 0.00), Commerce
+0.24, versus NSF, USDA, and NASA at 1.00 and HHS at 0.91. Agencies that
+don't report cash contribute *no* ground truth, so the fitted curves are
+estimated from the reporters. If the level of outlay reporting is
+correlated with your outcome of interest, and liquidation shapes differ
+across agencies, the imputed values carry that selection signature — a
+DoD-heavy portfolio is being imputed with curves learned mostly from
+HHS-and-NSF-style awards. Check your portfolio's agency mix against the
+training mix (`tr$awards[!is.na(tier), .N, by = awarding_agency_name]`)
+before leaning on the imputations, and consider agency cells
+(`cells = c("dur_bin", "late_start", ...)`) where your ground truth is
+deep enough to support them.
+
+Tiers, thresholds and rationale are specified in `IMPUTATION.md` §1.
 
 ## 2. Features
 

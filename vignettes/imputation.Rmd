@@ -55,12 +55,84 @@ regularities:
 outlay_model$curves_dur[dur_bin == 4]
 ```
 
+**Be precise about what the model returns.** It is the *typical payment
+schedule given the observed obligation schedule* — a prediction of what
+cash usually does, in shape and in level — not an accounting identity.
+The zero-filled estimator makes the level exact by construction: each
+curve's sum equals its cell's mean observed lifetime ratio, so every
+model-imputed award totals (cell ratio × net obligations), never net
+obligations themselves. When an analysis needs the accounting identity
+instead — outlays that tie out exactly to the obligations ledger —
+`reconcile = TRUE` rescales each award's series to sum to its net
+obligations (see below).
+
 The scoring metric is the **misallocation share** — the fraction of an
 award's dollars placed in the wrong fiscal year (`us_misallocation()`;
 `IMPUTATION.md` §3 explains why this beats correlation for an allocation
-task). Cross-validated on the ground truth, the model scores 0.33
-(timing) and 0.35 (level + timing) against 0.41/0.43 for even spread and
-0.75/0.85 for booking cash in the commitment year.
+task). Cross-validated on the ground truth, the model scores 0.28 mean /
+0.22 median (timing) and 0.30 / 0.23 (level + timing) against 0.41/0.43
+for even spread and 0.75/0.85 for booking cash in the commitment year.
+
+## The typical pattern, and the state of the real data
+
+The accounting theory says outlays should equal obligations: money
+obligated is eventually either paid or de-obligated, so the two ledgers
+converge at closeout. The data agrees *where measurement allows* — awards
+with full reporting coverage and two-plus years to liquidate reach a
+median lifetime outlay/obligation ratio of exactly 1.00. The typical
+pattern the model banks on is therefore: **year-one cash near zero, the
+mass arriving one to two years behind the commitments, converging toward
+the obligation total as the award closes out.**
+
+Published outlays diverge from the identity for reasons that are mostly
+*measurement*, and the fetch layer was built around them:
+
+* **Reporting truncation.** Account-level outlay reporting was mandated
+  monthly only from FY2022 (COVID awards from April 2020; optional and
+  quarterly before). Pre-mandate cash was never reported, not never paid
+  — so `us_fetch_outlays()` output is graded per award, and awards
+  straddling the mandate are marked `truncated_pre_FY2022` rather than
+  letting missing years read as zero cash.
+* **Agency practice.** Whole agencies publish obligations without
+  outlays; coverage gaps become `no_file_c` / `no_outlay_rows` grades,
+  and unlinkable records become `unlinked`, with `NA` dollars — never
+  fabricated zeros.
+* **Liquidation in progress.** Clean-era awards read 0.90 a year after
+  the performance end, 1.00 only at three years; closeout de-obligations
+  post later still.
+
+The distribution makes the story visible. Among the training candidates
+that are linked and completed, the ratio for **full-spell** awards (first
+obligated FY2022+, whole cash history inside the mandate) piles up near
+1; **truncated** awards (FY2020–21 starts, early cash unreported) smear
+across the low ratios:
+
+```{r ratio-density, eval = has_ggplot, echo = FALSE, fig.height = 3.6}
+library(ggplot2)
+cand <- outlay_training$awards
+dd <- cand[linked == TRUE & oblig > 0 & !is.na(pop_end_fy) & pop_end_fy <= 2025]
+dd[, spell := fifelse(first_fy >= 2022, "full spell (FY2022+ start)",
+                      "truncated (FY2020-21 start)")]
+dd[, ratio := pmin(pmax(outlay_total / oblig, -0.1), 1.5)]
+ggplot(dd, aes(ratio, fill = spell, colour = spell)) +
+  geom_density(alpha = 0.25, adjust = 0.7) +
+  geom_vline(xintercept = 1, linetype = "dotted") +
+  scale_fill_manual(values = c("#1a5276", "#9a6a1f")) +
+  scale_colour_manual(values = c("#1a5276", "#9a6a1f")) +
+  labs(title = "Lifetime outlays / net obligations, linked completed awards",
+       subtitle = "the identity holds where measurement is complete; truncation masquerades as underspend",
+       x = "outlay / obligation ratio (clipped at 1.5)", y = NULL,
+       fill = NULL, colour = NULL) +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "bottom", panel.grid.minor = element_blank(),
+        axis.text.y = element_blank())
+```
+
+Two features of the shape are worth naming. The spike at exactly 0 is
+non-reporting agencies, not zero spending. And ratios *above* 1 are real:
+a de-obligation that posts after the cash already went out shrinks the
+denominator — the same mechanism that makes claw-back awards the hardest
+imputation class (drawn below).
 
 ## Imputing
 
@@ -76,6 +148,19 @@ tx  <- us_normalize_transactions(us_sample_extract()$transactions)
 imp <- us_impute_outlays(tx)
 imp[, .(awards = uniqueN(award_key), dollars = round(sum(outlay_imputed))),
     by = imputation_method]
+```
+
+With `reconcile = TRUE`, each award's series is rescaled so imputed cash
+sums **exactly** to net obligations — the accounting identity most
+analyses of spending or revenue want, with the model contributing the
+timing (for an in-progress award the identity holds over its full
+projected life, not the partial window observed so far):
+
+```{r reconcile, message = FALSE}
+imp_r <- us_impute_outlays(tx, reconcile = TRUE)
+merge(imp_r[, .(imputed = round(sum(outlay_imputed))), by = award_key],
+      us_outlay_features(tx)[, .(award_key, oblig = round(oblig))],
+      by = "award_key")[oblig > 0][1:5]
 ```
 
 `us_add_imputed_outlays()` appends the same numbers to a fiscal panel as
@@ -115,6 +200,7 @@ case_frame <- function(key) {
   n_pop <- max(a$pop_end_fy, a$first_fy, na.rm = TRUE) - a$first_fy + 1L
   f[, even := fifelse(fy < a$first_fy + n_pop,
                       outlay_model$global_ratio * a$oblig / n_pop, 0)]
+  f[, model_rec := if (sum(model) > 0) model * a$oblig / sum(model) else model]
   f[]
 }
 
@@ -186,17 +272,46 @@ case_plot(ext_key,
           "a no-cost extension is 'cash lags plan' -- the curve's home turf")
 ```
 
-### 3. A reduced award
+### 3. A claw-back (reduced award)
 
-De-obligations claw money back (the negative bar). Net obligations
-overstate what was ever going to be spent, and this is the hardest class
-for every method — the honest read is the imputation plus a wider error
-bar, which is why `us_outlay_features()` flags `mod_class == "reduced"`.
+De-obligations claw money back — the negative bar. In the accounting, the
+claw-back *reduces net obligations*, so both the model and the
+`reconcile = TRUE` series allocate the smaller net figure, never the gross
+that was briefly on the books. This is the hardest class for every
+method: the cash that flowed before the claw-back tracked the *original*
+plan, and a ratio above 1 is even possible when the de-obligation posts
+after the money went out. The honest read is the imputation plus a wider
+error bar, which is why `us_outlay_features()` flags
+`mod_class == "reduced"`.
 
 ```{r case-reduced, echo = FALSE, eval = has_ggplot}
-case_plot(pick("reduced"),
-          "Reduction: a claw-back mid-life",
-          "imputation allocates dollars the cash never fully delivered")
+kr <- pick("reduced")
+fr <- case_frame(kr)
+mr <- melt(fr, id.vars = "fy",
+           measure.vars = c("model", "model_rec", "actual"))
+labs_r <- c(model = "model imputed (typical cash)",
+            model_rec = "reconcile = TRUE (sums to net oblig)",
+            actual = "actual outlays")
+mr[, series := factor(labs_r[as.character(variable)], levels = labs_r)]
+ggplot() +
+  geom_col(data = fr, aes(fy, oblig_fy / 1e3), fill = "#1a5276",
+           alpha = 0.35, width = 0.6) +
+  geom_line(data = mr[variable != "actual"],
+            aes(fy, value / 1e3, linetype = series), colour = "#1a5276",
+            linewidth = 0.8) +
+  geom_point(data = mr[variable == "actual"],
+             aes(fy, value / 1e3, shape = series), colour = "#9a6a1f",
+             size = 2.6) +
+  scale_linetype_manual(values = setNames(c("solid", "dashed"), labs_r[1:2]),
+                        name = NULL) +
+  scale_shape_manual(values = setNames(16, labs_r[3]), name = NULL) +
+  scale_x_continuous(breaks = fr$fy) +
+  labs(title = "Claw-back: a de-obligation mid-life",
+       subtitle = "the negative bar shrinks net obligations; both imputed series allocate the net",
+       x = "federal fiscal year", y = "$ thousands",
+       caption = "bars: net obligations as booked") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "bottom", panel.grid.minor = element_blank())
 ```
 
 ### 4. Right-censored: an award still in progress
@@ -239,9 +354,14 @@ ggplot(f) +
 ## What to remember
 
 * Imputed outlays are a **modelled cash calendar**, good to roughly a
-  quarter of dollars misallocated on trustworthy ground truth. Where real
-  File C outlays exist (`us_add_outlays()`, coverage graded), prefer them;
-  imputation is for everywhere they don't.
+  fifth to a quarter of dollars misallocated on trustworthy ground truth.
+  Where real File C outlays exist (`us_add_outlays()`, coverage graded),
+  prefer them; imputation is for everywhere they don't.
+* Default output is the **typical payment schedule** (level ≈ 0.94 of net
+  obligations, what completed awards actually deliver);
+  `reconcile = TRUE` imposes the **accounting identity** (imputed cash
+  sums exactly to net obligations) — the right configuration when the
+  dollars must tie out to the obligations ledger.
 * `imputation_method` and `imputation_flags` travel with every number —
   report them. A `reduced` award deserves a wider error bar; an
   `even_spread` row means the model declined to guess beyond its support.

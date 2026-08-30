@@ -4,7 +4,12 @@
 \alias{us_add_imputed_outlays}
 \title{Attach imputed outlays to a panel}
 \usage{
-us_add_imputed_outlays(panel, model = NULL, fill_gaps = TRUE)
+us_add_imputed_outlays(
+  panel,
+  model = NULL,
+  fill_gaps = TRUE,
+  reconcile = FALSE
+)
 }
 \arguments{
 \item{panel}{A \code{usaspend_panel} built with \code{period = "fiscal"} (curves
@@ -14,6 +19,9 @@ are fitted in fiscal event time).}
 \link{outlay_model}.}
 
 \item{fill_gaps}{Add rows for imputed-cash years the panel lacks.}
+
+\item{reconcile}{Rescale each award's imputed series to sum exactly to
+its net obligations -- see \code{\link[=us_impute_outlays]{us_impute_outlays()}}.}
 }
 \value{
 The panel with \code{outlay_imputed} and \code{imputation_method} columns

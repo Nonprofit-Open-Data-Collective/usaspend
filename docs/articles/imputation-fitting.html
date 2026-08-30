@@ -40,13 +40,14 @@
     <li><a class="dropdown-item" href="../articles/data-dictionary.html">Data dictionary: tables, keys, and relationships</a></li>
     <li><a class="dropdown-item" href="../articles/award-types.html">Award types: what is actually in the data</a></li>
     <li><a class="dropdown-item" href="../articles/subawards.html">Subawards: pass-through, direction, and what FSRS cannot see</a></li>
+    <li><a class="dropdown-item" href="../articles/obligations-outlays.html">Obligations versus outlays: the two ledgers</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
-    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
@@ -116,7 +117,21 @@
 <span><span class="co">#&gt;  8: shape_complete     extension_timeline    42</span></span>
 <span><span class="co">#&gt;  9: shape_complete            single_year    32</span></span>
 <span><span class="co">#&gt; 10: shape_complete       extension_funded    25</span></span></code></pre></div>
-<p>The screens are deliberate, not incidental — an award whose File C records don’t reconcile with its own ledger, or whose cash story is censored, teaches the model the reporting system instead of the spending. Tiers, thresholds and rationale are specified in <code>IMPUTATION.md</code> §1.</p>
+<div class="section level3">
+<h3 id="how-the-retrieval-filters-and-why">How the retrieval filters, and why<a class="anchor" aria-label="anchor" href="#how-the-retrieval-filters-and-why"></a>
+</h3>
+<p>The screens are deliberate, not incidental — an award whose File C records don’t reconcile with its own ledger, or whose cash story is censored, teaches the model the reporting system instead of the spending. In order:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Candidates</strong>: first obligated FY2020+ with material net obligations. The floor is not arbitrary — account-level outlay reporting became mandatory (monthly) only in <strong>FY2022</strong>, with COVID awards from April 2020 and effectively optional coverage before. Earlier awards have permanently unreported cash and <em>cannot</em> be ground truth.</li>
+<li>
+<strong>Linkage</strong>: File C lifetime obligations must reconcile with the award’s own transaction ledger within 10%. Unlinkable File C records describe money that cannot be tied to the award.</li>
+<li>
+<strong>A finished cash story</strong>: either lifetime outlays ≈ net obligations with cash no longer flowing (<code>tier = "reconciled"</code>), or a mandate-era start with a completed, plateaued series (<code>tier = "shape_complete"</code> — the level may fall short but the timing profile is fully observed).</li>
+</ol>
+<p>The sample frame is therefore <strong>shaped by the 2022 mandate</strong>: recent, shorter awards from agencies that report. That has two consequences worth stating before fitting. First, the <em>support envelope</em> — long awards are scarce (few 5+ year awards have completed inside the window), so the model declines to speak for them. Second, <strong>agency selection</strong>: outlay coverage varies enormously by agency — DoD reports File C obligations but essentially no outlays (median outlay/obligation ratio 0.00), Commerce 0.24, versus NSF, USDA, and NASA at 1.00 and HHS at 0.91. Agencies that don’t report cash contribute <em>no</em> ground truth, so the fitted curves are estimated from the reporters. If the level of outlay reporting is correlated with your outcome of interest, and liquidation shapes differ across agencies, the imputed values carry that selection signature — a DoD-heavy portfolio is being imputed with curves learned mostly from HHS-and-NSF-style awards. Check your portfolio’s agency mix against the training mix (<code>tr$awards[!is.na(tier), .N, by = awarding_agency_name]</code>) before leaning on the imputations, and consider agency cells (<code>cells = c("dur_bin", "late_start", ...)</code>) where your ground truth is deep enough to support them.</p>
+<p>Tiers, thresholds and rationale are specified in <code>IMPUTATION.md</code> §1.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="features">2. Features<a class="anchor" aria-label="anchor" href="#features"></a>
@@ -174,20 +189,20 @@
 <span><span class="va">ev</span><span class="op">$</span><span class="va">summary</span></span>
 <span><span class="co">#&gt;    metric       method  mean median dollar_weighted</span></span>
 <span><span class="co">#&gt;    &lt;char&gt;       &lt;char&gt; &lt;num&gt;  &lt;num&gt;           &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1:  level        model 0.354  0.303           0.338</span></span>
+<span><span class="co">#&gt; 1:  level        model 0.300  0.232           0.292</span></span>
 <span><span class="co">#&gt; 2:  level  even_spread 0.428  0.423           0.410</span></span>
 <span><span class="co">#&gt; 3:  level as_obligated 0.847  0.968           0.815</span></span>
-<span><span class="co">#&gt; 4: timing        model 0.329  0.295           0.313</span></span>
+<span><span class="co">#&gt; 4: timing        model 0.281  0.220           0.276</span></span>
 <span><span class="co">#&gt; 5: timing  even_spread 0.405  0.410           0.395</span></span>
 <span><span class="co">#&gt; 6: timing as_obligated 0.746  0.898           0.752</span></span>
 <span><span class="va">ev</span><span class="op">$</span><span class="va">by_class</span></span>
 <span><span class="co">#&gt;                 mod_class     n model as_obligated even_spread</span></span>
 <span><span class="co">#&gt;                    &lt;char&gt; &lt;int&gt; &lt;num&gt;        &lt;num&gt;       &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1:       extension_funded    46 0.282        0.550       0.341</span></span>
-<span><span class="co">#&gt; 2:     extension_timeline   208 0.308        0.819       0.405</span></span>
-<span><span class="co">#&gt; 3: multi_year_incremental   332 0.333        0.688       0.422</span></span>
-<span><span class="co">#&gt; 4:                reduced   180 0.360        0.625       0.446</span></span>
-<span><span class="co">#&gt; 5:            single_year   418 0.327        0.831       0.380</span></span></code></pre></div>
+<span><span class="co">#&gt; 1:       extension_funded    46 0.253        0.550       0.341</span></span>
+<span><span class="co">#&gt; 2:     extension_timeline   208 0.271        0.819       0.405</span></span>
+<span><span class="co">#&gt; 3: multi_year_incremental   332 0.281        0.688       0.422</span></span>
+<span><span class="co">#&gt; 4:                reduced   180 0.303        0.625       0.446</span></span>
+<span><span class="co">#&gt; 5:            single_year   418 0.280        0.831       0.380</span></span></code></pre></div>
 <p>Read <code>ev$by_class</code> before trusting the model on a skewed portfolio: <code>reduced</code> awards are the hardest class for every method, and a portfolio dominated by them deserves wider error bars, not a better point estimate.</p>
 </div>
 <div class="section level2">
@@ -201,7 +216,7 @@
 <span><span class="co">#&gt;    imputation_method  dollars</span></span>
 <span><span class="co">#&gt;               &lt;char&gt;    &lt;num&gt;</span></span>
 <span><span class="co">#&gt; 1:              none        0</span></span>
-<span><span class="co">#&gt; 2: liquidation_curve  9712944</span></span>
+<span><span class="co">#&gt; 2: liquidation_curve  9702259</span></span>
 <span><span class="co">#&gt; 3:       even_spread 14874129</span></span></code></pre></div>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"outlay-model-2026.rds"</span><span class="op">)</span>          <span class="co"># reuse across sessions</span></span>

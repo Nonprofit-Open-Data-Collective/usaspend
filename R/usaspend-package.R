@@ -54,5 +54,5 @@ utils::globalVariables(c(
   "sh", "tmax", "end_fy", "n_periods", "n_awards", "method",
   "outlay_imputed", "imputation_method", "imputation_flags", "fold",
   "in_pop", "pop_n", "timing_model", "timing_as_obligated",
-  "timing_even_spread", "y0", "y1"
+  "timing_even_spread", "y0", "y1", ".tot", "ssum", "n_obs"
 ))

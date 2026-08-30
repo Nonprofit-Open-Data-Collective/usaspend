@@ -40,13 +40,14 @@
     <li><a class="dropdown-item" href="../articles/data-dictionary.html">Data dictionary: tables, keys, and relationships</a></li>
     <li><a class="dropdown-item" href="../articles/award-types.html">Award types: what is actually in the data</a></li>
     <li><a class="dropdown-item" href="../articles/subawards.html">Subawards: pass-through, direction, and what FSRS cannot see</a></li>
+    <li><a class="dropdown-item" href="../articles/obligations-outlays.html">Obligations versus outlays: the two ledgers</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
-    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
@@ -101,20 +102,40 @@
 </ul>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">outlay_model</span><span class="op">$</span><span class="va">curves_dur</span><span class="op">[</span><span class="va">dur_bin</span> <span class="op">==</span> <span class="fl">4</span><span class="op">]</span></span>
-<span><span class="co">#&gt;    dur_bin     t      share     n</span></span>
-<span><span class="co">#&gt;      &lt;int&gt; &lt;int&gt;      &lt;num&gt; &lt;int&gt;</span></span>
-<span><span class="co">#&gt; 1:       4     0 0.06377249   454</span></span>
-<span><span class="co">#&gt; 2:       4     1 0.36036482   454</span></span>
-<span><span class="co">#&gt; 3:       4     2 0.34669424   454</span></span>
-<span><span class="co">#&gt; 4:       4     3 0.13325051   454</span></span>
-<span><span class="co">#&gt; 5:       4     4 0.03691470    93</span></span></code></pre></div>
-<p>The scoring metric is the <strong>misallocation share</strong> — the fraction of an award’s dollars placed in the wrong fiscal year (<code><a href="../reference/us_misallocation.html">us_misallocation()</a></code>; <code>IMPUTATION.md</code> §3 explains why this beats correlation for an allocation task). Cross-validated on the ground truth, the model scores 0.33 (timing) and 0.35 (level + timing) against 0.41/0.43 for even spread and 0.75/0.85 for booking cash in the commitment year.</p>
+<span><span class="co">#&gt; Key: &lt;dur_bin&gt;</span></span>
+<span><span class="co">#&gt;    dur_bin     t       share     n</span></span>
+<span><span class="co">#&gt;      &lt;int&gt; &lt;int&gt;       &lt;num&gt; &lt;int&gt;</span></span>
+<span><span class="co">#&gt; 1:       4     0 0.063772487   454</span></span>
+<span><span class="co">#&gt; 2:       4     1 0.360364818   454</span></span>
+<span><span class="co">#&gt; 3:       4     2 0.346694238   454</span></span>
+<span><span class="co">#&gt; 4:       4     3 0.133250505   454</span></span>
+<span><span class="co">#&gt; 5:       4     4 0.007561823   454</span></span></code></pre></div>
+<p><strong>Be precise about what the model returns.</strong> It is the <em>typical payment schedule given the observed obligation schedule</em> — a prediction of what cash usually does, in shape and in level — not an accounting identity. The zero-filled estimator makes the level exact by construction: each curve’s sum equals its cell’s mean observed lifetime ratio, so every model-imputed award totals (cell ratio × net obligations), never net obligations themselves. When an analysis needs the accounting identity instead — outlays that tie out exactly to the obligations ledger — <code>reconcile = TRUE</code> rescales each award’s series to sum to its net obligations (see below).</p>
+<p>The scoring metric is the <strong>misallocation share</strong> — the fraction of an award’s dollars placed in the wrong fiscal year (<code><a href="../reference/us_misallocation.html">us_misallocation()</a></code>; <code>IMPUTATION.md</code> §3 explains why this beats correlation for an allocation task). Cross-validated on the ground truth, the model scores 0.28 mean / 0.22 median (timing) and 0.30 / 0.23 (level + timing) against 0.41/0.43 for even spread and 0.75/0.85 for booking cash in the commitment year.</p>
+</div>
+<div class="section level2">
+<h2 id="the-typical-pattern-and-the-state-of-the-real-data">The typical pattern, and the state of the real data<a class="anchor" aria-label="anchor" href="#the-typical-pattern-and-the-state-of-the-real-data"></a>
+</h2>
+<p>The accounting theory says outlays should equal obligations: money obligated is eventually either paid or de-obligated, so the two ledgers converge at closeout. The data agrees <em>where measurement allows</em> — awards with full reporting coverage and two-plus years to liquidate reach a median lifetime outlay/obligation ratio of exactly 1.00. The typical pattern the model banks on is therefore: <strong>year-one cash near zero, the mass arriving one to two years behind the commitments, converging toward the obligation total as the award closes out.</strong></p>
+<p>Published outlays diverge from the identity for reasons that are mostly <em>measurement</em>, and the fetch layer was built around them:</p>
+<ul>
+<li>
+<strong>Reporting truncation.</strong> Account-level outlay reporting was mandated monthly only from FY2022 (COVID awards from April 2020; optional and quarterly before). Pre-mandate cash was never reported, not never paid — so <code><a href="../reference/us_fetch_outlays.html">us_fetch_outlays()</a></code> output is graded per award, and awards straddling the mandate are marked <code>truncated_pre_FY2022</code> rather than letting missing years read as zero cash.</li>
+<li>
+<strong>Agency practice.</strong> Whole agencies publish obligations without outlays; coverage gaps become <code>no_file_c</code> / <code>no_outlay_rows</code> grades, and unlinkable records become <code>unlinked</code>, with <code>NA</code> dollars — never fabricated zeros.</li>
+<li>
+<strong>Liquidation in progress.</strong> Clean-era awards read 0.90 a year after the performance end, 1.00 only at three years; closeout de-obligations post later still.</li>
+</ul>
+<p>The distribution makes the story visible. Among the training candidates that are linked and completed, the ratio for <strong>full-spell</strong> awards (first obligated FY2022+, whole cash history inside the mandate) piles up near 1; <strong>truncated</strong> awards (FY2020–21 starts, early cash unreported) smear across the low ratios:</p>
+<pre><code><span><span class="co">#&gt; Warning: package 'ggplot2' was built under R version 4.5.3</span></span></code></pre>
+<p><img src="imputation_files/figure-html/ratio-density-1.png" alt="" width="691.2"></p>
+<p>Two features of the shape are worth naming. The spike at exactly 0 is non-reporting agencies, not zero spending. And ratios <em>above</em> 1 are real: a de-obligation that posts after the cash already went out shrinks the denominator — the same mechanism that makes claw-back awards the hardest imputation class (drawn below).</p>
 </div>
 <div class="section level2">
 <h2 id="imputing">Imputing<a class="anchor" aria-label="anchor" href="#imputing"></a>
 </h2>
 <p><code><a href="../reference/us_impute_outlays.html">us_impute_outlays()</a></code> takes any canonical transaction table and returns imputed dollars per award × fiscal year. It never returns <code>NA</code> dollars: awards outside the model’s <em>support envelope</em> — durations the training data cannot vouch for, missing period-of-performance dates — fall back to the basic rule <em>global ratio × (net obligations / performance periods)</em>, and <code>imputation_method</code> says which rule produced each row.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tx</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_normalize_transactions.html">us_normalize_transactions</a></span><span class="op">(</span><span class="fu"><a href="../reference/us_sample_extract.html">us_sample_extract</a></span><span class="op">(</span><span class="op">)</span><span class="op">$</span><span class="va">transactions</span><span class="op">)</span></span>
 <span><span class="va">imp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_impute_outlays.html">us_impute_outlays</a></span><span class="op">(</span><span class="va">tx</span><span class="op">)</span></span>
 <span><span class="va">imp</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span>awards <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/data.table/man/duplicated.html" class="external-link">uniqueN</a></span><span class="op">(</span><span class="va">award_key</span><span class="op">)</span>, dollars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">outlay_imputed</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
@@ -122,10 +143,24 @@
 <span><span class="co">#&gt;    imputation_method awards  dollars</span></span>
 <span><span class="co">#&gt;               &lt;char&gt;  &lt;int&gt;    &lt;num&gt;</span></span>
 <span><span class="co">#&gt; 1:              none      6        0</span></span>
-<span><span class="co">#&gt; 2: liquidation_curve      4  9712944</span></span>
+<span><span class="co">#&gt; 2: liquidation_curve      4  9702259</span></span>
 <span><span class="co">#&gt; 3:       even_spread      8 14874129</span></span></code></pre></div>
+<p>With <code>reconcile = TRUE</code>, each award’s series is rescaled so imputed cash sums <strong>exactly</strong> to net obligations — the accounting identity most analyses of spending or revenue want, with the model contributing the timing (for an in-progress award the identity holds over its full projected life, not the partial window observed so far):</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">imp_r</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_impute_outlays.html">us_impute_outlays</a></span><span class="op">(</span><span class="va">tx</span>, reconcile <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/merge.html" class="external-link">merge</a></span><span class="op">(</span><span class="va">imp_r</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span>imputed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">outlay_imputed</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, by <span class="op">=</span> <span class="va">award_key</span><span class="op">]</span>,</span>
+<span>      <span class="fu"><a href="../reference/us_outlay_features.html">us_outlay_features</a></span><span class="op">(</span><span class="va">tx</span><span class="op">)</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span><span class="va">award_key</span>, oblig <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">oblig</span><span class="op">)</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>      by <span class="op">=</span> <span class="st">"award_key"</span><span class="op">)</span><span class="op">[</span><span class="va">oblig</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">]</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span></span>
+<span><span class="co">#&gt; Key: &lt;award_key&gt;</span></span>
+<span><span class="co">#&gt;                                                    award_key imputed   oblig</span></span>
+<span><span class="co">#&gt;                                                       &lt;char&gt;   &lt;num&gt;   &lt;num&gt;</span></span>
+<span><span class="co">#&gt; 1:                                ASST_NON_HDTRA12310001_097 1300000 1300000</span></span>
+<span><span class="co">#&gt; 2:                 CONT_AWD_73351023P0025_7300_-NONE-_-NONE-   62100   62100</span></span>
+<span><span class="co">#&gt; 3:                 CONT_AWD_FA875018C0013_9700_-NONE-_-NONE- 7598606 7598606</span></span>
+<span><span class="co">#&gt; 4:                 CONT_AWD_FA875019C0203_9700_-NONE-_-NONE- 5098414 5098414</span></span>
+<span><span class="co">#&gt; 5: CONT_AWD_HHSD2002007200320001_7523_HHSD200200720032I_7523  281586  281586</span></span></code></pre></div>
 <p><code><a href="../reference/us_add_imputed_outlays.html">us_add_imputed_outlays()</a></code> appends the same numbers to a fiscal panel as <code>outlay_imputed</code>, adding rows (flagged <code>imputed_outlay_only_year</code>) for years the curve allocates cash to but the panel has no activity row for — including <em>future</em> years of ongoing awards, which is the point.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_panel.html">us_panel</a></span><span class="op">(</span><span class="fu"><a href="../reference/us_sample_extract.html">us_sample_extract</a></span><span class="op">(</span><span class="op">)</span>, period <span class="op">=</span> <span class="st">"fiscal"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning: No outbound subawards present -- pass-through cannot be netted out.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Bulk downloads match on the subawardee. Use `us_fetch_subawards_out()` to fetch</span></span>
@@ -161,9 +196,9 @@
 <p><img src="imputation_files/figure-html/case-extension-1.png" alt="" width="691.2"></p>
 </div>
 <div class="section level3">
-<h3 id="a-reduced-award">3. A reduced award<a class="anchor" aria-label="anchor" href="#a-reduced-award"></a>
+<h3 id="a-claw-back-reduced-award">3. A claw-back (reduced award)<a class="anchor" aria-label="anchor" href="#a-claw-back-reduced-award"></a>
 </h3>
-<p>De-obligations claw money back (the negative bar). Net obligations overstate what was ever going to be spent, and this is the hardest class for every method — the honest read is the imputation plus a wider error bar, which is why <code><a href="../reference/us_outlay_features.html">us_outlay_features()</a></code> flags <code>mod_class == "reduced"</code>.</p>
+<p>De-obligations claw money back — the negative bar. In the accounting, the claw-back <em>reduces net obligations</em>, so both the model and the <code>reconcile = TRUE</code> series allocate the smaller net figure, never the gross that was briefly on the books. This is the hardest class for every method: the cash that flowed before the claw-back tracked the <em>original</em> plan, and a ratio above 1 is even possible when the de-obligation posts after the money went out. The honest read is the imputation plus a wider error bar, which is why <code><a href="../reference/us_outlay_features.html">us_outlay_features()</a></code> flags <code>mod_class == "reduced"</code>.</p>
 <p><img src="imputation_files/figure-html/case-reduced-1.png" alt="" width="691.2"></p>
 </div>
 <div class="section level3">
@@ -177,7 +212,8 @@
 <h2 id="what-to-remember">What to remember<a class="anchor" aria-label="anchor" href="#what-to-remember"></a>
 </h2>
 <ul>
-<li>Imputed outlays are a <strong>modelled cash calendar</strong>, good to roughly a quarter of dollars misallocated on trustworthy ground truth. Where real File C outlays exist (<code><a href="../reference/us_add_outlays.html">us_add_outlays()</a></code>, coverage graded), prefer them; imputation is for everywhere they don’t.</li>
+<li>Imputed outlays are a <strong>modelled cash calendar</strong>, good to roughly a fifth to a quarter of dollars misallocated on trustworthy ground truth. Where real File C outlays exist (<code><a href="../reference/us_add_outlays.html">us_add_outlays()</a></code>, coverage graded), prefer them; imputation is for everywhere they don’t.</li>
+<li>Default output is the <strong>typical payment schedule</strong> (level ≈ 0.94 of net obligations, what completed awards actually deliver); <code>reconcile = TRUE</code> imposes the <strong>accounting identity</strong> (imputed cash sums exactly to net obligations) — the right configuration when the dollars must tie out to the obligations ledger.</li>
 <li>
 <code>imputation_method</code> and <code>imputation_flags</code> travel with every number — report them. A <code>reduced</code> award deserves a wider error bar; an <code>even_spread</code> row means the model declined to guess beyond its support.</li>
 <li>Fitting your own model on your own ground truth is a few lines: <code><a href="../articles/imputation-fitting.html">vignette("imputation-fitting")</a></code>.</li>

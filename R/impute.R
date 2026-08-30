@@ -242,11 +242,26 @@ print.usaspend_outlay_training <- function(x, ...) {
 #' `min_cell` training awards, then the duration-only curve, then the global
 #' curve.
 #'
+#' @section What the model returns:
+#' The **typical payment schedule** given the observed obligations -- both
+#' its shape (the lag) and its level (the cell's mean lifetime
+#' outlay/obligation ratio, below 1 for most cells). It does *not* impose
+#' the accounting identity that outlays eventually equal net obligations;
+#' [us_impute_outlays()]`(reconcile = TRUE)` re-imposes it on the output
+#' when the analysis wants dollars that tie out to the obligations ledger.
+#'
 #' @param training A `usaspend_outlay_training` from [us_outlay_training()].
 #' @param cells Feature columns defining the cell. The default,
 #'   duration x late-start, is what the experiment selected; `late_start`
 #'   (first obligated Apr-Sep) shifts cash into the next fiscal year.
 #' @param min_cell Minimum training awards for a cell to be used.
+#' @param zero_fill Estimator for the per-event-year mean. `TRUE` (default)
+#'   counts every cell award at every event-year, zero share past its own
+#'   end, which makes `sum(curve) == mean lifetime outlay/obligation ratio`
+#'   of the cell an exact identity. `FALSE` averages only the awards
+#'   observed at each event-year (the survivor mean), whose tail years are
+#'   estimated from the longer-lived awards only and whose sum can drift
+#'   above the cell's mean ratio.
 #' @return A list of class `usaspend_outlay_model`: the curve tables,
 #'   per-duration support counts, the global outlay/obligation ratio (used
 #'   by the even-spread fallback), and `meta`.
@@ -254,8 +269,11 @@ print.usaspend_outlay_training <- function(x, ...) {
 #' @examples
 #' m <- us_impute_fit(outlay_training)
 #' m
+#' # the zero-fill identity: each curve sums to its cell's mean ratio
+#' m$curves_dur[, .(curve_sum = round(sum(share), 3)), by = dur_bin]
 us_impute_fit <- function(training, cells = c("dur_bin", "late_start"),
-                          min_cell = 8L) {
+                          min_cell = 8L, zero_fill = TRUE) {
+  stopifnot(is.logical(zero_fill), length(zero_fill) == 1L)
   if (!inherits(training, "usaspend_outlay_training")) {
     us_abort("{.arg training} must come from {.fn us_outlay_training}.")
   }
@@ -268,12 +286,30 @@ us_impute_fit <- function(training, cells = c("dur_bin", "late_start"),
   g <- g[oblig > 0]
   g[, ".share" := actual / oblig]
 
-  curves_cell <- g[, .(share = mean(.share), n = data.table::uniqueN(award_key)),
-                   by = c(cells, "t")]
-  curves_dur  <- g[, .(share = mean(.share), n = data.table::uniqueN(award_key)),
-                   by = .(dur_bin, t)]
-  curve_global <- g[, .(share = mean(.share), n = data.table::uniqueN(award_key)),
-                    by = t]
+  ## Two estimators for the per-event-year mean. "Survivor" divides by the
+  ## awards observed at t -- but only the longer-lived awards of a cell
+  ## reach the tail years, so the curve's sum drifts away from the cell's
+  ## mean lifetime ratio (in the experiment some cells summed above 1).
+  ## Zero-filling counts every cell award at every t, with zero share past
+  ## its own end, which makes `sum(curve) == mean per-award lifetime ratio`
+  ## an identity -- and predictions inherit it exactly, since prediction is
+  ## just curve x obligations.
+  curve_at <- function(by_cols) {
+    Ns <- g[, .(N = data.table::uniqueN(award_key)), by = by_cols]
+    s <- g[, .(ssum = sum(.share), n_obs = data.table::uniqueN(award_key)),
+           by = c(by_cols, "t")]
+    s <- if (length(by_cols)) merge(s, Ns, by = by_cols) else s[, "N" := Ns$N]
+    if (zero_fill) {
+      s[, c("share", "n") := list(ssum / N, N)]
+    } else {
+      s[, c("share", "n") := list(ssum / n_obs, n_obs)]
+    }
+    s[, c("ssum", "n_obs", "N") := NULL]
+    s[]
+  }
+  curves_cell  <- curve_at(cells)
+  curves_dur   <- curve_at("dur_bin")
+  curve_global <- curve_at(character(0))
   support <- g[, .(n_awards = data.table::uniqueN(award_key)), by = dur_bin]
 
   structure(list(
@@ -286,6 +322,7 @@ us_impute_fit <- function(training, cells = c("dur_bin", "late_start"),
     global_ratio = sum(g$actual) / sum(g[, oblig[1], by = award_key]$V1),
     meta = list(n_awards = data.table::uniqueN(g$award_key),
                 tiers = table(training$awards$tier),
+                zero_fill = zero_fill,
                 as_of = training$meta$as_of, fitted_at = Sys.time())
   ), class = "usaspend_outlay_model")
 }
@@ -518,11 +555,25 @@ impute_from_features <- function(feat, model) {
 #' fallback case: the curve projects its remaining cash, including fiscal
 #' years after the data pull; those rows simply carry future `fy` values.
 #'
+#' @section The `reconcile` switch -- typical cash versus the accounting identity:
+#' By default the imputed series is the **typical payment schedule** given
+#' the obligations: its total is the model's fitted liquidation ratio times
+#' net obligations (globally about 0.94), because that is what completed
+#' awards actually deliver. `reconcile = TRUE` rescales each award's series
+#' so its total equals net obligations **exactly** -- re-imposing the
+#' accounting identity that money obligated is eventually either paid or
+#' de-obligated. Use it when the imputed dollars must tie out against the
+#' obligations ledger (modeling government spending or organization
+#' revenue); for an award still in progress the identity holds over the
+#' full projected life, not over any partial window observed to date.
+#'
 #' @param transactions A `data.table` matching `us_schema("transactions")`,
 #'   or a precomputed feature table from [us_outlay_features()].
 #' @param model A `usaspend_outlay_model`; `NULL` uses the bundled
-#'   [outlay_model], fitted on the packaged experiment's 1,189 ground-truth
-#'   awards.
+#'   [outlay_model], fitted on the packaged experiment's ground truth.
+#' @param reconcile Rescale each award's series to sum exactly to its net
+#'   obligations (see the section below). Rows gain the flag
+#'   `reconciled_to_obligations`.
 #' @return A `data.table`, one row per award x fiscal year: `outlay_imputed`
 #'   (dollars), event time `t`, `imputation_method`
 #'   (`"liquidation_curve"` / `"even_spread"` / `"none"`) and
@@ -532,19 +583,32 @@ impute_from_features <- function(feat, model) {
 #' tx <- us_normalize_transactions(us_sample_extract()$transactions)
 #' imp <- us_impute_outlays(tx)
 #' imp[, .(dollars = sum(outlay_imputed)), by = imputation_method]
-us_impute_outlays <- function(transactions, model = NULL) {
+us_impute_outlays <- function(transactions, model = NULL, reconcile = FALSE) {
   model <- model %||% usaspend::outlay_model
   if (!inherits(model, "usaspend_outlay_model")) {
     us_abort("{.arg model} must be a {.cls usaspend_outlay_model} from {.fn us_impute_fit}.")
   }
+  stopifnot(is.logical(reconcile), length(reconcile) == 1L)
   feat <- if (is.data.frame(transactions) && "dur_bin" %in% names(transactions)) {
     data.table::as.data.table(transactions)
   } else {
     us_outlay_features(transactions)
   }
   res <- impute_from_features(feat, model)
+  if (reconcile) {
+    res <- merge(res, feat[, c("award_key", "oblig"), with = FALSE],
+                 by = "award_key", all.x = TRUE, sort = FALSE)
+    res[, ".tot" := sum(outlay_imputed), by = award_key]
+    scalable <- res$oblig > 0 & res$.tot > 0 & !is.na(res$oblig)
+    res[scalable, "outlay_imputed" := outlay_imputed * oblig / .tot]
+    res[scalable, "imputation_flags" := trimws(paste(
+      imputation_flags, "reconciled_to_obligations"))]
+    res[, "imputation_flags" := gsub("\\s+", ";", imputation_flags)]
+    res[, c("oblig", ".tot") := NULL]
+    data.table::setorderv(res, c("award_key", "fy"))
+  }
   tally <- table(unique(res[, .(award_key, imputation_method)])$imputation_method)
-  us_msg(c("Imputed outlays for {data.table::uniqueN(res$award_key)} award{?s}.",
+  us_msg(c("Imputed outlays for {data.table::uniqueN(res$award_key)} award{?s}{if (reconcile) ', reconciled to net obligations' else ''}.",
            "*" = "{paste0(names(tally), '=', as.integer(tally), collapse = ' ')}"))
   res
 }
@@ -564,6 +628,8 @@ us_impute_outlays <- function(transactions, model = NULL) {
 #' @param model A `usaspend_outlay_model`; `NULL` uses the bundled
 #'   [outlay_model].
 #' @param fill_gaps Add rows for imputed-cash years the panel lacks.
+#' @param reconcile Rescale each award's imputed series to sum exactly to
+#'   its net obligations -- see [us_impute_outlays()].
 #' @return The panel with `outlay_imputed` and `imputation_method` columns
 #'   and `meta$imputation` recording the model and method tally.
 #' @export
@@ -571,7 +637,8 @@ us_impute_outlays <- function(transactions, model = NULL) {
 #' p <- us_panel(us_sample_extract(), period = "fiscal")
 #' p <- us_add_imputed_outlays(p)
 #' p$panel[, .(oblig = sum(obligation_net), imputed = sum(outlay_imputed))]
-us_add_imputed_outlays <- function(panel, model = NULL, fill_gaps = TRUE) {
+us_add_imputed_outlays <- function(panel, model = NULL, fill_gaps = TRUE,
+                                   reconcile = FALSE) {
   if (!inherits(panel, "usaspend_panel")) {
     us_abort("{.arg panel} must be a {.cls usaspend_panel} from {.fn us_panel}.")
   }
@@ -580,7 +647,8 @@ us_add_imputed_outlays <- function(panel, model = NULL, fill_gaps = TRUE) {
                "i" = "Rebuild with {.code us_panel(extract, period = \"fiscal\")} before imputing."))
   }
   model <- model %||% usaspend::outlay_model
-  imp <- us_impute_outlays(panel$transactions, model = model)
+  imp <- us_impute_outlays(panel$transactions, model = model,
+                           reconcile = reconcile)
   p <- data.table::copy(panel$panel)
   imp <- imp[award_key %in% unique(p$award_key)]
 
@@ -626,6 +694,7 @@ us_add_imputed_outlays <- function(panel, model = NULL, fill_gaps = TRUE) {
   tally <- table(unique(p[, .(award_key, imputation_method)])$imputation_method)
   panel$panel <- p[]
   panel$meta$imputation <- list(model = model$meta, methods = tally,
+                                reconciled = reconcile,
                                 imputed_at = Sys.time())
   panel
 }

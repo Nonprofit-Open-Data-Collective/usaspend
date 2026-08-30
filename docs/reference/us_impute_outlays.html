@@ -35,13 +35,14 @@ periods), and imputation_method says which rule produced each row."></head><body
     <li><a class="dropdown-item" href="../articles/data-dictionary.html">Data dictionary: tables, keys, and relationships</a></li>
     <li><a class="dropdown-item" href="../articles/award-types.html">Award types: what is actually in the data</a></li>
     <li><a class="dropdown-item" href="../articles/subawards.html">Subawards: pass-through, direction, and what FSRS cannot see</a></li>
+    <li><a class="dropdown-item" href="../articles/obligations-outlays.html">Obligations versus outlays: the two ledgers</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
-    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
@@ -74,7 +75,7 @@ periods)</em>, and <code>imputation_method</code> says which rule produced each 
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">us_impute_outlays</span><span class="op">(</span><span class="va">transactions</span>, model <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">us_impute_outlays</span><span class="op">(</span><span class="va">transactions</span>, model <span class="op">=</span> <span class="cn">NULL</span>, reconcile <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -88,8 +89,13 @@ or a precomputed feature table from <code><a href="us_outlay_features.html">us_o
 
 <dt id="arg-model">model<a class="anchor" aria-label="anchor" href="#arg-model"></a></dt>
 <dd><p>A <code>usaspend_outlay_model</code>; <code>NULL</code> uses the bundled
-<a href="outlay_model.html">outlay_model</a>, fitted on the packaged experiment's 1,189 ground-truth
-awards.</p></dd>
+<a href="outlay_model.html">outlay_model</a>, fitted on the packaged experiment's ground truth.</p></dd>
+
+
+<dt id="arg-reconcile">reconcile<a class="anchor" aria-label="anchor" href="#arg-reconcile"></a></dt>
+<dd><p>Rescale each award's series to sum exactly to its net
+obligations (see the section below). Rows gain the flag
+<code>reconciled_to_obligations</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -112,6 +118,21 @@ the reason in <code>imputation_flags</code>. An award still in progress is <em>n
 fallback case: the curve projects its remaining cash, including fiscal
 years after the data pull; those rows simply carry future <code>fy</code> values.</p>
     </div>
+    <div class="section level2">
+    <h2 id="the-reconcile-switch-typical-cash-versus-the-accounting-identity">The <code>reconcile</code> switch – typical cash versus the accounting identity<a class="anchor" aria-label="anchor" href="#the-reconcile-switch-typical-cash-versus-the-accounting-identity"></a></h2>
+
+
+<p>By default the imputed series is the <strong>typical payment schedule</strong> given
+the obligations: its total is the model's fitted liquidation ratio times
+net obligations (globally about 0.94), because that is what completed
+awards actually deliver. <code>reconcile = TRUE</code> rescales each award's series
+so its total equals net obligations <strong>exactly</strong> – re-imposing the
+accounting identity that money obligated is eventually either paid or
+de-obligated. Use it when the imputed dollars must tie out against the
+obligations ledger (modeling government spending or organization
+revenue); for an award still in progress the identity holds over the
+full projected life, not over any partial window observed to date.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
@@ -126,7 +147,7 @@ years after the data pull; those rows simply carry future <code>fy</code> values
 <span class="r-out co"><span class="r-pr">#&gt;</span>    imputation_method  dollars</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>               &lt;char&gt;    &lt;num&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1:              none        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2: liquidation_curve  9712944</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2: liquidation_curve  9702259</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3:       even_spread 14874129</span>
 </code></pre></div>
     </div>

@@ -37,13 +37,14 @@ the point of imputation."></head><body>
     <li><a class="dropdown-item" href="../articles/data-dictionary.html">Data dictionary: tables, keys, and relationships</a></li>
     <li><a class="dropdown-item" href="../articles/award-types.html">Award types: what is actually in the data</a></li>
     <li><a class="dropdown-item" href="../articles/subawards.html">Subawards: pass-through, direction, and what FSRS cannot see</a></li>
+    <li><a class="dropdown-item" href="../articles/obligations-outlays.html">Obligations versus outlays: the two ledgers</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
-    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
@@ -77,7 +78,12 @@ the point of imputation.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">us_add_imputed_outlays</span><span class="op">(</span><span class="va">panel</span>, model <span class="op">=</span> <span class="cn">NULL</span>, fill_gaps <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">us_add_imputed_outlays</span><span class="op">(</span></span>
+<span>  <span class="va">panel</span>,</span>
+<span>  model <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  fill_gaps <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  reconcile <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -96,6 +102,11 @@ are fitted in fiscal event time).</p></dd>
 
 <dt id="arg-fill-gaps">fill_gaps<a class="anchor" aria-label="anchor" href="#arg-fill-gaps"></a></dt>
 <dd><p>Add rows for imputed-cash years the panel lacks.</p></dd>
+
+
+<dt id="arg-reconcile">reconcile<a class="anchor" aria-label="anchor" href="#arg-reconcile"></a></dt>
+<dd><p>Rescale each award's imputed series to sum exactly to
+its net obligations – see <code><a href="us_impute_outlays.html">us_impute_outlays()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -122,7 +133,7 @@ and <code>meta$imputation</code> recording the model and method tally.</p>
 <span class="r-in"><span><span class="va">p</span><span class="op">$</span><span class="va">panel</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span>oblig <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">obligation_net</span><span class="op">)</span>, imputed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">outlay_imputed</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       oblig  imputed</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       &lt;num&gt;    &lt;num&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1: 25383391 24587073</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1: 25383391 24576388</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

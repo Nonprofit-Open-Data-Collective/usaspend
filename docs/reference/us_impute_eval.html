@@ -35,13 +35,14 @@ level_timing (no rescaling – the method is charged for the level too)."></head
     <li><a class="dropdown-item" href="../articles/data-dictionary.html">Data dictionary: tables, keys, and relationships</a></li>
     <li><a class="dropdown-item" href="../articles/award-types.html">Award types: what is actually in the data</a></li>
     <li><a class="dropdown-item" href="../articles/subawards.html">Subawards: pass-through, direction, and what FSRS cannot see</a></li>
+    <li><a class="dropdown-item" href="../articles/obligations-outlays.html">Obligations versus outlays: the two ledgers</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
-    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
@@ -116,10 +117,10 @@ metric), <code>by_class</code> (mean timing misallocation by <code>mod_class</co
 <span class="r-in"><span><span class="va">ev</span><span class="op">$</span><span class="va">summary</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    metric       method  mean median dollar_weighted</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    &lt;char&gt;       &lt;char&gt; &lt;num&gt;  &lt;num&gt;           &lt;num&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1:  level        model 0.354  0.303           0.338</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1:  level        model 0.300  0.232           0.292</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2:  level  even_spread 0.428  0.423           0.410</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3:  level as_obligated 0.847  0.968           0.815</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4: timing        model 0.329  0.295           0.313</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4: timing        model 0.281  0.220           0.276</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5: timing  even_spread 0.405  0.410           0.395</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 6: timing as_obligated 0.746  0.898           0.752</span>
 </code></pre></div>

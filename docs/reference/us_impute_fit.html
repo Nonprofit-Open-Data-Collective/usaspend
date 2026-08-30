@@ -37,13 +37,14 @@ in one object. This is the experiment's winning method (IMPUTATION.md
     <li><a class="dropdown-item" href="../articles/data-dictionary.html">Data dictionary: tables, keys, and relationships</a></li>
     <li><a class="dropdown-item" href="../articles/award-types.html">Award types: what is actually in the data</a></li>
     <li><a class="dropdown-item" href="../articles/subawards.html">Subawards: pass-through, direction, and what FSRS cannot see</a></li>
+    <li><a class="dropdown-item" href="../articles/obligations-outlays.html">Obligations versus outlays: the two ledgers</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
-    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: why 72% is a good number</a></li>
+    <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
@@ -77,7 +78,12 @@ in one object. This is the experiment's winning method (<code>IMPUTATION.md</cod
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">us_impute_fit</span><span class="op">(</span><span class="va">training</span>, cells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dur_bin"</span>, <span class="st">"late_start"</span><span class="op">)</span>, min_cell <span class="op">=</span> <span class="fl">8L</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">us_impute_fit</span><span class="op">(</span></span>
+<span>  <span class="va">training</span>,</span>
+<span>  cells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dur_bin"</span>, <span class="st">"late_start"</span><span class="op">)</span>,</span>
+<span>  min_cell <span class="op">=</span> <span class="fl">8L</span>,</span>
+<span>  zero_fill <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -97,6 +103,16 @@ duration x late-start, is what the experiment selected; <code>late_start</code>
 <dt id="arg-min-cell">min_cell<a class="anchor" aria-label="anchor" href="#arg-min-cell"></a></dt>
 <dd><p>Minimum training awards for a cell to be used.</p></dd>
 
+
+<dt id="arg-zero-fill">zero_fill<a class="anchor" aria-label="anchor" href="#arg-zero-fill"></a></dt>
+<dd><p>Estimator for the per-event-year mean. <code>TRUE</code> (default)
+counts every cell award at every event-year, zero share past its own
+end, which makes <code>sum(curve) == mean lifetime outlay/obligation ratio</code>
+of the cell an exact identity. <code>FALSE</code> averages only the awards
+observed at each event-year (the survivor mean), whose tail years are
+estimated from the longer-lived awards only and whose sum can drift
+above the cell's mean ratio.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -110,6 +126,17 @@ by the even-spread fallback), and <code>meta</code>.</p>
 <code>min_cell</code> training awards, then the duration-only curve, then the global
 curve.</p>
     </div>
+    <div class="section level2">
+    <h2 id="what-the-model-returns">What the model returns<a class="anchor" aria-label="anchor" href="#what-the-model-returns"></a></h2>
+
+
+<p>The <strong>typical payment schedule</strong> given the observed obligations – both
+its shape (the lag) and its level (the cell's mean lifetime
+outlay/obligation ratio, below 1 for most cells). It does <em>not</em> impose
+the accounting identity that outlays eventually equal net obligations;
+<code><a href="us_impute_outlays.html">us_impute_outlays()</a></code><code>(reconcile = TRUE)</code> re-imposes it on the output
+when the analysis wants dollars that tie out to the obligations ledger.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
@@ -122,6 +149,17 @@ curve.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> global outlay/obligation ratio 0.94</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> durations supported: 1 (n=27), 2 (n=273), 3 (n=416), 4 (n=454), 5 (n=13), 6</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   (n=1)</span>
+<span class="r-in"><span><span class="co"># the zero-fill identity: each curve sums to its cell's mean ratio</span></span></span>
+<span class="r-in"><span><span class="va">m</span><span class="op">$</span><span class="va">curves_dur</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span>curve_sum <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">share</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>, by <span class="op">=</span> <span class="va">dur_bin</span><span class="op">]</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Key: &lt;dur_bin&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    dur_bin curve_sum</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      &lt;int&gt;     &lt;num&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1:       1     0.964</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2:       2     0.939</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3:       3     0.929</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4:       4     0.912</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5:       5     0.986</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6:       6     0.924</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
