@@ -168,7 +168,7 @@ On the full 50-org pilot (61,738 awards), after normalization:
 | **ok — exact to the dollar** | 44,680 (72%) | both assumptions hold |
 | no reported total | 4,955 | nothing to check against |
 | recent/open award | 4,133 | corrections keep arriving after the pull (API-audited) |
-| window edge | 1,564 | pre-2008 history sits below the search floor |
+| window edge | 1,564 | pre-2008 history sits below the search floor (the award's period of performance starts before the window, or its first action falls in the window's first year) |
 | multi-recipient | 129 | the award's other slice belongs to another organization |
 | unexplained | ~10% | API audit: mostly the same mechanisms mid-window, dominated by NIH awards following a PI between institutions |
 

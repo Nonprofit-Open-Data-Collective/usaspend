@@ -26,7 +26,7 @@ utils::globalVariables(c(
   "awarding_agency_code", "awarding_agency_name", "awarding_sub_agency_name",
   "base_action_date", "cfda_number", "cfda_title", "correction_delete_code",
   "deobligation_prior_year", "flags", "funding_agency_name", "gap",
-  "i.subaward_count", "i.subaward_total", "i.recipient_uei", "latest_action_date",
+  "i.subaward_count", "i.subaward_total", "i.recipient_uei", "i.pop_tx", "latest_action_date",
   "loan_face_value", "loan_subsidy_cost", "n", "N", "n_recipients",
   "award_id", "award_total_obligated", "award_total_outlayed",
   "n_subawards_in", "n_subawards_out", "n_transactions", "naics_code",

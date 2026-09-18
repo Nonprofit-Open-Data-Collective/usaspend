@@ -21,6 +21,17 @@
 #' award's reported lifetime total. A break is classified, not just counted --
 #' most breaks are structural (truncation, recipient changes), not bugs.
 #'
+#' An award is `window_edge` when its history evidently begins before the pull
+#' window: its earliest reported period-of-performance start (on the award
+#' record or any of its transactions) precedes the first action date in the
+#' extract, or its first in-extract action falls within a year of the window
+#' opening. The second test alone misses awards made before the window whose
+#' first in-window action is a later modification: `base_action_date` is the
+#' earliest action *in the extract*, so it can never precede the window. The
+#' period-of-performance test is added to it rather than replacing it, because
+#' a later modification can move an award's reported start date forward past
+#' its first obligation.
+#'
 #' @param panel A `usaspend_panel` from [us_panel()].
 #' @param tolerance Absolute dollar tolerance for the identity.
 #' @return A `data.table`, one row per award: `tx_sum`, `reported`, `gap`,
@@ -42,9 +53,18 @@ us_reconcile <- function(panel, tolerance = 1) {
   sums <- tx[, .(tx_sum = sum(federal_action_obligation, na.rm = TRUE)),
              by = award_key]
   r <- merge(aw[, c("award_key", "total_obligated", "total_outlayed",
-                    "base_action_date", "latest_action_date", "n_recipients")],
+                    "base_action_date", "latest_action_date", "n_recipients",
+                    "pop_start_date")],
              sums, by = "award_key", all.x = TRUE)
   r[is.na(tx_sum), "tx_sum" := 0]
+
+  ## earliest period-of-performance start on record. The award row carries the
+  ## latest-reported value, which later modifications can move forward, so the
+  ## transactions' own values are consulted too.
+  pop <- tx[!is.na(pop_start_date), .(pop_tx = min(pop_start_date)),
+            by = award_key]
+  r[pop, "pop_start_date" := pmin(pop_start_date, i.pop_tx, na.rm = TRUE),
+    on = "award_key"]
   r[, "gap" := total_obligated - tx_sum]
   r[, "outlay_ratio" := data.table::fifelse(
       !is.na(total_outlayed) & !is.na(total_obligated) & total_obligated != 0,
@@ -58,9 +78,11 @@ us_reconcile <- function(panel, tolerance = 1) {
       is.na(total_obligated),                       "no_reported_total",
       abs(gap) <= tolerance,                        "ok",
       n_recipients > 1L,                            "multi_recipient",
+      !is.na(pop_start_date) & pop_start_date < win_lo, "window_edge",
       base_action_date <= win_lo + 370,             "window_edge",
       latest_action_date >= win_hi - 370,           "recent_open",
       default = "break")]
+  r[, "pop_start_date" := NULL]
 
   tally <- r[, .N, by = status][order(-N)]
   us_msg(c("Reconciled {nrow(r)} award{?s}: {r[status == 'ok', .N]} exact ({round(100 * r[status == 'ok', .N] / max(nrow(r), 1))}%).",

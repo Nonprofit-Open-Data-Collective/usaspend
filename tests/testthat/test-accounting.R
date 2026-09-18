@@ -81,6 +81,38 @@ test_that("the panel reproduces the award lifetime identity on the sample", {
   expect_equal(r[award_key == "ASST_NON_HDTRA12310001_097", status], "ok")
 })
 
+test_that("window_edge catches pre-window awards first seen via a later mod", {
+  d <- as.Date
+  # W1/W2 pin the inferred window to FY2008-FY2024 and reconcile exactly
+  tx <- data.table::data.table(
+    award_key = c("W1", "W2", "PRE", "NOPOP", "INWIN", "MOVED", "EARLY"),
+    action_date = d(c("2007-10-01", "2024-09-30", "2015-03-01", "2015-03-01",
+                      "2015-03-01", "2015-03-01", "2008-01-15")),
+    pop_start_date = d(c("2007-10-01", "2024-09-30", NA, NA, "2014-10-01",
+                         "2003-06-01", "2012-01-01")),
+    federal_action_obligation = c(10, 10, 40, 40, 40, 40, 40))
+  aw <- data.table::data.table(
+    award_key = tx$award_key,
+    total_obligated = c(10, 10, 100, 100, 100, 100, 100),
+    total_outlayed = NA_real_,
+    base_action_date = tx$action_date, latest_action_date = tx$action_date,
+    n_recipients = 1L,
+    # MOVED: a later mod pushed the award-level start forward; the
+    # transaction still reports the original 2003 start
+    pop_start_date = d(c("2007-10-01", "2024-09-30", "2004-05-01", NA,
+                         "2014-10-01", "2016-01-01", "2012-01-01")))
+  p <- structure(list(awards = aw, transactions = tx), class = "usaspend_panel")
+  r <- suppressWarnings(suppressMessages(us_reconcile(p)))
+  st <- stats::setNames(r$status, r$award_key)
+  expect_equal(st[["W1"]], "ok")
+  expect_equal(st[["PRE"]], "window_edge")    # 2004 award, first seen 2015
+  expect_equal(st[["MOVED"]], "window_edge")  # earliest start on any tx
+  expect_equal(st[["EARLY"]], "window_edge")  # base-date fallback still applies
+  expect_equal(st[["NOPOP"]], "break")        # no start date, mid-window
+  expect_equal(st[["INWIN"]], "break")        # started inside the window
+  expect_false("pop_start_date" %in% names(r))
+})
+
 test_that("panel grain is unique and net splits into gross parts", {
   p <- sample_panel()
   g <- p$panel

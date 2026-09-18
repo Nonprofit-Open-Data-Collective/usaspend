@@ -468,6 +468,42 @@ the transactions, which makes them a genuine external check.
    should publish this table; a falling "ok" share is the earliest sign of a
    broken rule.
 
+   **How `window_edge` is decided.** An award is `window_edge` when its
+   earliest reported period-of-performance start (on the award record or any
+   of its transactions) precedes the first action date in the extract, *or*
+   its first in-extract action falls within a year of the window opening.
+   The start-date test was added after a 1,000-UEI test run: the base-date
+   test alone never fires for an award made before the window whose first
+   in-window action is a later modification, because `base_action_date` is
+   the earliest action *in the extract* and so can never precede the window.
+   **[measured]** 115 of 686 unexplained breaks ($283M of gap) had a pre-FY2008
+   start and moved to `window_edge`; transaction-level start dates caught 4
+   more. The start-date test is added to the base-date test rather than
+   replacing it, because a start date is not a reliable origin date on its
+   own: the award row holds the latest-reported value, and later
+   modifications move it forward (86 awards with first actions in FY2008
+   report starts after FY2009). The pilot counts above predate the change.
+
+   Some pre-window awards still slip through. For contracts, the
+   transaction-level "period of performance start" often tracks each
+   modification's own date, so a 2004 contract first seen via a 2009
+   modification (e.g. `HHSN266200400067C`, first in-extract action is
+   modification 7) reports no pre-window start and stays `break`. A nonzero
+   modification number on the first in-extract action would catch these, but
+   modification numbering is inconsistent across agencies and award types
+   (`0`, `000`, `0001`, `P00001`, ...), so it is not used yet.
+
+   **Not yet a status: history held by another recipient.** Of the remaining
+   breaks in the 1,000-UEI test, 121 have a first in-extract action more than
+   a year after the award's reported start, and 119 of those are *short* of
+   the reported total ($309M of gap). That is the signature of the PI-transfer
+   mechanism: the award's early years are filed under another recipient's UEI.
+   It is a candidate `other_recipient_history` status but is deliberately left
+   as `break` for now. The same pattern also fits an in-window action lost by
+   the extract, and relabelling it would hide exactly the breaks the audit
+   exists to surface. Promote it only after an API audit of a sample confirms
+   the missing actions sit under a different UEI.
+
    The deeper lesson from the audit: **a UEI-filtered extract is an
    organization-eye view, not an award-eye view.** The award's full history
    includes years at other institutions, and the panel measures what *this
