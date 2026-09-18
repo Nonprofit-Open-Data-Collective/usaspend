@@ -173,7 +173,7 @@ us_download_fetch <- function(jobs, dest = us_cache_dir("raw")) {
 ## Read the four file families the download endpoint emits and harmonize each.
 read_download_dir <- function(dir) {
   pick <- function(pat) list.files(dir, pattern = pat, full.names = TRUE)
-  rd <- function(f) data.table::fread(f, colClasses = "character", showProgress = FALSE)
+  rd <- us_read_csv
   bind <- function(files, fn, group) {
     if (!length(files)) return(NULL)
     data.table::rbindlist(
