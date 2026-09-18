@@ -218,7 +218,7 @@ us_archive_filter <- function(uei, csv_dir, group = c("assistance", "contract"),
   glob <- paste0("['", paste(gsub("\\\\", "/", files), collapse = "','"), "']")
   DBI::dbExecute(con, sprintf(
     "CREATE VIEW raw AS SELECT * FROM read_csv(%s, header=true, all_varchar=true,
-     union_by_name=true, filename=true)", glob))
+     delim=',', quote='\"', escape='\"', union_by_name=true, filename=true)", glob))
   DBI::dbWriteTable(con, "keep", data.frame(uei = uei, stringsAsFactors = FALSE))
 
   us_msg("Scanning {length(files)} archive file{?s} for {length(uei)} UEI{?s} ...")

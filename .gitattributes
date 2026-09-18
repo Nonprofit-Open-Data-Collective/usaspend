@@ -1,0 +1,2 @@
+# Byte-exact USAspending CSVs: embedded newlines inside quoted fields must stay LF.
+tests/testthat/fixtures/*.csv -text
