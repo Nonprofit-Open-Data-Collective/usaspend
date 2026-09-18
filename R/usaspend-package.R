@@ -43,6 +43,8 @@ utils::globalVariables(c(
   "reporting_fiscal_year", "reporting_fiscal_month", "gross_outlay_amount",
   "transaction_obligated_amount", "fiscal_year", "outlay", "filec_obligation",
   "has_outlay_rows", "outlay_amount", "outlay_coverage", "first_year",
+  ## disruption flags
+  "base_and_all_options_value", "sched_end", "end_shift_days", "ceiling_change",
   "oblig", "filec",
   ## outlay imputation
   ".fy_month", ".share", "first_fy", "last_oblig_fy", "first_month",

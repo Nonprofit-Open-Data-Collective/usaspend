@@ -6,6 +6,7 @@
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/award-types.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/data-dictionary.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/data-model.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/disruption.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/imputation-fitting.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/imputation.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/index.html</loc></url>
@@ -21,6 +22,7 @@
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/LICENSE-text.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/LICENSE.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/PLAN.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/disruption_sample.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/index.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/outlay_model.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/outlay_training.html</loc></url>
@@ -41,6 +43,7 @@
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_cache_dir.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_classify_action.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_classify_award_type.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_disruption_flags.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_download_fetch.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_download_run.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_download_status.html</loc></url>

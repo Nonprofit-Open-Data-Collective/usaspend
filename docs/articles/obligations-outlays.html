@@ -52,6 +52,9 @@
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
     <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Disruption</h6></li>
+    <li><a class="dropdown-item" href="../articles/disruption.html">Detecting disruption in federal funding</a></li>
   </ul>
 </li>
       </ul>
@@ -85,30 +88,60 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nonprofit-open-data-collective.github.io/usaspend/">usaspend</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-datatable.com" class="external-link">data.table</a></span><span class="op">)</span></span></code></pre></div>
-<p>Federal spending is recorded twice, in two ledgers that answer different questions:</p>
+<p>Federal spending is recorded twice, in two ledgers that answer
+different questions:</p>
 <ul>
-<li>The <strong>budget ledger</strong> records <strong>obligations</strong> — binding commitments against budget authority, booked the day the award action is signed. This is what USAspending’s award and transaction tables carry, what <code><a href="../reference/us_panel.html">us_panel()</a></code> nets, and what <code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> can verify to the dollar.</li>
-<li>The <strong>payment ledger</strong> records <strong>outlays</strong> — Treasury disbursements that liquidate those commitments, arriving on their own schedule, often years later.</li>
+<li>The <strong>budget ledger</strong> records
+<strong>obligations</strong> — binding commitments against budget
+authority, booked the day the award action is signed. This is what
+USAspending’s award and transaction tables carry, what
+<code><a href="../reference/us_panel.html">us_panel()</a></code> nets, and what <code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> can
+verify to the dollar.</li>
+<li>The <strong>payment ledger</strong> records <strong>outlays</strong>
+— Treasury disbursements that liquidate those commitments, arriving on
+their own schedule, often years later.</li>
 </ul>
-<p>In principle the two converge: money obligated is eventually either paid or de-obligated, so lifetime outlays equal lifetime net obligations at closeout. Measured on this package’s ground truth, awards with full reporting coverage and two-plus years to liquidate hit a median outlay/obligation ratio of exactly 1.00. Within any given <em>year</em>, though, the ledgers diverge widely — obligations put a median 90% of an award’s dollars in its first fiscal year, cash puts 2% there — and the published payment ledger has serious measurement problems that the budget ledger does not.</p>
+<p>In principle the two converge: money obligated is eventually either
+paid or de-obligated, so lifetime outlays equal lifetime net obligations
+at closeout. Measured on this package’s ground truth, awards with full
+reporting coverage and two-plus years to liquidate hit a median
+outlay/obligation ratio of exactly 1.00. Within any given <em>year</em>,
+though, the ledgers diverge widely — obligations put a median 90% of an
+award’s dollars in its first fiscal year, cash puts 2% there — and the
+published payment ledger has serious measurement problems that the
+budget ledger does not.</p>
 <div class="section level2">
 <h2 id="what-changed-in-2022">What changed in 2022<a class="anchor" aria-label="anchor" href="#what-changed-in-2022"></a>
 </h2>
-<p>Account-level reporting of award spending (the “File C” submissions agencies make under the DATA Act) followed a staged mandate:</p>
+<p>Account-level reporting of award spending (the “File C” submissions
+agencies make under the DATA Act) followed a staged mandate:</p>
 <ul>
 <li>
-<strong>FY2017–FY2021</strong> — quarterly submissions, with outlay reporting effectively optional; most agencies reported obligations but not cash.</li>
+<strong>FY2017–FY2021</strong> — quarterly submissions, with outlay
+reporting effectively optional; most agencies reported obligations but
+not cash.</li>
 <li>
-<strong>April 2020</strong> — awards funded by a COVID-19 supplemental were required to report outlays monthly.</li>
+<strong>April 2020</strong> — awards funded by a COVID-19
+supplemental were required to report outlays monthly.</li>
 <li>
-<strong>FY2022</strong> — all agencies required to submit outlay data for award spending <strong>every month</strong>.</li>
+<strong>FY2022</strong> — all agencies required to submit outlay
+data for award spending <strong>every month</strong>.</li>
 </ul>
-<p>The consequence is a hard information boundary: outlay history before an award’s applicable mandate was never reported — <em>not never paid</em> — and no later submission backfills it. An award straddling FY2022 has its early cash permanently missing from the record.</p>
+<p>The consequence is a hard information boundary: outlay history before
+an award’s applicable mandate was never reported — <em>not never
+paid</em> — and no later submission backfills it. An award straddling
+FY2022 has its early cash permanently missing from the record.</p>
 </div>
 <div class="section level2">
-<h2 id="outlays-in-the-tables-you-already-have-and-why-not-to-trust-them">Outlays in the tables you already have — and why not to trust them<a class="anchor" aria-label="anchor" href="#outlays-in-the-tables-you-already-have-and-why-not-to-trust-them"></a>
+<h2 id="outlays-in-the-tables-you-already-have-and-why-not-to-trust-them">Outlays in the tables you already have — and why not to trust
+them<a class="anchor" aria-label="anchor" href="#outlays-in-the-tables-you-already-have-and-why-not-to-trust-them"></a>
 </h2>
-<p>The bulk transaction files carry one outlay field, <code>total_outlayed_amount_for_overall_award</code> (canonical: <code>award_total_outlayed</code>, surfaced on the award spine as <code>total_outlayed</code>). It is a <strong>lifetime-to-date snapshot</strong> stamped onto every row at file generation — there is no annual form — and it inherits every window problem at once:</p>
+<p>The bulk transaction files carry one outlay field,
+<code>total_outlayed_amount_for_overall_award</code> (canonical:
+<code>award_total_outlayed</code>, surfaced on the award spine as
+<code>total_outlayed</code>). It is a <strong>lifetime-to-date
+snapshot</strong> stamped onto every row at file generation — there is
+no annual form — and it inherits every window problem at once:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">aw</span> <span class="op">&lt;-</span> <span class="va">outlay_training</span><span class="op">$</span><span class="va">awards</span></span>
 <span><span class="va">d</span> <span class="op">&lt;-</span> <span class="va">aw</span><span class="op">[</span><span class="va">linked</span> <span class="op">==</span> <span class="cn">TRUE</span> <span class="op">&amp;</span> <span class="va">oblig</span> <span class="op">&gt;</span> <span class="fl">0</span> <span class="op">&amp;</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">pop_end_fy</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">pop_end_fy</span> <span class="op">&lt;=</span> <span class="fl">2025</span><span class="op">]</span></span>
@@ -121,12 +154,32 @@
 <span><span class="co">#&gt; 1:  FY2020     83                     0.40</span></span>
 <span><span class="co">#&gt; 2:  FY2021     63                     0.84</span></span>
 <span><span class="co">#&gt; 3: FY2022+   1848                     0.92</span></span></code></pre></div>
-<p>The gradient is the mandate, not the spending: FY2020 starts are missing their pre-mandate cash, FY2021 starts part of it, FY2022+ starts almost none. On top of the era problem, coverage varies by <strong>agency practice</strong> — in the same completed, linked, mandate-era population, DoD reports File C obligations but essentially no outlays (median ratio 0.00) and Commerce 0.24, while NSF, USDA and NASA sit at 1.00 and HHS at 0.91 — and by <strong>liquidation lag</strong>: even clean-era awards read 0.90 a year after the performance end and reach 1.00 only around three years. <code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> reports the ratio per award so the gap stays visible, but the lifetime field is a floor with unknown slack, never an annual measure.</p>
+<p>The gradient is the mandate, not the spending: FY2020 starts are
+missing their pre-mandate cash, FY2021 starts part of it, FY2022+ starts
+almost none. On top of the era problem, coverage varies by
+<strong>agency practice</strong> — in the same completed, linked,
+mandate-era population, DoD reports File C obligations but essentially
+no outlays (median ratio 0.00) and Commerce 0.24, while NSF, USDA and
+NASA sit at 1.00 and HHS at 0.91 — and by <strong>liquidation
+lag</strong>: even clean-era awards read 0.90 a year after the
+performance end and reach 1.00 only around three years.
+<code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> reports the ratio per award so the gap stays
+visible, but the lifetime field is a floor with unknown slack, never an
+annual measure.</p>
 </div>
 <div class="section level2">
 <h2 id="adding-real-annual-outlays">Adding real annual outlays<a class="anchor" aria-label="anchor" href="#adding-real-annual-outlays"></a>
 </h2>
-<p>Annual outlays exist in one place: the account-level File C records behind <code>POST /api/v2/awards/funding/</code>, one row per federal account × object class × program activity × reporting period. <code><a href="../reference/us_fetch_outlays.html">us_fetch_outlays()</a></code> retrieves them per award and <code><a href="../reference/us_outlays_by_year.html">us_outlays_by_year()</a></code> collapses them to award × fiscal year — applying the rule the raw field requires (<code>gross_outlay_amount</code> is cumulative within each fiscal year, so the annual figure is the last reported value per account cell, never the period sum). <code><a href="../reference/us_add_outlays.html">us_add_outlays()</a></code> attaches the result to a fiscal panel.</p>
+<p>Annual outlays exist in one place: the account-level File C records
+behind <code>POST /api/v2/awards/funding/</code>, one row per federal
+account × object class × program activity × reporting period.
+<code><a href="../reference/us_fetch_outlays.html">us_fetch_outlays()</a></code> retrieves them per award and
+<code><a href="../reference/us_outlays_by_year.html">us_outlays_by_year()</a></code> collapses them to award × fiscal year
+— applying the rule the raw field requires
+(<code>gross_outlay_amount</code> is cumulative within each fiscal year,
+so the annual figure is the last reported value per account cell, never
+the period sum). <code><a href="../reference/us_add_outlays.html">us_add_outlays()</a></code> attaches the result to a
+fiscal panel.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_panel.html">us_panel</a></span><span class="op">(</span><span class="va">extract</span>, period <span class="op">=</span> <span class="st">"fiscal"</span><span class="op">)</span></span>
 <span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_add_outlays.html">us_add_outlays</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span>
@@ -136,27 +189,61 @@
 </h3>
 <ul>
 <li>
-<strong>The era boundary</strong> above: nothing before an award’s mandate, ever.</li>
+<strong>The era boundary</strong> above: nothing before an award’s
+mandate, ever.</li>
 <li>
-<strong>Agency coverage</strong>: for some portfolios (VA contracts, much of DoD) there is simply no cash to fetch, at any date.</li>
+<strong>Agency coverage</strong>: for some portfolios (VA contracts,
+much of DoD) there is simply no cash to fetch, at any date.</li>
 <li>
-<strong>Key and linkage challenges</strong>: File C rows are linked to award identifiers by the submitting agency, and the linkage fails in both directions. Some awards return no File C records at all; others return records whose obligations do not reconcile with the award’s own transaction ledger — about a fifth of fetched awards in this package’s ground-truth pull failed a 10% linkage screen. The funding payload also carries <strong>no recipient dimension</strong>: outlays exist only at award grain, so multi-recipient awards cannot be split by organization from the cash side.</li>
+<strong>Key and linkage challenges</strong>: File C rows are linked
+to award identifiers by the submitting agency, and the linkage fails in
+both directions. Some awards return no File C records at all; others
+return records whose obligations do not reconcile with the award’s own
+transaction ledger — about a fifth of fetched awards in this package’s
+ground-truth pull failed a 10% linkage screen. The funding payload also
+carries <strong>no recipient dimension</strong>: outlays exist only at
+award grain, so multi-recipient awards cannot be split by organization
+from the cash side.</li>
 <li>
-<strong>Operational limits</strong>: one paged request per award, and sustained pulls beyond roughly a thousand requests can trip a temporary host-level block — large pulls run best throttled and cached.</li>
+<strong>Operational limits</strong>: one paged request per award,
+and sustained pulls beyond roughly a thousand requests can trip a
+temporary host-level block — large pulls run best throttled and
+cached.</li>
 </ul>
-<p><code><a href="../reference/us_add_outlays.html">us_add_outlays()</a></code> encodes all of this per award as <code>outlay_coverage</code> (<code>complete</code> / <code>truncated_pre_FY2022</code> / <code>unlinked</code> / <code>no_outlay_rows</code> / <code>no_file_c</code> / <code>fetch_failed</code>), with <code>NA</code> — never a fake zero — where measurement is absent.</p>
+<p><code><a href="../reference/us_add_outlays.html">us_add_outlays()</a></code> encodes all of this per award as
+<code>outlay_coverage</code> (<code>complete</code> /
+<code>truncated_pre_FY2022</code> / <code>unlinked</code> /
+<code>no_outlay_rows</code> / <code>no_file_c</code> /
+<code>fetch_failed</code>), with <code>NA</code> — never a fake zero —
+where measurement is absent.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="where-real-outlays-dont-reach-imputation">Where real outlays don’t reach: imputation<a class="anchor" aria-label="anchor" href="#where-real-outlays-dont-reach-imputation"></a>
 </h2>
-<p>For the majority of awards whose payment ledger is truncated, unlinked, or absent, <code><a href="../reference/us_impute_outlays.html">us_impute_outlays()</a></code> estimates the cash calendar from the obligations side. Two things matter about what it returns:</p>
+<p>For the majority of awards whose payment ledger is truncated,
+unlinked, or absent, <code><a href="../reference/us_impute_outlays.html">us_impute_outlays()</a></code> estimates the cash
+calendar from the obligations side. Two things matter about what it
+returns:</p>
 <ul>
-<li>The model is fitted only on awards whose payment ledgers are essentially <strong>complete</strong> (screened by completeness and shape — see <code><a href="../articles/imputation-fitting.html">vignette("imputation-fitting")</a></code>), and it predicts the <strong>typical payment schedule conditional on the obligations</strong>: the shape of the cash calendar at the level completed awards actually deliver, about 0.94 per obligated dollar.</li>
+<li>The model is fitted only on awards whose payment ledgers are
+essentially <strong>complete</strong> (screened by completeness and
+shape — see <code><a href="../articles/imputation-fitting.html">vignette("imputation-fitting")</a></code>), and it
+predicts the <strong>typical payment schedule conditional on the
+obligations</strong>: the shape of the cash calendar at the level
+completed awards actually deliver, about 0.94 per obligated dollar.</li>
 <li>
-<code>reconcile = TRUE</code> re-imposes the accounting identity — every imputed series rescaled to sum exactly to net obligations (for in-progress awards, over the full projected life). That configuration makes imputed dollars tie out against the reconciled obligations ledger, which is what most analyses of government spending or organizational revenue want; the model then contributes what it genuinely knows, the timing.</li>
+<code>reconcile = TRUE</code> re-imposes the accounting identity —
+every imputed series rescaled to sum exactly to net obligations (for
+in-progress awards, over the full projected life). That configuration
+makes imputed dollars tie out against the reconciled obligations ledger,
+which is what most analyses of government spending or organizational
+revenue want; the model then contributes what it genuinely knows, the
+timing.</li>
 </ul>
-<p><code><a href="../articles/imputation.html">vignette("imputation")</a></code> walks the approach with drawn cases; <code><a href="../articles/reconciliation.html">vignette("reconciliation")</a></code> places both ledgers inside the package’s accounting identities.</p>
+<p><code><a href="../articles/imputation.html">vignette("imputation")</a></code> walks the approach with drawn
+cases; <code><a href="../articles/reconciliation.html">vignette("reconciliation")</a></code> places both ledgers
+inside the package’s accounting identities.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
@@ -169,7 +256,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

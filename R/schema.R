@@ -30,19 +30,21 @@ us_schema_spec <- function() {
       modification_number = chr,
       action_date = dat, action_year = int, action_fiscal_year = int,
       action_type_code = chr, action_type_label = chr, action_class = chr,
+      transaction_description = chr,
       correction_delete_code = chr, record_type_code = chr,
       federal_action_obligation = num, pragmatic_obligation = num,
       non_federal_funding_amount = num, loan_face_value = num,
       loan_subsidy_cost = num, award_total_obligated = num,
-      award_total_outlayed = num,
+      award_total_outlayed = num, base_and_all_options_value = num,
       recipient_uei = chr, recipient_name = chr, recipient_parent_uei = chr,
       recipient_state = chr,
       awarding_agency_code = chr, awarding_agency_name = chr,
       awarding_sub_agency_code = chr, awarding_sub_agency_name = chr,
+      awarding_office_code = chr, awarding_office_name = chr,
       funding_agency_code = chr, funding_agency_name = chr,
       cfda_number = chr, cfda_title = chr, naics_code = chr, psc_code = chr,
-      pop_start_date = dat, pop_end_date = dat, last_modified_date = dat,
-      source_file = chr
+      pop_start_date = dat, pop_end_date = dat, pop_potential_end_date = dat,
+      last_modified_date = dat, source_file = chr
     ),
     subawards = D(
       subaward_key = chr, prime_award_key = chr, prime_award_id = chr,
@@ -147,6 +149,17 @@ us_empty <- function(table = c("transactions", "subawards", "awards", "panel", "
 ## Named vector: names are canonical fields, values are raw source columns.
 ## A canonical field absent from a source map is filled with NA of the right
 ## type, so the two families stack cleanly.
+##
+## Five fields were added 2026-09-18 for disruption analysis (vignette
+## "disruption"): the free-text `transaction_description`, the awarding
+## office, and -- contracts only -- the per-action ceiling change
+## `base_and_all_options_value` and `pop_potential_end_date`. They carry no
+## accounting weight, so extracts harmonized before they existed stay valid:
+## us_normalize_transactions() fills them with typed NA (see
+## tx_optional_fields()).
+tx_optional_fields <- function() c(
+  "transaction_description", "base_and_all_options_value",
+  "awarding_office_code", "awarding_office_name", "pop_potential_end_date")
 
 tx_map_assistance <- function() c(
   transaction_key            = "assistance_transaction_unique_key",
@@ -156,6 +169,7 @@ tx_map_assistance <- function() c(
   modification_number        = "modification_number",
   action_date                = "action_date",
   action_type_code           = "action_type_code",
+  transaction_description    = "transaction_description",
   correction_delete_code     = "correction_delete_indicator_code",
   record_type_code           = "record_type_code",
   award_type_code            = "assistance_type_code",
@@ -174,6 +188,8 @@ tx_map_assistance <- function() c(
   awarding_agency_name       = "awarding_agency_name",
   awarding_sub_agency_code   = "awarding_sub_agency_code",
   awarding_sub_agency_name   = "awarding_sub_agency_name",
+  awarding_office_code       = "awarding_office_code",
+  awarding_office_name       = "awarding_office_name",
   funding_agency_code        = "funding_agency_code",
   funding_agency_name        = "funding_agency_name",
   cfda_number                = "cfda_number",
@@ -191,10 +207,13 @@ tx_map_contract <- function() c(
   modification_number        = "modification_number",
   action_date                = "action_date",
   action_type_code           = "action_type_code",
+  transaction_description    = "transaction_description",
   award_type_code            = "award_type_code",
   federal_action_obligation  = "federal_action_obligation",
   award_total_obligated      = "total_dollars_obligated",
   award_total_outlayed       = "total_outlayed_amount_for_overall_award",
+  ## per-action change to the ceiling (base + all options), not a running total
+  base_and_all_options_value = "base_and_all_options_value",
   recipient_uei              = "recipient_uei",
   recipient_name             = "recipient_name",
   recipient_parent_uei       = "recipient_parent_uei",
@@ -203,12 +222,15 @@ tx_map_contract <- function() c(
   awarding_agency_name       = "awarding_agency_name",
   awarding_sub_agency_code   = "awarding_sub_agency_code",
   awarding_sub_agency_name   = "awarding_sub_agency_name",
+  awarding_office_code       = "awarding_office_code",
+  awarding_office_name       = "awarding_office_name",
   funding_agency_code        = "funding_agency_code",
   funding_agency_name        = "funding_agency_name",
   naics_code                 = "naics_code",
   psc_code                   = "product_or_service_code",
   pop_start_date             = "period_of_performance_start_date",
   pop_end_date               = "period_of_performance_current_end_date",
+  pop_potential_end_date     = "period_of_performance_potential_end_date",
   last_modified_date         = "last_modified_date"
 )
 

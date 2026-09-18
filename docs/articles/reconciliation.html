@@ -52,6 +52,9 @@
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
     <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Disruption</h6></li>
+    <li><a class="dropdown-item" href="../articles/disruption.html">Detecting disruption in federal funding</a></li>
   </ul>
 </li>
       </ul>
@@ -85,50 +88,132 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nonprofit-open-data-collective.github.io/usaspend/">usaspend</a></span><span class="op">)</span></span>
 <span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_panel.html">us_panel</a></span><span class="op">(</span><span class="fu"><a href="../reference/us_sample_extract.html">us_sample_extract</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>The goal of this package is to start from a <strong>complex transaction ledger</strong> — tens of thousands of modification rows carrying corrections, restated duplicates, zero-dollar administrative actions, claw-backs, and ceilings that are not money — and convert it into an <strong>accounting ledger</strong>: one row per organization × award × year whose dollars add up under stated rules. “Under stated rules” is the whole game. Every rule is a choice, and a choice that cannot be checked against an independent figure is an assumption. This vignette lays out the identities the package imposes, then shows how they are tested.</p>
+<p>The goal of this package is to start from a <strong>complex
+transaction ledger</strong> — tens of thousands of modification rows
+carrying corrections, restated duplicates, zero-dollar administrative
+actions, claw-backs, and ceilings that are not money — and convert it
+into an <strong>accounting ledger</strong>: one row per organization ×
+award × year whose dollars add up under stated rules. “Under stated
+rules” is the whole game. Every rule is a choice, and a choice that
+cannot be checked against an independent figure is an assumption. This
+vignette lays out the identities the package imposes, then shows how
+they are tested.</p>
 <div class="section level2">
 <h2 id="the-identities">The identities<a class="anchor" aria-label="anchor" href="#the-identities"></a>
 </h2>
 <div class="section level3">
 <h3 id="what-adds-what-subtracts-what-has-no-effect">What adds, what subtracts, what has no effect<a class="anchor" aria-label="anchor" href="#what-adds-what-subtracts-what-has-no-effect"></a>
 </h3>
-<p>The money column is <code>federal_action_obligation</code>, and <strong>the sign is the truth</strong> — the action-type code describes intent, never direction (a CONTINUATION can carry negative dollars; 6,344 did in the pilot).</p>
+<p>The money column is <code>federal_action_obligation</code>, and
+<strong>the sign is the truth</strong> — the action-type code describes
+intent, never direction (a CONTINUATION can carry negative dollars;
+6,344 did in the pilot).</p>
 <ul>
 <li>
-<strong>Adds to net</strong>: any positive obligation — originations (assistance <code>A</code>, contract base awards), funded continuations (assistance <code>B</code>, contract option exercises <code>G</code>), positive revisions and funding-only actions (contract <code>C</code>). A <em>program expansion</em> looks like this: new positive obligations, usually alongside a period extension.</li>
+<strong>Adds to net</strong>: any positive obligation — originations
+(assistance <code>A</code>, contract base awards), funded continuations
+(assistance <code>B</code>, contract option exercises <code>G</code>),
+positive revisions and funding-only actions (contract <code>C</code>). A
+<em>program expansion</em> looks like this: new positive obligations,
+usually alongside a period extension.</li>
 <li>
-<strong>Subtracts from net</strong>: any negative obligation — de-obligations and claw-backs, arriving under every action class (terminations, negative continuations, negative revisions, closeout adjustments). The <code>deobligation_policy</code> argument of <code><a href="../reference/us_panel.html">us_panel()</a></code> chooses <em>when</em> they subtract: the year posted (<code>as_posted</code>), restated LIFO against the award’s earlier positive years (<code>restate</code>), or measured-and-discarded (<code>drop</code>).</li>
+<strong>Subtracts from net</strong>: any negative obligation —
+de-obligations and claw-backs, arriving under every action class
+(terminations, negative continuations, negative revisions, closeout
+adjustments). The <code>deobligation_policy</code> argument of
+<code><a href="../reference/us_panel.html">us_panel()</a></code> chooses <em>when</em> they subtract: the year
+posted (<code>as_posted</code>), restated LIFO against the award’s
+earlier positive years (<code>restate</code>), or measured-and-discarded
+(<code>drop</code>).</li>
 <li>
-<strong>No effect on net</strong>: zero-dollar actions — 20–30% of all rows. These carry the administrative record: period-of-performance changes, closeouts, vendor and transfer updates. A <em>timeline-only extension</em> is the canonical case: the end date moves, the money does not, net is untouched. (A non-zero amount on an administrative action is flagged <code>money_on_admin_action</code> rather than silently trusted.)</li>
+<strong>No effect on net</strong>: zero-dollar actions — 20–30% of
+all rows. These carry the administrative record: period-of-performance
+changes, closeouts, vendor and transfer updates. A <em>timeline-only
+extension</em> is the canonical case: the end date moves, the money does
+not, net is untouched. (A non-zero amount on an administrative action is
+flagged <code>money_on_admin_action</code> rather than silently
+trusted.)</li>
 <li>
-<strong>Never in net at all</strong>: loan face value (the borrower’s liability), loan subsidy cost, non-federal cost share, and every ceiling — <code>potential_value</code>, IDV vehicle totals. The pilot holds $115bn of IDV ceiling against $0.75bn actually obligated on those vehicles.</li>
+<strong>Never in net at all</strong>: loan face value (the
+borrower’s liability), loan subsidy cost, non-federal cost share, and
+every ceiling — <code>potential_value</code>, IDV vehicle totals. The
+pilot holds $115bn of IDV ceiling against $0.75bn actually obligated on
+those vehicles.</li>
 </ul>
 </div>
 <div class="section level3">
 <h3 id="the-award-window-and-whether-it-binds">The award window, and whether it binds<a class="anchor" aria-label="anchor" href="#the-award-window-and-whether-it-binds"></a>
 </h3>
-<p>The <strong>period of performance</strong> (<code>pop_start_date</code> → <code>pop_end_date</code>) is the award’s declared window. It is <em>descriptive, not binding</em>: transactions legitimately post after the end date (corrections, closeout adjustments), and the normalizer only flags actions landing more than a year past it (<code>action_after_pop</code>) rather than rejecting them.</p>
-<p>The window also <strong>moves</strong>. The data signature of a period change is a <code>pop_end_date</code> that differs across an award’s transaction sequence — the first reported value is the original plan, the last is the final window, and <code><a href="../reference/us_outlay_features.html">us_outlay_features()</a></code> classifies the difference: an extension past 90 days with material new money is <code>extension_funded</code> (an expansion), without new money <code>extension_timeline</code> (a no-cost extension), and a shortened window usually rides along with a <code>reduced</code> award’s de-obligations.</p>
-<p><strong>Closeout is a third clock.</strong> The closeout action (contract code <code>K</code>, assistance <code>D</code> “Adjustment to Completed Award”) follows neither the performance end nor the last payment: measured on File C ground truth, cash is still arriving a year after the performance end (outlay/obligation ratio 0.90 at one year, 1.00 only at three), and de-obligations of genuine underspend post later still. Performance end → final drawdowns → audit and closeout is a sequence spanning years, and each stage leaves rows.</p>
+<p>The <strong>period of performance</strong>
+(<code>pop_start_date</code> → <code>pop_end_date</code>) is the award’s
+declared window. It is <em>descriptive, not binding</em>: transactions
+legitimately post after the end date (corrections, closeout
+adjustments), and the normalizer only flags actions landing more than a
+year past it (<code>action_after_pop</code>) rather than rejecting
+them.</p>
+<p>The window also <strong>moves</strong>. The data signature of a
+period change is a <code>pop_end_date</code> that differs across an
+award’s transaction sequence — the first reported value is the original
+plan, the last is the final window, and
+<code><a href="../reference/us_outlay_features.html">us_outlay_features()</a></code> classifies the difference: an
+extension past 90 days with material new money is
+<code>extension_funded</code> (an expansion), without new money
+<code>extension_timeline</code> (a no-cost extension), and a shortened
+window usually rides along with a <code>reduced</code> award’s
+de-obligations.</p>
+<p><strong>Closeout is a third clock.</strong> The closeout action
+(contract code <code>K</code>, assistance <code>D</code> “Adjustment to
+Completed Award”) follows neither the performance end nor the last
+payment: measured on File C ground truth, cash is still arriving a year
+after the performance end (outlay/obligation ratio 0.90 at one year,
+1.00 only at three), and de-obligations of genuine underspend post later
+still. Performance end → final drawdowns → audit and closeout is a
+sequence spanning years, and each stage leaves rows.</p>
 </div>
 <div class="section level3">
 <h3 id="two-year-definitions">Two year definitions<a class="anchor" aria-label="anchor" href="#two-year-definitions"></a>
 </h3>
-<p>Every transaction carries both <code>action_year</code> (calendar) and <code>action_fiscal_year</code> (federal fiscal: October–September), and <code><a href="../reference/us_panel.html">us_panel()</a></code> builds on either (<code>period =</code>). The choice is an accounting decision: October–December actions belong to different years under the two definitions, so panels built on different bases do not reconcile year-by-year, only in lifetime totals. Match the basis to the linked data — calendar for IRS Form 990 and most organizational outcomes, fiscal for anything meeting the federal ledgers (File C outlays exist <em>only</em> in fiscal periods, which is why <code><a href="../reference/us_add_outlays.html">us_add_outlays()</a></code> and <code><a href="../reference/us_add_imputed_outlays.html">us_add_imputed_outlays()</a></code> require a fiscal panel).</p>
+<p>Every transaction carries both <code>action_year</code> (calendar)
+and <code>action_fiscal_year</code> (federal fiscal: October–September),
+and <code><a href="../reference/us_panel.html">us_panel()</a></code> builds on either (<code>period =</code>).
+The choice is an accounting decision: October–December actions belong to
+different years under the two definitions, so panels built on different
+bases do not reconcile year-by-year, only in lifetime totals. Match the
+basis to the linked data — calendar for IRS Form 990 and most
+organizational outcomes, fiscal for anything meeting the federal ledgers
+(File C outlays exist <em>only</em> in fiscal periods, which is why
+<code><a href="../reference/us_add_outlays.html">us_add_outlays()</a></code> and <code><a href="../reference/us_add_imputed_outlays.html">us_add_imputed_outlays()</a></code>
+require a fiscal panel).</p>
 </div>
 <div class="section level3">
 <h3 id="pass-through-the-primes-ledger-and-the-subs">Pass-through: the prime’s ledger and the sub’s<a class="anchor" aria-label="anchor" href="#pass-through-the-primes-ledger-and-the-subs"></a>
 </h3>
-<p>A prime award’s obligations are the organization’s <strong>gross</strong> federal revenue. What it is obliged to pay onward to subrecipients is measured separately (<code>subaward_out_amount</code>), and the identity</p>
+<p>A prime award’s obligations are the organization’s
+<strong>gross</strong> federal revenue. What it is obliged to pay onward
+to subrecipients is measured separately
+(<code>subaward_out_amount</code>), and the identity</p>
 <blockquote>
 <p><code>net_revenue = obligation_net − subaward_out_amount</code></p>
 </blockquote>
-<p>defines the <strong>retained</strong> column: what the prime keeps after pass-through. The same dollar deliberately appears twice in the system — once in the prime’s gross, once as the subrecipient’s inbound revenue (<code>subaward_in_amount</code>, kept in the separate org-year <code>subawards_in</code> table) — because both ledgers are true at their own level. What the package never does is add them in one total.</p>
+<p>defines the <strong>retained</strong> column: what the prime keeps
+after pass-through. The same dollar deliberately appears twice in the
+system — once in the prime’s gross, once as the subrecipient’s inbound
+revenue (<code>subaward_in_amount</code>, kept in the separate org-year
+<code>subawards_in</code> table) — because both ledgers are true at
+their own level. What the package never does is add them in one
+total.</p>
 </div>
 <div class="section level3">
 <h3 id="why-a-subaward-row-will-not-reconcile">Why a subaward row will not reconcile<a class="anchor" aria-label="anchor" href="#why-a-subaward-row-will-not-reconcile"></a>
 </h3>
-<p>Subaward data is <strong>not a transaction ledger</strong>. FSRS rows are <em>report lines</em>: one line per subaward as last restated, no modification history, no de-obligations, reported only above the $30k threshold, and lagging the obligations they draw on (13% of pilot pass-through dollars posted in years with no prime activity). There is no lifetime total to test a subaward sum against, so subaward figures are treated as <strong>floors</strong> carried alongside the reconciled prime ledger — never as a ledger that must balance.</p>
+<p>Subaward data is <strong>not a transaction ledger</strong>. FSRS rows
+are <em>report lines</em>: one line per subaward as last restated, no
+modification history, no de-obligations, reported only above the $30k
+threshold, and lagging the obligations they draw on (13% of pilot
+pass-through dollars posted in years with no prime activity). There is
+no lifetime total to test a subaward sum against, so subaward figures
+are treated as <strong>floors</strong> carried alongside the reconciled
+prime ledger — never as a ledger that must balance.</p>
 </div>
 </div>
 <div class="section level2">
@@ -137,11 +222,20 @@
 <p>The tests check two distinct assumptions:</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>The database and the retrieval are consistent</strong> — the extract holds what USAspending holds, without duplication or loss along the download path.</li>
+<strong>The database and the retrieval are consistent</strong> — the
+extract holds what USAspending holds, without duplication or loss along
+the download path.</li>
 <li>
-<strong>The transaction-to-accounting transformation gets the math right</strong> — de-duplication, delete handling, sign netting, and year assignment reproduce the totals they should.</li>
+<strong>The transaction-to-accounting transformation gets the math
+right</strong> — de-duplication, delete handling, sign netting, and year
+assignment reproduce the totals they should.</li>
 </ol>
-<p>A single external figure tests both at once: USAspending publishes each award’s <strong>lifetime obligation total, computed by a different system than the transactions</strong>. If the extract is complete and the netting is correct, summed transactions return to that total. <code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> runs the identity per award and labels every exception:</p>
+<p>A single external figure tests both at once: USAspending publishes
+each award’s <strong>lifetime obligation total, computed by a different
+system than the transactions</strong>. If the extract is complete and
+the netting is correct, summed transactions return to that total.
+<code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> runs the identity per award and labels every
+exception:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_reconcile.html">us_reconcile</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Reconciled 18 awards: 15 exact (83%).</span></span>
@@ -190,12 +284,23 @@
 <div class="section level3">
 <h3 id="reading-the-labels">Reading the labels<a class="anchor" aria-label="anchor" href="#reading-the-labels"></a>
 </h3>
-<p>The sample reconciles 15 of 18 exactly, and the exceptions carry the two lessons:</p>
+<p>The sample reconciles 15 of 18 exactly, and the exceptions carry the
+two lessons:</p>
 <ul>
 <li>
-<strong><code>no_reported_total</code></strong> — nothing to check against; a coverage fact, not a failure.</li>
+<strong><code>no_reported_total</code></strong> — nothing to check
+against; a coverage fact, not a failure.</li>
 <li>
-<strong><code><a href="https://rdrr.io/r/base/Control.html" class="external-link">break</a></code></strong> — the claw-back award shows <code>tx_sum = −$310,999</code> against a $1.39M lifetime total because the extract’s window holds only the reversal. The identity <em>should</em> fail here: <strong>a UEI-filtered extract is an organization-eye view, not an award-eye view</strong>, and the panel measures what this organization was obligated in these years — which legitimately differs from whole-life totals whenever the award’s history extends beyond the window (<code>window_edge</code>, <code>recent_open</code>) or the award moved between institutions (<code>multi_recipient</code>).</li>
+<strong><code><a href="https://rdrr.io/r/base/Control.html" class="external-link">break</a></code></strong> — the claw-back award shows
+<code>tx_sum = −$310,999</code> against a $1.39M lifetime total because
+the extract’s window holds only the reversal. The identity
+<em>should</em> fail here: <strong>a UEI-filtered extract is an
+organization-eye view, not an award-eye view</strong>, and the panel
+measures what this organization was obligated in these years — which
+legitimately differs from whole-life totals whenever the award’s history
+extends beyond the window (<code>window_edge</code>,
+<code>recent_open</code>) or the award moved between institutions
+(<code>multi_recipient</code>).</li>
 </ul>
 </div>
 <div class="section level3">
@@ -242,11 +347,18 @@
 <tr class="even">
 <td>unexplained</td>
 <td>~10%</td>
-<td>API audit: mostly the same mechanisms mid-window, dominated by NIH awards following a PI between institutions</td>
+<td>API audit: mostly the same mechanisms mid-window, dominated by NIH
+awards following a PI between institutions</td>
 </tr>
 </tbody>
 </table>
-<p>72% exact — with every exception <em>labeled</em> — is a strong result for a UEI-filtered extract, and the labeling is the point: a falling “ok” share on a rebuild is the earliest sign of a broken rule, and an unlabeled break is a real question, not noise. De-duplication is what makes the number possible: before the duplicate rule (<code><a href="../articles/accounting.html">vignette("accounting")</a></code>), 5,754 additional pilot awards failed the identity.</p>
+<p>72% exact — with every exception <em>labeled</em> — is a strong
+result for a UEI-filtered extract, and the labeling is the point: a
+falling “ok” share on a rebuild is the earliest sign of a broken rule,
+and an unlabeled break is a real question, not noise. De-duplication is
+what makes the number possible: before the duplicate rule
+(<code><a href="../articles/accounting.html">vignette("accounting")</a></code>), 5,754 additional pilot awards
+failed the identity.</p>
 </div>
 <div class="section level3">
 <h3 id="structural-invariants-us_audit">Structural invariants — <code>us_audit()</code><a class="anchor" aria-label="anchor" href="#structural-invariants-us_audit"></a>
@@ -266,20 +378,57 @@
 <span><span class="co">#&gt;  8:                   transactions carrying anomaly flags         8   info</span></span>
 <span><span class="co">#&gt;  9:                                         years covered 2008-2025   info</span></span>
 <span><span class="co">#&gt; 10:                            outbound subawards fetched     FALSE   warn</span></span></code></pre></div>
-<p>No transaction key twice, no award attributed to two organizations, one row per org-award-year — plus the counters worth watching over time (negative years, zero-dollar share, anomaly flags) and a warning whenever outbound subawards were never fetched, so <code>net_revenue = obligation_net</code> cannot pass silently as a netted figure.</p>
+<p>No transaction key twice, no award attributed to two organizations,
+one row per org-award-year — plus the counters worth watching over time
+(negative years, zero-dollar share, anomaly flags) and a warning
+whenever outbound subawards were never fetched, so
+<code>net_revenue = obligation_net</code> cannot pass silently as a
+netted figure.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="obligations-versus-outlays">Obligations versus outlays<a class="anchor" aria-label="anchor" href="#obligations-versus-outlays"></a>
 </h2>
-<p>Everything above concerns the <strong>budget ledger</strong> — obligations, the promises. The <strong>payment ledger</strong> — outlays, the cash — is a separate system with its own identity: money obligated is eventually either paid out or de-obligated, so lifetime outlays converge to lifetime net obligations at closeout. The data confirms the identity where measurement allows: awards with full reporting coverage and two-plus years to liquidate reach a median outlay/obligation ratio of exactly 1.00.</p>
-<p>But the payment ledger as <em>published</em> cannot be trusted the way the budget ledger can (<code><a href="../articles/obligations-outlays.html">vignette("obligations-outlays")</a></code> has the full story): account-level outlay reporting was optional before the FY2022 monthly mandate, whole agencies still report obligations without outlays (DoD median ratio 0.00, Commerce 0.24, against NSF/USDA/NASA at 1.00), and a fifth of fetched awards have File C records that cannot be linked back to their own transaction ledger. <code><a href="../reference/us_fetch_outlays.html">us_fetch_outlays()</a></code> /<code><a href="../reference/us_add_outlays.html">us_add_outlays()</a></code> retrieve what exists and grade each award’s coverage rather than letting gaps read as zeros.</p>
-<p>Where real outlays don’t reach, <code><a href="../reference/us_impute_outlays.html">us_impute_outlays()</a></code> fills in — and it is important to be precise about what it returns. The model is fitted on awards whose payment ledgers are essentially complete (screened by completeness and shape), and it predicts the <strong>typical payment schedule conditional on the obligations</strong>: the shape of the cash calendar, at the level completed awards actually deliver (~0.94 per obligated dollar), not the accounting identity. Passing <code>reconcile = TRUE</code> re-imposes the identity — each award’s imputed series is rescaled to sum exactly to its net obligations (for an in-progress award, over its full projected life rather than the years observed so far). That is the configuration most users modeling government spending or organizational revenue want: the dollars tie out to the reconciled obligations ledger, and the model contributes what it genuinely knows, the timing.</p>
+<p>Everything above concerns the <strong>budget ledger</strong> —
+obligations, the promises. The <strong>payment ledger</strong> —
+outlays, the cash — is a separate system with its own identity: money
+obligated is eventually either paid out or de-obligated, so lifetime
+outlays converge to lifetime net obligations at closeout. The data
+confirms the identity where measurement allows: awards with full
+reporting coverage and two-plus years to liquidate reach a median
+outlay/obligation ratio of exactly 1.00.</p>
+<p>But the payment ledger as <em>published</em> cannot be trusted the
+way the budget ledger can (<code><a href="../articles/obligations-outlays.html">vignette("obligations-outlays")</a></code>
+has the full story): account-level outlay reporting was optional before
+the FY2022 monthly mandate, whole agencies still report obligations
+without outlays (DoD median ratio 0.00, Commerce 0.24, against
+NSF/USDA/NASA at 1.00), and a fifth of fetched awards have File C
+records that cannot be linked back to their own transaction ledger.
+<code><a href="../reference/us_fetch_outlays.html">us_fetch_outlays()</a></code> /<code><a href="../reference/us_add_outlays.html">us_add_outlays()</a></code> retrieve
+what exists and grade each award’s coverage rather than letting gaps
+read as zeros.</p>
+<p>Where real outlays don’t reach, <code><a href="../reference/us_impute_outlays.html">us_impute_outlays()</a></code>
+fills in — and it is important to be precise about what it returns. The
+model is fitted on awards whose payment ledgers are essentially complete
+(screened by completeness and shape), and it predicts the
+<strong>typical payment schedule conditional on the
+obligations</strong>: the shape of the cash calendar, at the level
+completed awards actually deliver (~0.94 per obligated dollar), not the
+accounting identity. Passing <code>reconcile = TRUE</code> re-imposes
+the identity — each award’s imputed series is rescaled to sum exactly to
+its net obligations (for an in-progress award, over its full projected
+life rather than the years observed so far). That is the configuration
+most users modeling government spending or organizational revenue want:
+the dollars tie out to the reconciled obligations ledger, and the model
+contributes what it genuinely knows, the timing.</p>
 </div>
 <div class="section level2">
 <h2 id="practice">Practice<a class="anchor" aria-label="anchor" href="#practice"></a>
 </h2>
-<p>Run <code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> and <code><a href="../reference/us_audit.html">us_audit()</a></code> on every rebuild and diff against the previous run, so a change in the data or in a rule shows up as a change in the audit rather than as a quietly different number.</p>
+<p>Run <code><a href="../reference/us_reconcile.html">us_reconcile()</a></code> and <code><a href="../reference/us_audit.html">us_audit()</a></code> on every
+rebuild and diff against the previous run, so a change in the data or in
+a rule shows up as a change in the audit rather than as a quietly
+different number.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
@@ -292,7 +441,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>
