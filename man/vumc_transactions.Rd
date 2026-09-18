@@ -39,6 +39,11 @@ and industry/product (contract) classifiers.}
 \item{pop_start_date, pop_end_date}{Period of performance.}
 \item{last_modified_date, source_file}{Provenance.}
 }
+This object predates the five disruption fields added to the canonical
+schema (\code{transaction_description}, \code{base_and_all_options_value},
+\code{awarding_office_code}, \code{awarding_office_name}, \code{pop_potential_end_date});
+\code{\link[=us_normalize_transactions]{us_normalize_transactions()}} fills them with \code{NA}. See
+\code{vignette("disruption")} for what they are for.
 }
 \usage{
 vumc_transactions

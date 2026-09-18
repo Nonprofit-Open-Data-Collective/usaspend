@@ -91,6 +91,15 @@ reference:
   - outlay_model
   - outlay_training
 
+- title: Disruption
+  desc: >
+    Detecting terminations, reductions, delays and transfers from the
+    non-monetary fields of the ledger -- action codes, end-date and ceiling
+    changes, description text. See `vignette("disruption")`.
+  contents:
+  - us_disruption_flags
+  - disruption_sample
+
 - title: Normalization and accounting
   desc: >
     The rules that turn a raw modification ledger into clean signed
@@ -161,3 +170,7 @@ articles:
   contents:
   - imputation
   - imputation-fitting
+- title: Disruption
+  navbar: Disruption
+  contents:
+  - disruption

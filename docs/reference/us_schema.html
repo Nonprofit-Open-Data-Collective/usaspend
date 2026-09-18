@@ -43,6 +43,9 @@ will fill."></head><body>
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
     <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Disruption</h6></li>
+    <li><a class="dropdown-item" href="../articles/disruption.html">Detecting disruption in federal funding</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -147,8 +150,9 @@ annual outlays exist.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 29:              net_revenue   numeric</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 30:                    flags character</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                        field      type</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                       &lt;char&gt;    &lt;char&gt;</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="fu">us_empty</span><span class="op">(</span><span class="st">"transactions"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Classes 'data.table' and 'data.frame':	0 obs. of  43 variables:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Classes 'data.table' and 'data.frame':	0 obs. of  48 variables:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ transaction_key           : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ award_key                 : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ parent_award_id           : chr </span>
@@ -165,6 +169,7 @@ annual outlays exist.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ action_type_code          : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ action_type_label         : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ action_class              : chr </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  $ transaction_description   : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ correction_delete_code    : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ record_type_code          : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ federal_action_obligation : num </span>
@@ -174,6 +179,7 @@ annual outlays exist.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ loan_subsidy_cost         : num </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ award_total_obligated     : num </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ award_total_outlayed      : num </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  $ base_and_all_options_value: num </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ recipient_uei             : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ recipient_name            : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ recipient_parent_uei      : chr </span>
@@ -182,6 +188,8 @@ annual outlays exist.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ awarding_agency_name      : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ awarding_sub_agency_code  : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ awarding_sub_agency_name  : chr </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  $ awarding_office_code      : chr </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  $ awarding_office_name      : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ funding_agency_code       : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ funding_agency_name       : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ cfda_number               : chr </span>
@@ -190,6 +198,7 @@ annual outlays exist.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ psc_code                  : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ pop_start_date            : 'Date' num(0) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ pop_end_date              : 'Date' num(0) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  $ pop_potential_end_date    : 'Date' num(0) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ last_modified_date        : 'Date' num(0) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ source_file               : chr </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  - attr(*, ".internal.selfref")=&lt;externalptr&gt; </span>
@@ -204,7 +213,7 @@ annual outlays exist.</p></dd>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

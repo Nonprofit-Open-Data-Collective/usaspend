@@ -51,6 +51,9 @@ administrative actions.)'></head><body>
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
     <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Disruption</h6></li>
+    <li><a class="dropdown-item" href="../articles/disruption.html">Detecting disruption in federal funding</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -146,7 +149,12 @@ and industry/product (contract) classifiers.</p></dd>
 <dd><p>Provenance.</p></dd>
 
 
-</dl></div>
+</dl><p>This object predates the five disruption fields added to the canonical
+schema (<code>transaction_description</code>, <code>base_and_all_options_value</code>,
+<code>awarding_office_code</code>, <code>awarding_office_name</code>, <code>pop_potential_end_date</code>);
+<code><a href="us_normalize_transactions.html">us_normalize_transactions()</a></code> fills them with <code>NA</code>. See
+<code><a href="../articles/disruption.html">vignette("disruption")</a></code> for what they are for.</p>
+    </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>VUMC was chosen as the packaged example because it exercises every
@@ -199,7 +207,7 @@ federal award data.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

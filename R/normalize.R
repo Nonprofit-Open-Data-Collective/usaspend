@@ -34,6 +34,10 @@
 #' }
 #'
 #' @param transactions A `data.table` matching `us_schema("transactions")`.
+#'   The five disruption fields (`transaction_description`,
+#'   `base_and_all_options_value`, `awarding_office_code`/`_name`,
+#'   `pop_potential_end_date`) are optional: extracts harmonized before they
+#'   were added are accepted and the fields filled with `NA`.
 #' @param requested_uei Optional character vector of the UEIs actually asked
 #'   for, used to flag strays returned by the API's text matching.
 #' @param drop_aggregates Drop assistance `record_type_code` 1.
@@ -49,7 +53,8 @@ us_normalize_transactions <- function(transactions,
                                       requested_uei = NULL,
                                       drop_aggregates = TRUE) {
   stopifnot(is.data.frame(transactions))
-  missing <- setdiff(us_schema("transactions")$field, names(transactions))
+  missing <- setdiff(us_schema("transactions")$field,
+                     c(names(transactions), tx_optional_fields()))
   if (length(missing)) {
     us_abort(c("{.arg transactions} is missing {length(missing)} canonical column{?s}.",
                "x" = "{.val {utils::head(missing, 8)}}",
@@ -59,6 +64,10 @@ us_normalize_transactions <- function(transactions,
   stopifnot(is.logical(drop_aggregates), length(drop_aggregates) == 1L)
 
   x <- data.table::copy(data.table::as.data.table(transactions))
+  ## extracts harmonized before the disruption fields existed: fill, typed
+  opt <- us_empty("transactions")[, setdiff(tx_optional_fields(), names(x)), with = FALSE]
+  for (f in names(opt)) x[, (f) := opt[[f]][NA_integer_]]
+  if (ncol(opt)) data.table::setcolorder(x, intersect(us_schema("transactions")$field, names(x)))
   n0 <- nrow(x)
   dropped <- list()
 

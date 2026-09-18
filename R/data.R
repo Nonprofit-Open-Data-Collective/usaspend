@@ -52,6 +52,11 @@
 #'   \item{pop_start_date, pop_end_date}{Period of performance.}
 #'   \item{last_modified_date, source_file}{Provenance.}
 #' }
+#' This object predates the five disruption fields added to the canonical
+#' schema (`transaction_description`, `base_and_all_options_value`,
+#' `awarding_office_code`, `awarding_office_name`, `pop_potential_end_date`);
+#' [us_normalize_transactions()] fills them with `NA`. See
+#' `vignette("disruption")` for what they are for.
 #' @seealso [vumc_subawards], [vumc_panel], [us_normalize_transactions()],
 #'   [us_panel()]
 #' @examples
@@ -196,3 +201,62 @@
 #' # the duration-4 liquidation curve
 #' outlay_model$curves_dur[dur_bin == 4]
 "outlay_model"
+
+#' Disruption in federal funding: a 1,000-nonprofit sample, FY2016--FY2026
+#'
+#' The aggregates and case ledgers behind `vignette("disruption")`, built by
+#' `data-raw/make-disruption-sample.R` from a test pull of the first 1,000
+#' UEIs of a nonprofit crosswalk (434 of which hold federal awards): 64,255
+#' prime transactions on 15,050 awards, FY2008 to 2026-09-15, plus File C
+#' funding records for the 3,325 awards first obligated FY2020 or later.
+#' Every ledger was re-harmonized with the disruption fields and run through
+#' [us_disruption_flags()].
+#'
+#' **The sample is not random.** The crosswalk is ordered by state, and one
+#' recipient (RTI International) accounts for about a third of all
+#' transactions, so agency-level results -- especially USAID, EPA, and HHS
+#' contracts -- carry that organization's portfolio. Treat the numbers as a
+#' worked example of the method, not as estimates for the nonprofit sector.
+#'
+#' Awards are assigned to the agency that *originated* them (the awarding
+#' agency on their first action), so an award moved from USAID to State stays
+#' in the USAID series.
+#'
+#' @format A list:
+#' \describe{
+#'   \item{meta}{Sample description, pull date, `data_end`, `t0`
+#'     (2025-01-20), counts, and `outlay_last_quarter` (the latest fiscal
+#'     quarter with File C data, which is partially reported).}
+#'   \item{trend_fy}{Fiscal year x agency: gross and net obligations, new
+#'     awards and actions, October--August of each year so FY2026 is
+#'     comparable.}
+#'   \item{trend_month}{Month: gross obligations, de-obligations, actions.}
+#'   \item{signals}{Calendar year: counts of every `dsr_*` signal and related
+#'     dollars over February--August, the window after the inauguration that
+#'     every year shares.}
+#'   \item{signals_agency}{The same by agency, 2022 on.}
+#'   \item{action_types}{Contract and assistance action-type counts,
+#'     February--August, by year.}
+#'   \item{terminations}{One row per award with a formal termination
+#'     (`kind = "formal"`: action code or notice text) or an unexplained
+#'     schedule cut (`"quiet_truncation"`) on or after 2025-01-20: dollars
+#'     before and after, schedule before and after, `status` (`still
+#'     obligated`, `de-obligated`, `new money since`, `rescinded`), and the
+#'     best same-recipient successor candidate (`link`).}
+#'   \item{continuations}{Multi-year assistance anchors by the due year of
+#'     their next funding action, agency, and `outcome`.}
+#'   \item{outlay_quarters}{Fiscal quarter x agency: awards scheduled active
+#'     all quarter, how many received no File C outlay, and dollars.}
+#'   \item{cases}{Transaction ledgers for eleven illustrative awards, keyed by
+#'     `case`, with the disruption fields and flags.}
+#'   \item{pi_transfers}{NIH grants whose history is split across
+#'     institutions, from an API probe of reconciliation breaks.}
+#'   \item{usaid}{The USAID portfolio's fate: counts and the actions filed on
+#'     it since 2025-01-20.}
+#' }
+#' @source USAspending.gov bulk download API and `POST /api/v2/awards/funding/`,
+#'   pulled 2026-09-18.
+#' @seealso [us_disruption_flags()], `vignette("disruption")`
+#' @examples
+#' disruption_sample$signals[, .(year, term_code, end_cut, ceiling_cut, early_deob)]
+"disruption_sample"

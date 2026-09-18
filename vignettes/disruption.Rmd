@@ -1,0 +1,615 @@
+---
+title: "Detecting disruption in federal funding"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Detecting disruption in federal funding}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>",
+                      fig.width = 7.2, fig.height = 4, dpi = 96)
+options(datatable.print.trunc.cols = TRUE, width = 90)
+has_ggplot <- requireNamespace("ggplot2", quietly = TRUE)
+```
+
+When federal funding is disrupted, the first question is usually "how much
+money was taken back?" The ledger answers it badly. Terminations are
+recorded as notices, the money often stays obligated on paper for months
+or years, and much of what happens to a disrupted award is never formally
+decided at all: the end date moves up, the next year's funding doesn't
+arrive, the cash stops. This vignette is a tutorial on reading those
+signals — which fields carry them, how to turn them into rates, and what
+each kind of disruption looks like in a real award's history.
+
+It is organized around a four-part taxonomy:
+
+| type | what happens | where it shows up |
+|---|---|---|
+| **1. Termination** | the award ends early, formally or not | termination action codes and notice text; end dates cut to "now"; early closeouts |
+| **2. Reduction** | the award continues, smaller | early de-obligations; ceiling cuts; shortened schedules; missing continuations |
+| **3. Delay** | the award continues, later | extensions; administrative actions; late or missing funding actions; active awards with no outlays |
+| **4. Transfer** | the work continues under another award, agency, or organization | re-awards; agency changes; transfer actions; novations |
+
+Everything below runs offline on `disruption_sample`, a bundled set of
+aggregates and case ledgers from a 1,000-nonprofit pull.
+
+```{r setup, message = FALSE}
+library(usaspend)
+library(data.table)
+d <- disruption_sample
+str(d$meta[c("sample", "data_end", "t0", "n_orgs_with_awards", "n_awards",
+             "n_transactions", "largest_recipient_share")])
+```
+
+**Read the numbers as a worked example, not an estimate.** The sample is
+the first 1,000 rows of a nonprofit crosswalk ordered by state, and one
+research contractor accounts for
+`r round(100 * d$meta$largest_recipient_share)`% of its transactions.
+The method generalizes; the magnitudes belong to this portfolio.
+
+## The finding that organizes everything else
+
+Between February and August 2025, formal contract terminations in this
+sample went from roughly zero a year to
+`r d$signals[year == 2025, term_code]`. De-obligated dollars did not follow:
+
+```{r headline}
+knitr::kable(d$signals[year >= 2021, .(year,
+  term_code_actions = term_code, term_notice_actions = term_text,
+  deobligated_M = round(deob_dollars / 1e6, 1),
+  early_deob_M  = round(early_deob_dollars / 1e6, 1),
+  end_date_cuts = end_cut, ceiling_cut_M = round(ceiling_cut_dollars / 1e6, 1))])
+```
+
+(The 2024 de-obligation figure is one COVID-19 trial closing out; it is
+not a policy signal.) The reason is visible in the terminated awards
+themselves:
+
+```{r headline-money}
+t <- d$terminations
+t[kind == "formal", .(
+  awards = .N,
+  notice_was_zero_dollars = sum(change_at_notice == 0),
+  still_obligated = sum(status == "still obligated"),
+  median_days_to_deobligation = median(as.numeric(first_deob_after - t_date), na.rm = TRUE))]
+```
+
+Almost every termination notice moved **no money**. Most terminated
+awards were still carrying their obligations at the end of the data; where
+money was eventually pulled back, it took a median of more than six months.
+A detector built on de-obligations misses most terminations entirely, and
+dates the rest by the paperwork rather than the decision.
+
+The practical consequence: **measure disruption from the non-monetary
+fields** — action codes, end dates, ceilings, and description text — and
+compare their *rates* to a pre-period baseline.
+
+## Getting the fields
+
+Four fields that carry these signals are part of the canonical schema:
+`transaction_description` (the free text on each action),
+`base_and_all_options_value` (the change to a contract's ceiling on this
+action), `pop_potential_end_date`, and the awarding office
+(`awarding_office_code`, `awarding_office_name`). `us_disruption_flags()`
+reads them and adds one logical column per signal:
+
+```{r build, eval = FALSE}
+ex <- us_extract(my_ueis, years = 2016:2026)
+tx <- us_normalize_transactions(ex$transactions, requested_uei = my_ueis)
+f  <- us_disruption_flags(tx)
+names(f)[grepl("^dsr_", names(f))]
+```
+
+```{r flag-names, echo = FALSE}
+grep("^dsr_", names(d$cases), value = TRUE)
+```
+
+Each flag is a literal property of one action, so every count can be
+audited against the description text. None of them means "disruption" on
+its own — closeouts happen every year, and end dates move constantly on
+some kinds of award. Disruption is a **change in the rate**.
+
+Three rules make the rates comparable:
+
+- **Compare the same months.** Obligations spike every September; every
+  table here compares February–August of each year, the window after the
+  inauguration that all years share.
+- **Remove routine churn.** Supply delivery orders (Defense Logistics
+  Agency purchase orders) cancel and re-date constantly; the bundled
+  tables exclude them.
+- **Mind reporting lag.** Contract actions can post up to ~90 days late,
+  assistance up to ~30. The most recent months are always incomplete.
+
+## The ten-year baseline
+
+A disruption is measured against a trend, and the trend needs to be long
+enough to contain the last shock: COVID-19 relief ran through FY2020–FY2021.
+Gross obligations (new money committed, before claw-backs) by the
+agency that originated each award, over the same October–August window of
+each fiscal year:
+
+```{r ggplot, eval = has_ggplot, include = FALSE}
+suppressWarnings(library(ggplot2))
+```
+
+```{r trend-plot, eval = has_ggplot, fig.height = 5.2}
+tr <- d$trend_fy[agency %in% c("HHS", "USAID", "DoD", "Education", "EPA", "USDA")]
+tr[, agency := factor(agency, c("HHS", "USAID", "DoD", "Education", "EPA", "USDA"))]
+ggplot(tr, aes(fy, gross_obligations / 1e6)) +
+  annotate("rect", xmin = 2019.5, xmax = 2021.5, ymin = -Inf, ymax = Inf,
+           fill = "grey92") +
+  geom_vline(xintercept = 2024.5, colour = "grey55", linetype = "dashed") +
+  geom_line(colour = "#1a5276", linewidth = 0.7) +
+  geom_point(colour = "#1a5276", size = 1.4) +
+  facet_wrap(~ agency, scales = "free_y", ncol = 3) +
+  scale_x_continuous(breaks = c(2016, 2020, 2024)) +
+  labs(title = "Gross obligations by originating agency, FY2016-FY2026",
+       subtitle = "October-August of each fiscal year; shaded: COVID-19 relief years; dashed: FY2025 begins",
+       x = NULL, y = "$ millions (free scale per panel)") +
+  theme_minimal(base_size = 10) +
+  theme(panel.grid.minor = element_blank())
+```
+
+```{r trend-table}
+tot <- d$trend_fy[, .(gross_M = round(sum(gross_obligations) / 1e6)), by = fy]
+tot[, change_vs_FY2024 := sprintf("%+.0f%%", 100 * (gross_M / gross_M[fy == 2024] - 1))]
+tot
+```
+
+Three things the trend makes visible that a two-year comparison would not.
+The COVID-19 years are a bump, not a new level, so a drop measured against
+FY2021 alone would be understated. FY2023–FY2024 were this portfolio's
+peak: FY2025's fall only returns it to about its COVID-era level, while
+FY2026 is below FY2019. And FY2025 straddles the transition — its
+October–January months ran at the old pace (the EPA spike is almost
+entirely one $95M agreement signed on 8 January 2025, which reappears below
+as a quiet truncation), so the full effect lands in FY2026.
+
+Monthly, with the inauguration marked:
+
+```{r monthly-plot, eval = has_ggplot, fig.height = 3.4}
+m <- d$trend_month[month >= as.Date("2021-10-01")]
+m[, roll12 := frollmean(gross_obligations, 12)]
+ggplot(m, aes(month)) +
+  geom_col(aes(y = gross_obligations / 1e6), fill = "#c7d6e2", width = 25) +
+  geom_line(aes(y = roll12 / 1e6), colour = "#1a5276", linewidth = 0.8, na.rm = TRUE) +
+  geom_vline(xintercept = d$meta$t0, colour = "grey40", linetype = "dashed") +
+  labs(title = "Gross obligations by month, with 12-month rolling mean",
+       subtitle = "dashed: 2025-01-20. Latest months are incomplete (reporting lag)",
+       x = NULL, y = "$ millions") +
+  theme_minimal(base_size = 10) + theme(panel.grid.minor = element_blank())
+```
+
+## 1. Termination
+
+A termination ends an award before its scheduled end. It appears in three
+forms, from most to least formal.
+
+**Formal termination.** Contracts have action codes for it: `F`
+(terminate for convenience), `E` (for default), `N` (legal cancellation)
+— `dsr_term_code`. Grants have no termination code; the only formal
+record is the notice text in `transaction_description` — `dsr_term_text`.
+Test for both, and exclude "determination".
+
+**Quiet truncation.** The end date moves to (about) today with no notice
+and, usually, no money — `dsr_end_cut`. In this sample these outnumber
+formal terminations on assistance awards.
+
+**Early wind-down.** A spike in contract closeouts (`K`, `dsr_closeout`)
+and in assistance "adjustment to completed award" actions: awards being
+finished off ahead of schedule.
+
+```{r term-signals}
+d$signals[year >= 2021, .(year, term_code, term_text, end_cut,
+                          end_cut_with_no_money = end_cut_no_deob,
+                          closeout, rescinded)]
+```
+
+Timing separates the two forms sharply. Formal notices came in a wave in
+the first months and then stopped; quiet truncations continued at a steady
+rate through 2026:
+
+```{r term-month, eval = has_ggplot, fig.height = 3.4}
+tm <- t[, .N, by = .(month = as.Date(format(t_date, "%Y-%m-01")), kind)]
+ggplot(tm, aes(month, N, fill = kind)) +
+  geom_col(position = position_dodge2(preserve = "single", padding = 0.15), width = 25) +
+  scale_fill_manual(values = c(formal = "#1a5276", quiet_truncation = "#9a6a1f"),
+                    labels = c("formal (code or notice)", "quiet truncation (end date cut)"),
+                    name = NULL) +
+  labs(title = "Terminations by month of first signal",
+       x = NULL, y = "awards") +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top", panel.grid.minor = element_blank())
+```
+
+What happened to the money afterwards:
+
+```{r term-status}
+dcast(t, kind ~ status, fun.aggregate = length)
+t[, .(awards = .N, obligated_before_M = round(sum(obligated_before) / 1e6, 1),
+      pulled_back_M = round(-sum(deobligated_since + pmin(change_at_notice, 0)) / 1e6, 1),
+      ceiling_cut_M = round(-sum(ceiling_cut) / 1e6, 1)), by = kind]
+```
+
+**Recipe — count terminations.** Take the first formal signal per award
+after the reference date; add awards whose schedule was cut without one.
+
+```{r term-recipe, eval = FALSE}
+T0 <- as.Date("2025-01-20")
+formal <- f[action_date >= T0 & (dsr_term_code | dsr_term_text),
+            .(t_date = min(action_date), kind = "formal"), by = award_key]
+quiet  <- f[action_date >= T0 & dsr_end_cut & !award_key %in% formal$award_key,
+            .(t_date = min(action_date), kind = "quiet_truncation"), by = award_key]
+events <- rbind(formal, quiet)
+```
+
+### Case: a notice and nothing else
+
+A USAID energy contract. Four years of incremental funding, then a single
+zero-dollar action — and no further record. At the end of the data the
+award's full obligation still stands.
+
+```{r case-helper}
+show_case <- function(k, from = "1900-01-01") {
+  x <- d$cases[case == k & action_date >= as.Date(from), .(action_date, mod = modification_number,
+                            type = action_type_label,
+                            obligation = round(federal_action_obligation),
+                            ceiling = round(ceiling_change), end = pop_end_date,
+                            description = substr(transaction_description, 1, 90))]
+  knitr::kable(x, format.args = list(big.mark = ","))
+}
+show_case("termination_no_deob")
+```
+
+### Case: notice first, money months later
+
+The 2019–20 National Postsecondary Student Aid Study. The notice on
+10 February 2025 cut the end date from 2028 to that day and moved no money;
+the termination settlement five months later de-obligated $5.9M and cut
+the ceiling by $33.6M. A detector keyed on de-obligations would date this
+termination to July.
+
+```{r case-deob}
+show_case("termination_deob", from = "2024-01-01")
+```
+
+### Case: terminated, reinstated — smaller
+
+Its successor study, NPSAS:24, was terminated the same day and de-obligated
+within a week ($10.2M). In June the award was **reinstated** — with new
+money, but its ceiling cut by $51M and its schedule shortened from 2032 to
+2027. Rescissions (`dsr_rescinded`) are rare but must be tracked: the
+termination did not stick, the reduction did.
+
+```{r case-rescinded}
+show_case("termination_rescinded", from = "2024-12-01")
+```
+
+## 2. Reduction
+
+A reduction leaves the award alive and smaller. The formal instrument is
+the de-obligation, but most reductions are recorded some other way.
+
+- **Early de-obligation** (`dsr_early_deob`): money withdrawn while the
+  award still has more than 60 days to run. Distinguish it from the routine
+  closeout de-obligation *after* the end date, which every year produces.
+- **Ceiling cut** (`dsr_ceiling_cut`): a contract's potential value
+  (base plus all options) reduced. Future work removed, often with no money
+  moving at all.
+- **Shortened schedule** (`dsr_end_cut`): the same flag as a quiet
+  termination when the new end is "now"; a reduction when it is later.
+- **Fewer continuations and options**: multi-year grants are funded a year
+  at a time (continuation actions), contracts by exercising options. Fewer
+  of either is a reduction that leaves no row at all — it is visible only
+  as a drop in the rate.
+
+```{r reduction}
+d$signals[year >= 2021, .(year, early_deob, early_deob_M = round(early_deob_dollars / 1e6, 1),
+                          ceiling_cut, ceiling_cut_M = round(ceiling_cut_dollars / 1e6, 1),
+                          end_cut)]
+d$action_types[action_type_label %in% c("Continuation", "New", "Exercise an Option",
+                                        "Funding Only Action")]
+```
+
+Early de-obligations barely moved; ceiling-cut dollars were about four
+times their 2021–2024 average, and continuation actions fell by a third. The cuts were made to *future*
+money.
+
+### Case: a ceiling cut to zero
+
+An NIH communications support agreement (a blanket purchase agreement,
+under which orders are placed). In July 2026 its entire $49.9M ceiling was
+removed in a zero-dollar administrative action — nothing had been obligated
+under it, so no de-obligation was possible. The description cites an
+executive-order code.
+
+```{r case-ceiling}
+show_case("ceiling_cut")
+```
+
+### Case: a quiet truncation with $95M left in place
+
+An EPA assistance agreement awarded on 8 January 2025 for $95M through
+2027. On 30 April 2025 a zero-dollar action set its end date to that day.
+No termination language, no de-obligation: in the obligation ledger this
+award still reads as $95M committed.
+
+```{r case-quiet}
+show_case("quiet_truncation")
+```
+
+## 3. Delay
+
+Delays are the least formal category and the most informative about
+behavior that departs from formal decisions: awards that are not
+terminated or reduced, but whose money arrives late or not at all.
+
+**Administrative actions and extensions.** Zero-dollar administrative
+actions (`dsr_admin`) are where stop-work orders and similar notices are
+usually filed. Extensions (`dsr_extension`), which one might expect to rise,
+*fell* — agencies were not extending the awards they were slowing down.
+
+```{r delay-signals}
+d$signals[year >= 2021, .(year, admin, zero_dollar, extension, stop_work)]
+```
+
+**Late or missing funding actions.** A multi-year grant receives its next
+year's money roughly a year after the last. Anchor on each funded action
+of an award with more than 400 days left to run, and ask whether the next
+funding action arrived on time:
+
+```{r continuations}
+cn <- d$continuations[, .(N = sum(N)), by = .(due_year, outcome)]
+cn <- dcast(cn, due_year ~ outcome, value.var = "N", fill = 0)
+cn[, share_not_on_time := round(1 - `on time` / (`on time` + `30-120 days late` +
+                                                 `missing or >120 days late`), 3)]
+cn
+dcast(d$continuations[agency %in% c("HHS", "USAID", "Education"),
+                      .(late = round(sum(N[outcome != "on time"]) / sum(N), 2)),
+                      by = .(agency, due_year)], agency ~ due_year, value.var = "late")
+```
+
+Overall the not-on-time share barely moved, but two things changed under
+it: the USAID series jumps, and the moderately late category (30–120 days)
+more than doubled in 2025. The aggregate hides both because most anchors
+belong to programs that kept paying on schedule.
+
+**Active awards with no cash.** The most direct evidence of a payment
+delay is an award that is scheduled to be running, has not been terminated
+on paper, and receives no outlays. File C account-level data
+(`us_fetch_outlays()`) reports outlays by period for awards starting FY2020
+onward. For each quarter, take the awards whose schedule — as known at the
+start of the quarter — covers the whole quarter, and count those with no
+outlay:
+
+```{r outlays}
+oq <- d$outlay_quarters[fy * 10 + fq < d$meta$outlay_last_quarter[["fy"]] * 10 +
+                                          d$meta$outlay_last_quarter[["fq"]]]
+all_q <- oq[, .(active = sum(active), no_cash_share = round(sum(no_cash) / sum(active), 3)),
+            by = .(fy, fq)][order(fy, fq)]
+all_q
+```
+
+```{r outlays-plot, eval = has_ggplot, fig.height = 3.8}
+oa <- oq[agency %in% c("HHS", "USAID", "EPA", "Education"),
+         .(share = sum(no_cash) / sum(active), active = sum(active)), by = .(agency, fy, fq)]
+oa[, q := fy + (fq - 1) / 4]
+ggplot(oa, aes(q, share)) +
+  geom_vline(xintercept = 2025.25, colour = "grey55", linetype = "dashed") +
+  geom_line(colour = "#1a5276", linewidth = 0.7) +
+  geom_point(colour = "#1a5276", size = 1.3) +
+  facet_wrap(~ agency, ncol = 4) +
+  scale_y_continuous(labels = function(x) paste0(round(100 * x), "%"), limits = c(0, 1)) +
+  scale_x_continuous(breaks = 2023:2026) +
+  labs(title = "Share of scheduled-active awards receiving no outlay in the quarter",
+       subtitle = "File C outlays, awards first obligated FY2020+; dashed: FY2025 Q2 (Jan-Mar 2025)",
+       x = "fiscal year", y = NULL) +
+  theme_minimal(base_size = 10) + theme(panel.grid.minor = element_blank())
+```
+
+Two different disruptions are visible here, and the method separates them.
+USAID's no-cash share rose to nearly 100% and stayed there: awards that
+were still open on paper stopped being paid. The all-agency spike in FY2026
+Q1 (October–December 2025) coincides with the fall 2025 lapse in
+appropriations and reverses the next quarter: a system-wide timing
+disruption, not a program decision. The share also moves with the season,
+which is why every comparison should be same-quarter.
+
+### Case: the continuation that became two revisions
+
+An NIH early-career grant, funded each January. The January 2025
+continuation never came; instead, two zero-dollar revisions in May and June
+moved the end date out a year. The award was neither terminated nor
+reduced — its money was delayed, and the schedule absorbed it.
+
+```{r case-continuation}
+show_case("missed_continuation")
+```
+
+## 4. Transfer
+
+A transfer moves the work rather than ending it. Whether the ledger can
+link the old and new award depends on who the work moves to.
+
+| the work moves to | same award id? | how to find it |
+|---|---|---|
+| another agency (agency closure) | **yes** | `dsr_agency_change`; `dsr_transfer` action pairs |
+| another organization, contract | yes | novation, `dsr_novation` (action `J`) |
+| another organization, NIH grant | yes (FAIN persists) | recipient change on the same award key |
+| a new award, same organization | no | match on recipient + office + program + text |
+| a new award, another organization | no | match on office + program + text, across all recipients |
+
+### Case: re-awarded to the same organization
+
+The National Youth Tobacco Surveys contract was terminated on 1 May 2025
+— the notice text cites the DOGE cost-efficiency initiative. Four months
+later the same organization received a new award for the same survey,
+from a different HHS sub-agency, at about a third of the old ceiling.
+
+```{r case-reaward}
+show_case("reaward_old", from = "2024-12-01")
+show_case("reaward_new")
+```
+
+Nothing in either record points to the other; the new award does not cite
+the old number. Linking them is a matching problem. Among same-recipient
+awards made from 90 days before to a year after each termination, the
+bundled table scores candidates on description similarity, same office,
+same program code, and whether the new award's text cites the old award id:
+
+```{r reaward-links}
+t[, .N, by = link][order(-N)]
+knitr::kable(t[link == "probable", .(t_date, recipient = substr(recipient, 1, 26),
+                                     old_award = award_key, successor, successor_start)])
+```
+
+Shared office and program code alone are **not** evidence — contract
+vehicles issue many orders from one office — so a "probable" link requires
+closely matching description text or an explicit citation. Few terminations
+in this sample found a same-organization successor.
+
+### Case: the NIH grant that followed its investigator
+
+When a principal investigator moves, an NIH grant moves with them: same
+award number, new recipient. A pull filtered on one organization's UEI sees
+only its own share of the history. These grants appear as reconciliation
+breaks in the original holder's panel (`vignette("reconciliation")`):
+
+```{r pi-transfers}
+knitr::kable(d$pi_transfers[, .(award_key, reported_total, in_sample_total,
+                                other_recipients = substr(other_recipients, 1, 70))],
+             format.args = list(big.mark = ","))
+```
+
+### Case: novation
+
+A novation keeps the contract and replaces the contractor — for example
+after an acquisition. It is one action with its own code:
+
+```{r case-novation}
+show_case("novation")
+```
+
+Awards re-made to a *different* organization are invisible from inside a
+UEI-filtered sample: finding them means querying all recipients for new
+awards from the same office and program after each termination.
+
+## When an agency closes: what persists and what changes
+
+USAID's contracts and grants did not disappear from USAspending when the
+agency was wound down in 2025. The sample holds
+`r d$usaid$awards` USAID awards, `r d$usaid$active_at_T0` of them still
+scheduled to run on 20 January 2025:
+
+```{r usaid}
+d$usaid[c("awards", "active_at_T0", "with_action_since_T0", "terminated",
+          "terminated_deobligated", "moved_to_state")]
+knitr::kable(d$usaid$actions_since_T0)
+```
+
+Two records show the mechanics. An energy contract vehicle (an IDIQ) and one
+of its task orders, both held by the same organization:
+
+```{r case-usaid}
+show_case("usaid_idv", from = "2024-11-01")
+knitr::kable(d$cases[case == "usaid_task_order" & action_date >= "2025-10-01",
+  .(action_date, mod = modification_number, type = action_type_label,
+    obligation = round(federal_action_obligation), awarding_agency_name,
+    funding_agency_name, description = substr(transaction_description, 1, 70))],
+  format.args = list(big.mark = ","))
+```
+
+The vehicle received a termination notice in February 2025, had it
+rescinded in December, and appeared under the Department of State in
+February 2026. The task order was extended, given $12.3M of new work, and
+in August 2026 moved to State with a pair of equal and opposite actions: a
+**Transfer Action** of −$14.1M and an administrative action of +$14.1M.
+
+What this shows about the database logic:
+
+**Persists:**
+
+- **The award key.** USAspending's generated unique award id
+  (`award_key`) is built when the award is created, from the award number
+  and the awarding agency's code — `CONT_AWD_{PIID}_{agency}_{parent
+  PIID}_{parent agency}` for contracts, `ASST_NON_{FAIN}_{agency}` for
+  assistance. The `7200` in these contract keys is USAID's code, and it stays
+  there after the move. The key is an identifier, not a statement of who manages
+  the award now.
+- **The award number** (PIID/FAIN), the parent-vehicle link, the
+  modification sequence (P00013, P00014 continue the same series), and the
+  recipient.
+- **The funding agency, where money moved.** On the transferred task order
+  the *funding* agency is still USAID: the money was appropriated to
+  USAID's accounts. (On the vehicle itself, which holds no money, both the
+  awarding and funding fields changed to State.)
+
+**Changes:**
+
+- **The awarding agency, sub-agency, and office** on each action *after*
+  the move. Earlier actions keep USAID. An award's agency is therefore a
+  property of each action, not of the award.
+- **Vehicle and orders move separately.** The IDV and its task order moved
+  six months apart.
+- **The money moves by transfer action.** The −/+ pair nets to zero but
+  inflates gross de-obligation counts; remove transfer pairs (or net by
+  award and date) before measuring reductions.
+
+**Implications for analysis:**
+
+- Decide whether an award belongs to the agency that **originated** it
+  (first action, or the code in the key) or the one that **manages** it
+  now (latest action). The bundled tables use the originating agency, so
+  USAID's collapse shows as USAID's; a latest-action rollup would show a
+  smaller USAID and a slightly larger State.
+- New work that State re-competes will be **new awards with new keys**,
+  under State's agency code — with no link to the USAID award it replaces.
+  Tracing that is the cross-organization matching problem above.
+- Grouping by the key's agency code, by `awarding_agency_name`, and by
+  `funding_agency_name` gives three different "USAID portfolios". Say which
+  one you mean.
+
+## Transaction types worth tracking
+
+Counts of each action type over February–August, with the 2025 rate
+relative to the 2023–2024 average:
+
+```{r action-types}
+at <- copy(d$action_types)
+at[, ratio_2025 := round(`2025` / pmax((`2023` + `2024`) / 2, 1), 2)]
+knitr::kable(at[order(award_group, -ratio_2025)])
+```
+
+In rough order of usefulness:
+
+| signal | field / flag | why it matters |
+|---|---|---|
+| terminate for convenience / default / cancellation | `action_type_code` F, E, N; `dsr_term_code` | the formal record of a termination, for contracts |
+| termination notice text | `transaction_description`; `dsr_term_text` | the *only* formal record for grants; also catches notices filed under other codes |
+| end date cut | `pop_end_date` vs previous; `dsr_end_cut` | quiet termination and reduction — often with no money and no notice |
+| ceiling cut | `base_and_all_options_value` < 0; `dsr_ceiling_cut` | future work removed; invisible in obligations |
+| missing continuations and option exercises | assistance `B`, contract `G` rates | reductions that leave no row; measure as a rate |
+| no outlays on active awards | File C, `us_fetch_outlays()` | payment delay behind unchanged paperwork |
+| closeouts and adjustments to completed awards | contract `K`, assistance `D`; `dsr_closeout` | early wind-down |
+| rescissions | `dsr_rescinded` | terminations that did not stick |
+| administrative actions | contract `M`; `dsr_admin`, `dsr_stop_work` | stop-work orders and notices |
+| transfer, novation, agency change | contract `T`, `J`; `dsr_agency_change` | work moved, not ended |
+| early de-obligation | `dsr_early_deob` | the formal reduction — slow, and the lagging indicator |
+
+## Limits
+
+- **A UEI-filtered sample cannot see the other side of a transfer**:
+  re-awards to another organization, and the share of a moved grant held
+  elsewhere, require queries by office and program across all recipients.
+- **Recent months are incomplete.** Reporting lag understates the latest
+  quarter; the File C quarter still being reported is excluded above.
+- **Text signals depend on agency practice.** Some agencies write "notice
+  of termination"; some write nothing. Always pair text with codes and
+  schedule changes.
+- **File C covers awards from FY2020** and only agencies that report
+  outlays (DoD reports almost none), so the no-cash measure is a
+  subsample.
+- **Flags are evidence, not conclusions.** Audit every count against the
+  description text before reporting it.

@@ -137,3 +137,40 @@ test_that("us_fetch_subawards_in validates input without touching the network", 
   expect_identical(names(out), us_schema("subawards")$field)
   expect_error(us_fetch_subawards_in("NOT-A-UEI"), class = "usaspend_bad_uei")
 })
+
+test_that("the disruption fields are harmonized from both families", {
+  ex <- us_sample_extract()
+  tx <- ex$transactions
+  for (f in c("transaction_description", "base_and_all_options_value",
+              "awarding_office_code", "awarding_office_name",
+              "pop_potential_end_date")) {
+    expect_true(f %in% names(tx), info = f)
+  }
+  ## contracts carry all five; assistance has no ceiling or potential end date
+  ct <- tx[award_group == "contract"]
+  as <- tx[award_group == "assistance"]
+  expect_gt(sum(!is.na(ct$transaction_description) & nzchar(ct$transaction_description)), 0)
+  expect_gt(sum(!is.na(ct$awarding_office_name)), 0)
+  expect_gt(sum(!is.na(ct$base_and_all_options_value)), 0)
+  expect_s3_class(ct$pop_potential_end_date, "Date")
+  expect_gt(sum(!is.na(ct$pop_potential_end_date)), 0)
+  expect_gt(sum(!is.na(as$awarding_office_name)), 0)
+  expect_true(all(is.na(as$base_and_all_options_value)))
+})
+
+test_that("extracts without the disruption fields still normalize", {
+  old <- data.table::copy(us_sample_extract()$transactions)
+  old[, c("transaction_description", "base_and_all_options_value",
+          "awarding_office_code", "awarding_office_name",
+          "pop_potential_end_date") := NULL]
+  tx <- suppressMessages(us_normalize_transactions(old))
+  expect_true(all(is.na(tx$transaction_description)))
+  expect_s3_class(tx$pop_potential_end_date, "Date")
+  expect_type(tx$base_and_all_options_value, "double")
+  ## canonical order restored
+  expect_equal(names(tx)[seq_along(us_schema("transactions")$field)],
+               us_schema("transactions")$field)
+  ## a genuinely required column is still enforced
+  old[, award_key := NULL]
+  expect_error(suppressMessages(us_normalize_transactions(old)), "missing")
+})

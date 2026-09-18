@@ -37,6 +37,9 @@
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
     <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Disruption</h6></li>
+    <li><a class="dropdown-item" href="../articles/disruption.html">Detecting disruption in federal funding</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -57,8 +60,7 @@
 
       <div class="section-desc"><p>From a list of UEIs to an ORG x AWARD x YEAR panel of net federal revenue. <code><a href="../reference/us_extract.html">us_extract()</a></code> acquires, <code><a href="../reference/us_panel.html">us_panel()</a></code> normalizes and nets, <code><a href="../reference/us_rollup.html">us_rollup()</a></code> aggregates.</p></div>
 
-
-    </div><div class="section level2">
+      <dl></dl></div><div class="section level2">
 
 
 
@@ -69,25 +71,29 @@
 
         </dt>
         <dd>Extract raw award data for a set of UEIs</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_panel.html">us_panel()</a></code>
 
         </dt>
         <dd>Build the organization x award x year panel</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_rollup.html">us_rollup()</a></code>
 
         </dt>
         <dd>Roll the panel up across grouping dimensions</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_adjust_inflation.html">us_adjust_inflation()</a></code>
 
         </dt>
         <dd>Adjust panel dollars for inflation</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_org_year.html">us_org_year()</a></code>
 
@@ -98,8 +104,7 @@
 
       <div class="section-desc"><p>Cost the API path against the annual-archive path before pulling.</p></div>
 
-
-    </div><div class="section level2">
+      <dl></dl></div><div class="section level2">
 
 
 
@@ -110,19 +115,22 @@
 
         </dt>
         <dd>Plan an extraction before running it</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_award_counts.html">us_award_counts()</a></code>
 
         </dt>
         <dd>Pre-flight award counts for a set of UEIs</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_validate_uei.html">us_validate_uei()</a></code>
 
         </dt>
         <dd>Validate a vector of UEIs</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_org_map.html">us_org_map()</a></code>
 
@@ -133,8 +141,7 @@
 
       <div class="section-desc"><p>Bulk transaction download jobs, for one organization or a small batch.</p></div>
 
-
-    </div><div class="section level2">
+      <dl></dl></div><div class="section level2">
 
 
 
@@ -145,25 +152,29 @@
 
         </dt>
         <dd>Run a set of download jobs to completion</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_download_submit.html">us_download_submit()</a></code>
 
         </dt>
         <dd>Submit a bulk transaction download job</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_download_status.html">us_download_status()</a></code>
 
         </dt>
         <dd>Poll a download job</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_download_fetch.html">us_download_fetch()</a></code>
 
         </dt>
         <dd>Download and unzip finished jobs</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_api.html">us_api()</a></code>
 
@@ -174,8 +185,7 @@
 
       <div class="section-desc"><p>Whole-fiscal-year files filtered locally with duckdb, for large batches.</p></div>
 
-
-    </div><div class="section level2">
+      <dl></dl></div><div class="section level2">
 
 
 
@@ -186,25 +196,29 @@
 
         </dt>
         <dd>List available annual archive files</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_archive_size.html">us_archive_size()</a></code>
 
         </dt>
         <dd>Size an archive pull before committing to it</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_archive_download.html">us_archive_download()</a></code>
 
         </dt>
         <dd>Download and unpack annual archives</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_archive_filter.html">us_archive_filter()</a></code>
 
         </dt>
         <dd>Filter unpacked archives down to a set of UEIs</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_archive_verify_schema.html">us_archive_verify_schema()</a></code>
 
@@ -215,8 +229,7 @@
 
       <div class="section-desc"><p>Pass-through paid (fetched by prime award) and subawards received (a by-product of recipient-filtered pulls). Direction matters.</p></div>
 
-
-    </div><div class="section level2">
+      <dl></dl></div><div class="section level2">
 
 
 
@@ -227,25 +240,29 @@
 
         </dt>
         <dd>Batched outbound subaward fetch</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_fetch_subawards_out.html">us_fetch_subawards_out()</a></code>
 
         </dt>
         <dd>Subawards paid out by a prime award</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_fetch_subawards_in.html">us_fetch_subawards_in()</a></code>
 
         </dt>
         <dd>Fetch inbound subawards for a set of UEIs</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_fetch_award.html">us_fetch_award()</a></code>
 
         </dt>
         <dd>Prime award overview</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_subaward_by_year.html">us_subaward_by_year()</a></code>
 
@@ -256,8 +273,7 @@
 
       <div class="section-desc"><p>The optional cash layer. Annual disbursements exist only in account-level File C data, complete only from the FY2022 monthly mandate and absent for whole agencies – fetched per award, graded for coverage, and attached to a fiscal panel without ever substituting for obligations.</p></div>
 
-
-    </div><div class="section level2">
+      <dl></dl></div><div class="section level2">
 
 
 
@@ -268,13 +284,15 @@
 
         </dt>
         <dd>Fetch account-level (File C) funding history per award</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_outlays_by_year.html">us_outlays_by_year()</a></code>
 
         </dt>
         <dd>Collapse File C funding records to annual outlays per award</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_add_outlays.html">us_add_outlays()</a></code>
 
@@ -285,8 +303,7 @@
 
       <div class="section-desc"><p>Where real File C outlays don’t reach, impute the cash calendar from obligations: liquidation curves fitted on reconciled ground truth, with an explicit even-spread fallback outside the model’s support.</p></div>
 
-
-    </div><div class="section level2">
+      <dl></dl></div><div class="section level2">
 
 
 
@@ -297,61 +314,91 @@
 
         </dt>
         <dd>Impute annual outlays from obligations data</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_add_imputed_outlays.html">us_add_imputed_outlays()</a></code>
 
         </dt>
         <dd>Attach imputed outlays to a panel</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_impute_fit.html">us_impute_fit()</a></code>
 
         </dt>
         <dd>Fit a liquidation-curve outlay model</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_impute_eval.html">us_impute_eval()</a></code>
 
         </dt>
         <dd>Cross-validated evaluation of an outlay-imputation configuration</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_outlay_training.html">us_outlay_training()</a></code>
 
         </dt>
         <dd>Build an outlay-imputation training set</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_outlay_features.html">us_outlay_features()</a></code>
 
         </dt>
         <dd>Award-level features for outlay imputation</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_misallocation.html">us_misallocation()</a></code>
 
         </dt>
         <dd>Misallocation share between an imputed and an actual annual series</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="outlay_model.html">outlay_model</a></code>
 
         </dt>
         <dd>The default liquidation-curve outlay model</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="outlay_training.html">outlay_training</a></code>
 
         </dt>
         <dd>Outlay-imputation ground truth</dd>
       </dl></div><div class="section level2">
+      <h2 id="disruption">Disruption<a class="anchor" aria-label="anchor" href="#disruption"></a></h2>
+
+      <div class="section-desc"><p>Detecting terminations, reductions, delays and transfers from the non-monetary fields of the ledger – action codes, end-date and ceiling changes, description text. See <code><a href="../articles/disruption.html">vignette("disruption")</a></code>.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="us_disruption_flags.html">us_disruption_flags()</a></code>
+
+        </dt>
+        <dd>Flag disruption signals on a transaction ledger</dd>
+
+        <dt>
+
+          <code><a href="disruption_sample.html">disruption_sample</a></code>
+
+        </dt>
+        <dd>Disruption in federal funding: a 1,000-nonprofit sample, FY2016–FY2026</dd>
+      </dl></div><div class="section level2">
       <h2 id="normalization-and-accounting">Normalization and accounting<a class="anchor" aria-label="anchor" href="#normalization-and-accounting"></a></h2>
 
       <div class="section-desc"><p>The rules that turn a raw modification ledger into clean signed transactions, specified in ACCOUNTING.md.</p></div>
 
-
-    </div><div class="section level2">
+      <dl></dl></div><div class="section level2">
 
 
 
@@ -362,31 +409,36 @@
 
         </dt>
         <dd>Normalize a raw transaction ledger</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_normalize_awards.html">us_normalize_awards()</a></code>
 
         </dt>
         <dd>Build the prime award spine</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_normalize_subawards.html">us_normalize_subawards()</a></code>
 
         </dt>
         <dd>Normalize a subaward ledger and assign direction</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_ledger.html">us_ledger()</a></code>
 
         </dt>
         <dd>Build a signed accounting ledger</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_net_by_year.html">us_net_by_year()</a></code>
 
         </dt>
         <dd>Net an award ledger into organization x award x year records</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_money_column.html">us_money_column()</a></code>
 
@@ -397,8 +449,7 @@
 
 
 
-
-    </div><div class="section level2">
+      <dl></dl></div><div class="section level2">
 
 
 
@@ -409,25 +460,29 @@
 
         </dt>
         <dd>Canonical table schemas</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_harmonize_transactions.html">us_harmonize_transactions()</a></code> <code><a href="us_harmonize_transactions.html">us_harmonize_subawards()</a></code>
 
         </dt>
         <dd>Harmonize raw USAspending files to the canonical schema</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_classify_award_type.html">us_classify_award_type()</a></code>
 
         </dt>
         <dd>Classify award type codes</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_classify_action.html">us_classify_action()</a></code>
 
         </dt>
         <dd>Classify transaction action types</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_award_type_codes.html">us_award_type_codes()</a></code>
 
@@ -438,8 +493,7 @@
 
       <div class="section-desc"><p>External and structural checks, run on every rebuild.</p></div>
 
-
-    </div><div class="section level2">
+      <dl></dl></div><div class="section level2">
 
 
 
@@ -450,7 +504,8 @@
 
         </dt>
         <dd>Reconcile netted transactions against award lifetime totals</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_audit.html">us_audit()</a></code>
 
@@ -461,8 +516,7 @@
 
       <div class="section-desc"><p>Vanderbilt University Medical Center, FY2008-FY2025 - a complete single-organization example shipped with the package: raw transactions, subawards in both directions, and the finished panel.</p></div>
 
-
-    </div><div class="section level2">
+      <dl></dl></div><div class="section level2">
 
 
 
@@ -473,13 +527,15 @@
 
         </dt>
         <dd>Vanderbilt University Medical Center: raw transactions</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="vumc_subawards.html">vumc_subawards</a></code>
 
         </dt>
         <dd>Vanderbilt University Medical Center: subaward rows, both directions</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="vumc_panel.html">vumc_panel</a></code>
 
@@ -490,8 +546,7 @@
 
 
 
-
-    </div><div class="section level2">
+      <dl></dl></div><div class="section level2">
 
 
 
@@ -502,25 +557,29 @@
 
         </dt>
         <dd>Annual price index bundled with the package</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_sample_extract.html">us_sample_extract()</a></code>
 
         </dt>
         <dd>A bundled sample extract</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="us_cache_dir.html">us_cache_dir()</a></code> <code><a href="us_cache_dir.html">us_cache_clear()</a></code> <code><a href="us_cache_dir.html">us_cache_status()</a></code>
 
         </dt>
         <dd>Cache location</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="usaspend-options.html">usaspend-options</a></code>
 
         </dt>
         <dd>Package options</dd>
-      </dl><dl><dt>
+
+        <dt>
 
           <code><a href="usaspend-package.html">usaspend</a></code> <code><a href="usaspend-package.html">usaspend-package</a></code>
 
@@ -536,7 +595,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

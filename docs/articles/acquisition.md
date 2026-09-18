@@ -1,0 +1,257 @@
+# Choosing an acquisition path: API jobs or annual archives
+
+``` r
+library(usaspend)
+```
+
+[`us_extract()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_extract.md)
+is the single entry point for acquisition, and it can fetch the same
+data two very different ways:
+
+``` r
+# one organization -- the API path
+ex <- us_extract("CFFMYPABYAG3", years = 2015:2025)
+
+# thousands of organizations -- the archive path
+ex <- us_extract(ueis, years = 2008:2025, source = "archive")
+```
+
+Both paths land on the same canonical tables, so nothing downstream
+knows or cares which was used. But their costs scale on different axes,
+and picking wrong can turn minutes into days. This vignette explains the
+mechanics of each, and how
+[`us_extract_plan()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_extract_plan.md)
+chooses between them.
+
+Every constraint quoted below was **measured live** against
+`api.usaspending.gov`, not read off the documentation.
+
+## Path A — API download jobs: cost scales with the number of UEIs
+
+`us_extract(source = "api")` submits bulk-download jobs to
+`POST /api/v2/download/transactions/`, polls until the server has built
+the files, fetches and unzips them, and harmonizes the CSVs. Each job
+covers a small batch of UEIs and takes 9–85 seconds server-side.
+
+What the measurements say about how to drive it:
+
+- **`recipient_search_text` accepts about 20 values per job.** 20
+  succeeds, 25 fails — the cap is undocumented. In practice large
+  recipients time out server-side well below it, so the package’s
+  default batch is **5**, and a failed batch is retried one UEI at a
+  time so a single oversized recipient cannot poison its whole batch.
+- **The job state machine is `ready → running → finished | failed`**,
+  and `ready` means *queued*, not done. (Treating anything other than
+  `running` as terminal — a natural mistake — reads a freshly-queued job
+  as complete and throws the download away.)
+- **The search endpoint (`spending_by_award`) silently caps at 10,000
+  records.** Extraction always uses the download endpoint, which has no
+  cap.
+- **Sustained calls get rate-limited.** The client throttles to 2
+  requests/s with exponential backoff, and failures are recorded
+  explicitly in the job manifest — a swallowed error looks exactly like
+  a recipient with no awards.
+- **Search is floored at 2007-10-01.** Earlier fiscal years are not
+  reachable on either path.
+
+The by-product that matters: a recipient-filtered download also returns
+subaward rows **where the queried UEI is the subawardee** — inbound
+revenue you cannot get from the archives at all.
+
+## Path B — annual archives: cost is fixed in the number of fiscal years
+
+`us_extract(source = "archive")` downloads USAspending’s
+whole-fiscal-year Award Data Archive files and filters them locally with
+duckdb:
+
+``` r
+man <- us_archive_manifest(2008:2025) |> us_archive_download()
+tx  <- us_archive_filter(ueis, man$csv_dir[1], group = "assistance")
+```
+
+Two archives exist per fiscal year — `assistance` and `contracts`
+(direct payments, loans, and “other” are folded into assistance). A
+full-year assistance archive is ~1.4 GB compressed and unpacks to
+several CSV parts; the duckdb scan then filters on `recipient_uei` at
+roughly a gigabyte a minute. The whole-history cost is a few hours of
+downloading and scanning — **whether you want 100 UEIs or 100,000**.
+
+Two things the archives do not contain:
+
+- **Subawards, in either direction.** The archive files are prime
+  transactions only.
+- Nothing before FY2008 (the same floor as the API).
+
+## Do the two paths return the same data? Measured: yes, with three caveats
+
+Because the paths draw from the same database through different
+generators, the package’s whole design rests on them being
+interchangeable. That was tested directly: real FY2015 and FY2024
+archives (generated 2026-08-06) were filtered to 130 pilot UEIs and
+compared row-by-row against the same-window slice of a same-month API
+pull (2026-08-27).
+
+**Where it matters, they are identical.**
+
+| cell | rows (API vs archive) | one-sided keys | obligation difference |
+|----|----|----|----|
+| FY2015 assistance | 8,795 = 8,795 | 0 | \$0 |
+| FY2015 contracts | 2,947 = 2,947 | 0 | \$0 |
+| FY2024 assistance | 17,225 vs 17,224 | 1 | −\$4,125.69 |
+| FY2024 contracts | 2,487 = 2,487 | 0 | \$0 |
+
+Settled years match key-for-key and dollar-for-dollar. Archive files
+partition time exactly like an API pull filtered on `action_date`: every
+row in an FY file has an action date inside that fiscal year. All mapped
+column names are present in both.
+
+**Caveat one: archive contract files transpose two column pairs.** In
+the archives, `action_type_code` carries the *description*
+(`FUNDING ONLY ACTION`) and `action_type` carries the *code* (`C`);
+likewise `idv_type_code` holds the mnemonic (`IDC`) and `idv_type` the
+letter (`B`). The column names match perfectly, so a name-based check
+cannot see it — and before the package handled it, 78% of archive
+contract actions silently misclassified.
+[`us_harmonize_transactions()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_harmonize_transactions.md)
+now detects the transposition from the value shapes and un-swaps it, so
+either layout classifies identically;
+[`us_archive_verify_schema()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_archive_verify_schema.md)
+warns when it samples a transposed archive. Assistance files are
+unaffected.
+
+**Caveat two: award-level derived stamps drift between generation
+dates.** Transaction facts (dates, amounts, parties) matched exactly.
+Two columns did not, on a handful of rows: `award_total_obligated` (an
+award-*lifetime* figure recomputed at file-generation time — the two
+files were generated three weeks apart, and the diffs were concentrated
+in NIH awards, whose lifetime totals move as awards continue elsewhere),
+and `award_id_uri`, whose numeric suffix is a generated identifier that
+is simply not stable across systems. Key on `award_key`, never on
+`award_id_uri`; treat award-lifetime columns as a property of the *pull
+date*, not of the transaction.
+
+**Caveat three: at the leading edge, the archive is up to a month
+stale.** The archives regenerate monthly; corrections posted after
+generation reach the API first. Measured across the three-week gap, the
+entire divergence on FY2024 was **one row** — a NASA de-obligation of
+−\$4,125.69 modified fifteen days after the archive was cut — plus
+re-corrected fields on six of 17,224 common rows: 0.00008% of that
+year’s dollars. Settled years show zero. If the last few weeks matter
+for your analysis, refresh the leading fiscal year over the API (or
+apply the archive `Delta` files); for anything historical, the archive
+is exact.
+
+[`us_archive_verify_schema()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_archive_verify_schema.md)
+runs the name check and the transposition probe against any unpacked
+archive in one call — still worth running on a fiscal year the package
+has not seen before.
+
+## The crossover
+
+API cost grows with UEIs; archive cost is flat. They cross somewhere in
+the low thousands of UEIs.
+[`us_extract_plan()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_extract_plan.md)
+computes the comparison from the measured constants — it makes no
+network calls, so you can plan offline:
+
+``` r
+# a batch of 40 organizations
+us_extract_plan(sprintf("DEMO%08d", 1:40), years = 2008:2025)
+#> Recommended path: api.
+#> ℹ Crossover for 18 fiscal years is around 2940 UEIs.
+#> ℹ Subawards paid out are NOT in the annual archives and always cost extra API calls --
+#>   see `us_fetch_subawards_out()`.
+#>       path                                     unit download_gb est_minutes disk_gb
+#>     <char>                                   <char>       <num>       <num>   <num>
+#> 1:     api 8 download jobs (+10 single-UEI retries)        0.08           6     0.4
+#> 2: archive                       36 annual archives       50.40         235   202.0
+```
+
+``` r
+# the same question at 5,000 organizations
+us_extract_plan(sprintf("DEMO%08d", 1:5000), years = 2008:2025)
+#> Recommended path: archive.
+#> ℹ Crossover for 18 fiscal years is around 2940 UEIs.
+#> ℹ Subawards paid out are NOT in the annual archives and always cost extra API calls --
+#>   see `us_fetch_subawards_out()`.
+#>       path                                          unit download_gb est_minutes disk_gb
+#>     <char>                                        <char>       <num>       <num>   <num>
+#> 1:     api 1000 download jobs (+1000 single-UEI retries)        10.0         667      50
+#> 2: archive                            36 annual archives        50.4         235     202
+```
+
+Measured order-of-magnitude timings at 18 fiscal years:
+
+| input          | API path | archive path |
+|----------------|----------|--------------|
+| 1 org (3 UEIs) | ~1 min   | ~4 hours     |
+| 1,364 UEIs     | ~2 hours | ~4 hours     |
+| 126,784 UEIs   | ~6 days  | ~4 hours     |
+
+`us_extract(source = "auto")` runs the plan and follows its
+recommendation.
+
+## What neither path gives you: pass-through
+
+Netting out pass-through — computing
+`net_revenue = obligation_net − subaward_out_amount` — needs subawards
+where your organization is the **prime**. A recipient-filtered API pull
+never returns those (it matches on the subawardee), and the archives
+carry no subawards at all. Outbound subawards must be fetched per prime
+award:
+
+``` r
+ex <- us_extract(ueis, years = 2008:2025, source = "archive", subawards = "out")
+```
+
+`subawards = "out"` walks the extracted award keys through
+[`us_fetch_subawards_out()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_out.md)
+— batched about 400 award ids per request, with a count-first screen so
+awards reporting no subawards are skipped. Budget roughly one extra API
+call per few hundred awards. Until that pass runs, `net_revenue` in the
+panel equals `obligation_net`, and the panel’s `flags` column says so.
+
+Inbound subawards — revenue received as a subrecipient — are a free
+by-product on the API path but absent from an archive extract. Passing
+`subawards = "in"` (or `"both"`) with `source = "archive"` appends them
+through
+[`us_fetch_subawards_in()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_in.md),
+which searches the subaward endpoint by subawardee UEI: each batch of
+UEIs is **counted first**, so an organization with no inbound subawards
+— the common case at crosswalk scale — costs one cheap request, and only
+the organizations with hits pay for a full fetch. Measured constraints
+it absorbs: the ~20-UEI filter cap, server-side timeouts on batches of
+very large organizations (batches split recursively, then by time
+period; transient failures retry once automatically), the required
+one-pass-per-family rule, and the 10k result cap. UEIs that cannot be
+resolved are reported in a `failures` attribute — a failure is never
+allowed to read as zero. Validated against the 130-UEI pilot bulk pull:
+**100.00% of FSRS lines recovered** (21,759 of 21,760), amounts matching
+to the cent on 97.2% of lines with the remainder being FSRS restatements
+between the two pulls’ vintages — the search route is the fresher
+source. (A download-job route survives as `via = "download"`, the only
+route that carries FSRS report-period columns.)
+
+The full append matrix:
+
+| you extracted via | inbound (`"in"`) | outbound (`"out"`) |
+|----|----|----|
+| API | already in the extract | [`us_fetch_subawards_out()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_out.md) per award |
+| archive | [`us_fetch_subawards_in()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_in.md) — count-screened search | [`us_fetch_subawards_out()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_out.md) per award |
+
+## Choosing, in one table
+
+| situation | use |
+|----|----|
+| one organization, or a handful | `source = "api"` |
+| up to ~2,000 UEIs | `source = "api"` (check [`us_extract_plan()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_extract_plan.md)) |
+| thousands of UEIs or more | `source = "archive"` |
+| you need inbound subawards | the API path (archives have none) |
+| you need outbound subawards / true net revenue | either path **plus** `subawards = "out"` |
+| unsure | `source = "auto"` |
+
+Both paths cache downloads under
+[`us_cache_dir()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_cache_dir.md),
+so re-runs skip completed work;
+[`us_cache_status()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_cache_dir.md)
+shows what is already on disk.
