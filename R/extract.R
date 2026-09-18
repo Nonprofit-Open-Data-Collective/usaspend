@@ -80,13 +80,25 @@ us_extract_plan <- function(uei, years = 2008:2025,
 #' costs roughly one extra API call per award and is screened so that awards
 #' reporting no subawards are skipped.
 #'
+#' @section Subsidiaries:
 #' On the API path the recipient filter also matches a transaction's *parent*
 #' UEI (see [us_download_submit()]): querying a parent organization returns
 #' the transactions its subsidiaries filed while it was recorded as parent,
-#' but not their earlier history. The extract keeps these rows as returned;
-#' [us_panel()] keeps them out of the panel and flags their awards, and
-#' [us_reconcile()] labels them `"out_of_sample"`. The archive path filters on
-#' `recipient_uei` locally and is not affected.
+#' but not their earlier history. Every such subsidiary is recorded in the
+#' crosswalk `org_map` (see [us_find_subsidiaries()]), mapped to the
+#' requested UEI it rolls up to.
+#'
+#' With `subsidiaries = FALSE` (the default) their own histories are not
+#' pulled, and the extract says so when it finishes: [us_panel()] leaves
+#' their awards out of the panel and [us_reconcile()] labels them
+#' `"out_of_sample"`, because a truncated history cannot reconcile. With
+#' `subsidiaries = TRUE` each subsidiary UEI is queried in its own right
+#' (full history, as [us_add_subsidiaries()] does) and added to the requested
+#' set, so the panel counts it as part of its parent organization. See
+#' `vignette("org-map")`.
+#'
+#' The archive path filters on `recipient_uei` locally, so it neither
+#' receives subsidiaries' rows nor discovers them.
 #'
 #' @param uei Character vector of UEIs.
 #' @param years Integer vector of fiscal years.
@@ -97,9 +109,15 @@ us_extract_plan <- function(uei, years = 2008:2025,
 #'   which count-screens each UEI batch and fetches only where inbound rows
 #'   exist), `"out"` (pass-through paid: queried by prime award from either
 #'   path), or `"both"`.
+#' @param subsidiaries Also extract the full histories of subsidiaries the
+#'   parent-UEI match surfaces, and count them as part of their parent
+#'   organization. API path only. See the Subsidiaries section.
 #' @param dest Directory for intermediate files. Defaults to the package cache.
 #' @return A list of class `usaspend_extract` with elements `transactions`,
-#'   `subawards`, `jobs` (the acquisition manifest) and `meta`.
+#'   `subawards`, `jobs` (the acquisition manifest), `org_map` (the UEI
+#'   crosswalk: requested UEIs and discovered subsidiaries, see
+#'   [us_find_subsidiaries()]) and `meta`. `meta$uei` is every UEI whose own
+#'   history was extracted; `meta$uei_requested` is the original request.
 #' @export
 #' @examples
 #' \dontrun{
@@ -115,9 +133,11 @@ us_extract <- function(uei,
                        award_types = us_award_type_codes("all"),
                        source = c("auto", "api", "archive"),
                        subawards = c("in", "none", "out", "both"),
+                       subsidiaries = FALSE,
                        dest = us_cache_dir("raw")) {
   source <- match.arg(source)
   subawards <- match.arg(subawards)
+  stopifnot(is.logical(subsidiaries), length(subsidiaries) == 1L, !is.na(subsidiaries))
   uei <- unique(us_validate_uei(uei))
   uei <- uei[!is.na(uei)]
   if (!length(uei)) us_abort("No valid UEIs supplied.")
@@ -152,24 +172,38 @@ us_extract <- function(uei,
     }
   }
 
-  if (nrow(tx) && subawards %in% c("out", "both")) {
-    keys <- unique(tx$award_key[!is.na(tx$award_key)])
+  ex <- structure(list(
+    transactions = tx,
+    subawards    = sb,
+    jobs         = jobs,
+    org_map      = crosswalk_discover(crosswalk_init(uei), tx),
+    meta = list(uei = uei, uei_requested = uei, years = years,
+                award_types = award_types, source = source,
+                subawards = subawards, subsidiaries = subsidiaries,
+                extracted_at = Sys.time())
+  ), class = "usaspend_extract")
+
+  if (subsidiaries && source == "archive") {
+    us_msg("The archive path filters on {.field recipient_uei} alone, so it surfaces no subsidiaries to extract.")
+  } else if (subsidiaries) {
+    ex <- add_subsidiaries(ex, dest = dest)
+  }
+
+  ## after the subsidiary pass, so its awards get pass-through too
+  if (nrow(ex$transactions) && subawards %in% c("out", "both")) {
+    keys <- unique(ex$transactions$award_key[!is.na(ex$transactions$award_key)])
     us_msg("Fetching pass-through subawards for {length(keys)} award{?s}.")
     out <- us_fetch_subawards_out(keys)
     if (nrow(out)) {
       out[, "direction" := "out"]
-      sb <- data.table::rbindlist(list(sb, out), use.names = TRUE, fill = TRUE)
+      ex$subawards <- data.table::rbindlist(list(ex$subawards, out),
+                                            use.names = TRUE, fill = TRUE)
     }
   }
 
-  structure(list(
-    transactions = tx,
-    subawards    = sb,
-    jobs         = jobs,
-    meta = list(uei = uei, years = years, award_types = award_types,
-                source = source, subawards = subawards,
-                extracted_at = Sys.time())
-  ), class = "usaspend_extract")
+  ex$meta$extracted_at <- Sys.time()
+  report_subsidiaries(ex$org_map)
+  ex
 }
 
 #' @export
@@ -180,6 +214,10 @@ print.usaspend_extract <- function(x, ...) {
     "*" = "{length(m$uei)} UEI{?s}, FY{min(m$years)}-FY{max(m$years)}, path {.val {m$source}}",
     "*" = "{nrow(x$transactions)} transaction{?s} on {length(unique(x$transactions$award_key))} award{?s}",
     "*" = "{nrow(x$subawards)} subaward row{?s}",
+    "*" = if (!is.null(x$org_map) && any(x$org_map$relationship == "subsidiary")) {
+      s <- x$org_map[x$org_map$relationship == "subsidiary"]
+      "{nrow(s)} subsidiary UEI{?s} in {.field org_map}, {sum(s$extracted)} with full histories extracted"
+    },
     "*" = "extracted {format(m$extracted_at, '%Y-%m-%d %H:%M')}"))
   invisible(x)
 }

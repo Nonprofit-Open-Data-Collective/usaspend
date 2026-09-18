@@ -46,6 +46,8 @@ recipient, only the 2 carrying RTI as parent came back; the earlier ones,
 filed under parents L-3 and Engility, did not. A subsidiary's awards thus
 arrive with truncated histories. \code{\link[=us_panel]{us_panel()}} keeps only UEIs in the
 organization map and flags the rest (\code{awards$in_sample}), and
-\code{\link[=us_reconcile]{us_reconcile()}} labels their awards \code{"out_of_sample"}.
+\code{\link[=us_reconcile]{us_reconcile()}} labels their awards \code{"out_of_sample"}, unless their full
+histories are pulled with \code{us_extract(subsidiaries = TRUE)} or
+\code{\link[=us_add_subsidiaries]{us_add_subsidiaries()}}.
 }
 

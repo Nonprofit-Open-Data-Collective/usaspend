@@ -30,8 +30,8 @@
 #'
 #' @section Out-of-sample awards:
 #' An award is `"out_of_sample"` when none of its transactions carry a
-#' recipient UEI in the panel's organization map -- the UEIs requested by
-#' [us_extract()]. The bulk download filters on
+#' recipient UEI in the panel's organization map -- the UEIs whose own
+#' histories [us_extract()] pulled. The bulk download filters on
 #' `recipient_search_text`, which also matches a transaction's *parent* UEI
 #' (see [us_download_submit()]), so querying a parent returns its
 #' subsidiaries' transactions -- but only those filed while the parent was
@@ -45,11 +45,11 @@
 #' not part of the organization's panel whether or not it happens to
 #' reconcile. [us_panel()] already leaves these transactions out of `panel`;
 #' they stay in `awards` and `transactions`, flagged `in_sample = FALSE`, so
-#' the leak stays visible. To count a subsidiary as part of its parent, request
-#' its UEI too -- a query on its own UEI returns its whole history, not only
-#' the post-acquisition slice -- and map it to the parent's `org_id` in
-#' `org_map`. Panels built before [us_panel()] recorded its organization map
-#' fall back to the transactions' `is_stray_uei` flag.
+#' the leak stays visible. To count subsidiaries as part of their parents,
+#' extract their full histories with `us_extract(subsidiaries = TRUE)` or
+#' [us_add_subsidiaries()]; see `vignette("org-map")`. Panels built before
+#' [us_panel()] recorded its organization map fall back to the transactions'
+#' `is_stray_uei` flag.
 #' @export
 #' @examples
 #' p <- us_panel(us_sample_extract())
@@ -112,7 +112,10 @@ us_reconcile <- function(panel, tolerance = 1) {
 in_sample_awards <- function(panel) {
   tx <- panel$transactions
   if (!nrow(tx)) return(character(0))
-  uei <- panel$org_map$uei
+  om <- panel$org_map
+  uei <- if (is.null(om)) NULL else if ("in_sample" %in% names(om)) {
+    om$uei[om$in_sample]
+  } else om$uei
   keep <- if (!is.null(uei)) {
     !is.na(tx$recipient_uei) & tx$recipient_uei %in% uei
   } else if ("is_stray_uei" %in% names(tx)) {

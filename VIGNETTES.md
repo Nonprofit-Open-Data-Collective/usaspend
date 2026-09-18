@@ -32,6 +32,7 @@ remains the content bank behind them.
 | `subawards.Rmd` | **written** | What "subaward" means here, why direction is the whole problem, and what the data cannot see | §2 below, `ACCOUNTING.md` §6 |
 | `accounting.Rmd` | **written** | Modifications, de-obligations, the year a claw-back belongs to | `ACCOUNTING.md` §5 |
 | `reconciliation.Rmd` | **written** | Why 72% is a good number, and how to read a break | `ACCOUNTING.md` §8 |
+| `org-map.Rmd` | **written** (2026-09-18) | UEIs vs organizations: the crosswalk, multiple registrations, parent/subsidiary UEIs and the parent-UEI match, `subsidiaries =`, what the crosswalk does not hold | `ACCOUNTING.md` §7-8 |
 
 The set is complete. Overlaps are handled by linking: `panel.Rmd` carries
 the loan/direct-payment treatment in depth, `acquisition.Rmd` the measured

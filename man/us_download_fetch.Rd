@@ -12,7 +12,9 @@ us_download_fetch(jobs, dest = us_cache_dir("raw"))
 \item{dest}{Directory for the unzipped CSVs. Defaults to the package cache.}
 }
 \value{
-Character vector of extracted CSV paths.
+Character vector of the CSV paths in \code{dest}, with attribute
+\code{fetched}: the job file names that were downloaded and unzipped. A job
+that failed either step is warned about and left out of \code{fetched}.
 }
 \description{
 Download and unzip finished jobs

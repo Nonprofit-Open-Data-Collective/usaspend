@@ -446,6 +446,18 @@ registrations and USAspending splits their awards across them — NYU has three
 UEIs holding 2,687 / 4,721 / 9 awards. Supply a crosswalk to `us_org_map()` and
 every table is keyed on `org_id`; without one, each UEI is its own organization.
 
+Subsidiaries are the other half of the mapping. The API's parent-UEI match
+(§8) surfaces them unasked, and `us_extract()` records each in the extract's
+crosswalk (`extract$org_map`) under the requested UEI it rolls up to. The rule
+for the panel: **a UEI is in sample only if its own history was extracted.**
+With `subsidiaries = FALSE` (the default) the subsidiaries are listed but not
+pulled, and the extract says so when it finishes; their partial histories stay
+out of the panel. With `subsidiaries = TRUE` (or `us_add_subsidiaries()` on an
+existing extract) each is queried on its own UEI, so it arrives with its full
+history, and inherits its parent's `org_id` unless `org_map` lists it. A
+crosswalk row for a UEI that was never pulled is ignored, with a message,
+because a crosswalk cannot add data. See `vignette("org-map")`.
+
 ---
 
 ## 8. Reconciliation — `us_reconcile()` and `us_audit()`

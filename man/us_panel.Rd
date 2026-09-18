@@ -17,7 +17,9 @@ us_panel(
 \item{extract}{A \code{usaspend_extract} from \code{\link[=us_extract]{us_extract()}}, or a list with
 \code{transactions} and \code{subawards}.}
 
-\item{org_map}{Optional \code{uei} to \code{org_id} crosswalk, see \code{\link[=us_org_map]{us_org_map()}}.}
+\item{org_map}{Optional \code{uei} to \code{org_id} crosswalk, see \code{\link[=us_org_map]{us_org_map()}}
+and the crosswalk section below. Extracted subsidiaries need not be
+listed: they inherit their parent's \code{org_id}.}
 
 \item{period}{\code{"calendar"} (default) or \code{"fiscal"}.}
 
@@ -38,8 +40,8 @@ panel's \code{subaward_out_amount} total is a floor, not the total fetched.}
 A list of class \code{usaspend_panel}: \code{panel} (org x award x year),
 \code{awards} (the spine, with \code{in_sample}), \code{transactions} (the normalized
 ledger), \code{subawards} (normalized, with direction), \code{subawards_in}
-(org-year inbound revenue), \code{org_map} (the \code{uei} to \code{org_id} crosswalk
-used), and \code{meta}.
+(org-year inbound revenue), \code{org_map} (the resolved crosswalk: \code{uei},
+\code{org_id}, \code{relationship}, \code{root_uei}, ..., and \code{in_sample}), and \code{meta}.
 }
 \description{
 The end-to-end pipeline: normalize, ledger, net, join subaward flows, attach
@@ -63,22 +65,31 @@ matching panel rows as \code{subaward_in_amount} when the prime award key appear
 in the panel (rare: it requires the org to be both prime and subawardee).
 }
 
-\section{Out-of-sample recipients}{
+\section{Organizations, subsidiaries and the crosswalk}{
 
-The API filter behind \code{\link[=us_extract]{us_extract()}} also matches a transaction's \emph{parent}
-UEI (see \code{\link[=us_download_submit]{us_download_submit()}}), so an extract can hold transactions of
-subsidiaries that were never requested -- and only the part of their
-history filed while the requested UEI was recorded as parent. The panel
-keeps only transactions on UEIs in the organization map -- the requested
-UEIs; \code{\link[=us_org_map]{us_org_map()}} ignores crosswalk rows for UEIs not requested -- and
-reports how many it dropped. \code{awards} and
-\code{transactions} keep the out-of-sample rows, deliberately: they are what the
+The organization map is built from the extract's crosswalk
+(\code{extract$org_map}, see \code{\link[=us_find_subsidiaries]{us_find_subsidiaries()}}) and \code{org_map}:
+\itemize{
+\item Every UEI whose own history was extracted is in sample: the
+requested UEIs, plus subsidiaries pulled with
+\code{us_extract(subsidiaries = TRUE)} or \code{\link[=us_add_subsidiaries]{us_add_subsidiaries()}}.
+\item A requested UEI takes its \code{org_id} from \code{org_map}, else its own UEI.
+\item A subsidiary takes its \code{org_id} from \code{org_map} if listed there,
+else the \code{org_id} of the requested UEI it rolls up to -- so it counts
+as part of its parent without being listed.
+\item \code{org_map} rows for UEIs not in the extract are ignored, with a
+message: a crosswalk cannot add data that was never pulled.
+}
+Subsidiaries the extract found but did not pull are out of sample. The API
+filter also matches a transaction's \emph{parent} UEI (see
+\code{\link[=us_download_submit]{us_download_submit()}}), so the extract holds part of their history --
+only what they filed while a requested UEI was recorded as parent. The
+panel leaves those transactions out and reports how many it dropped.
+\code{awards} and \code{transactions} keep them, deliberately: they are what the
 extract returned, and dropping them would hide the leak. \code{awards} flags
 them with \code{in_sample = FALSE}, \code{\link[=us_reconcile]{us_reconcile()}} labels them
-\code{"out_of_sample"}, and \code{awards[(in_sample)]} is the organization's spine.
-To count a subsidiary as part of its parent, request its UEI as well --
-which also retrieves its full history -- and map it to the parent's
-\code{org_id} in \code{org_map}.
+\code{"out_of_sample"}, and \code{awards[(in_sample)]} is the organizations' spine.
+See \code{vignette("org-map")}.
 }
 
 \examples{

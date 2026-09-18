@@ -26,8 +26,8 @@ most breaks are structural (truncation, recipient changes), not bugs.
 \section{Out-of-sample awards}{
 
 An award is \code{"out_of_sample"} when none of its transactions carry a
-recipient UEI in the panel's organization map -- the UEIs requested by
-\code{\link[=us_extract]{us_extract()}}. The bulk download filters on
+recipient UEI in the panel's organization map -- the UEIs whose own
+histories \code{\link[=us_extract]{us_extract()}} pulled. The bulk download filters on
 \code{recipient_search_text}, which also matches a transaction's \emph{parent} UEI
 (see \code{\link[=us_download_submit]{us_download_submit()}}), so querying a parent returns its
 subsidiaries' transactions -- but only those filed while the parent was
@@ -41,11 +41,11 @@ The test runs first, ahead of every other label: an out-of-sample award is
 not part of the organization's panel whether or not it happens to
 reconcile. \code{\link[=us_panel]{us_panel()}} already leaves these transactions out of \code{panel};
 they stay in \code{awards} and \code{transactions}, flagged \code{in_sample = FALSE}, so
-the leak stays visible. To count a subsidiary as part of its parent, request
-its UEI too -- a query on its own UEI returns its whole history, not only
-the post-acquisition slice -- and map it to the parent's \code{org_id} in
-\code{org_map}. Panels built before \code{\link[=us_panel]{us_panel()}} recorded its organization map
-fall back to the transactions' \code{is_stray_uei} flag.
+the leak stays visible. To count subsidiaries as part of their parents,
+extract their full histories with \code{us_extract(subsidiaries = TRUE)} or
+\code{\link[=us_add_subsidiaries]{us_add_subsidiaries()}}; see \code{vignette("org-map")}. Panels built before
+\code{\link[=us_panel]{us_panel()}} recorded its organization map fall back to the transactions'
+\code{is_stray_uei} flag.
 }
 
 \examples{
