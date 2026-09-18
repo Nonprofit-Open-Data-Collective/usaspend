@@ -33,10 +33,27 @@
 #'   zero-obligation rows instead of being silently dropped. In the pilot, 13%
 #'   of outbound dollars fell in such years. With `fill_gaps = FALSE` the
 #'   panel's `subaward_out_amount` total is a floor, not the total fetched.
+#' @section Out-of-sample recipients:
+#' The API filter behind [us_extract()] also matches a transaction's *parent*
+#' UEI (see [us_download_submit()]), so an extract can hold transactions of
+#' subsidiaries that were never requested -- and only the part of their
+#' history filed while the requested UEI was recorded as parent. The panel
+#' keeps only transactions on UEIs in the organization map -- the requested
+#' UEIs; [us_org_map()] ignores crosswalk rows for UEIs not requested -- and
+#' reports how many it dropped. `awards` and
+#' `transactions` keep the out-of-sample rows, deliberately: they are what the
+#' extract returned, and dropping them would hide the leak. `awards` flags
+#' them with `in_sample = FALSE`, [us_reconcile()] labels them
+#' `"out_of_sample"`, and `awards[(in_sample)]` is the organization's spine.
+#' To count a subsidiary as part of its parent, request its UEI as well --
+#' which also retrieves its full history -- and map it to the parent's
+#' `org_id` in `org_map`.
+#'
 #' @return A list of class `usaspend_panel`: `panel` (org x award x year),
-#'   `awards` (the spine), `transactions` (the normalized ledger),
-#'   `subawards` (normalized, with direction), `subawards_in` (org-year
-#'   inbound revenue), and `meta`.
+#'   `awards` (the spine, with `in_sample`), `transactions` (the normalized
+#'   ledger), `subawards` (normalized, with direction), `subawards_in`
+#'   (org-year inbound revenue), `org_map` (the `uei` to `org_id` crosswalk
+#'   used), and `meta`.
 #' @export
 #' @examples
 #' p <- us_panel(us_sample_extract())
@@ -63,6 +80,14 @@ us_panel <- function(extract,
   ## ---- normalize -----------------------------------------------------------
   tx <- us_normalize_transactions(extract$transactions, requested_uei = requested)
   aw <- us_normalize_awards(tx)
+  ## recipient_search_text also matches parent UEIs, so the extract can hold
+  ## awards of subsidiaries nobody asked for; they are kept here, flagged, and
+  ## left out of the panel by us_net_by_year()
+  if (nrow(aw)) {
+    aw[, "in_sample" := award_key %in% tx[recipient_uei %in% om$uei, award_key]]
+  } else {
+    aw[, "in_sample" := logical(0)]
+  }
   sb <- if (nrow(extract$subawards)) {
     us_normalize_subawards(extract$subawards, org_uei = om$uei)
   } else us_empty("subawards")
@@ -178,6 +203,7 @@ us_panel <- function(extract,
     transactions = tx,
     subawards    = sb,
     subawards_in = sub_in_org,
+    org_map      = om,
     meta = list(period = period, measure = measure,
                 deobligation_policy = deobligation_policy,
                 subawards_out_fetched = fetched_out,

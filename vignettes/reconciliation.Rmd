@@ -159,6 +159,16 @@ lessons:
   extends beyond the window (`window_edge`, `recent_open`) or the award
   moved between institutions (`multi_recipient`).
 
+The sample has no instance of the first label tested, but large pulls do:
+
+- **`out_of_sample`** — every transaction on the award is on a UEI nobody
+  requested. The bulk download's recipient filter also matches the
+  *parent* UEI, so querying a parent returns its subsidiaries' actions —
+  only those filed while it was recorded as parent, so the history is
+  truncated. `us_panel()` leaves these out of the panel and flags them
+  `awards$in_sample = FALSE`; in the 1,000-UEI test they were 370 of 15,420
+  awards, 41 of which had been counted as unexplained breaks.
+
 ### The same test at scale
 
 On the full 50-org pilot (61,738 awards), after normalization:

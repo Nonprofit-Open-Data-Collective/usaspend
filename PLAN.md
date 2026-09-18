@@ -125,6 +125,16 @@ Constraints, all measured:
   cap is undocumented. In practice large recipients time out server-side well
   below it, so the default batch is **5** and failed batches are retried one UEI
   at a time; a single oversized recipient otherwise poisons its whole batch.
+- **`recipient_search_text` also matches the parent UEI.** A transaction comes
+  back if the queried UEI is its `recipient_uei` *or* its
+  `recipient_parent_uei`. Querying RTI returned its subsidiary International
+  Resources Group — but only the transactions filed after the 2017
+  acquisition, with RTI as parent; the same awards' earlier actions (parents
+  L-3, Engility) did not come back. Subsidiary awards thus arrive with
+  truncated histories. `us_panel()` keeps them out of `panel`, flags them
+  `awards$in_sample = FALSE`, and `us_reconcile()` labels them
+  `out_of_sample` (370 of 15,420 awards in the 1,000-UEI test, 41 of them
+  former "unexplained" breaks). ACCOUNTING.md §8 has the details.
 - **The job state machine is `ready → running → finished | failed`.** `ready` is
   a queue state. Treating anything other than `running` as terminal reads a
   freshly-queued job as done and throws the download away.
@@ -427,7 +437,11 @@ portfolio. Deployed CV: ~0.28 mean / 0.22 median timing error. Vignettes:
    `restate` moves the panel before committing.
 4. **Parent/child UEIs.** Prime summaries carry `recipient_parent_uei`.
    USAspending may know about subsidiary registrations absent from the SAM
-   crosswalk.
+   crosswalk — and the API path already surfaces them, since
+   `recipient_search_text` matches the parent UEI (§3). Open: whether to
+   offer a `subsidiaries =` option that re-queries the out-of-sample UEIs an
+   extract turns up, so a parent's subsidiaries can be included with full
+   histories rather than dropped.
 5. **Calendar vs fiscal year.** The panel defaults to calendar year as
    specified. Both bases are derived from `action_date` rather than trusting
    `action_date_fiscal_year`, so they are guaranteed consistent — but the

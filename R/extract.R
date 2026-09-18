@@ -80,6 +80,14 @@ us_extract_plan <- function(uei, years = 2008:2025,
 #' costs roughly one extra API call per award and is screened so that awards
 #' reporting no subawards are skipped.
 #'
+#' On the API path the recipient filter also matches a transaction's *parent*
+#' UEI (see [us_download_submit()]): querying a parent organization returns
+#' the transactions its subsidiaries filed while it was recorded as parent,
+#' but not their earlier history. The extract keeps these rows as returned;
+#' [us_panel()] keeps them out of the panel and flags their awards, and
+#' [us_reconcile()] labels them `"out_of_sample"`. The archive path filters on
+#' `recipient_uei` locally and is not affected.
+#'
 #' @param uei Character vector of UEIs.
 #' @param years Integer vector of fiscal years.
 #' @param award_types Award type codes; defaults to all.

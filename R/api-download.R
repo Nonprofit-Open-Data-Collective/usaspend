@@ -16,6 +16,20 @@ DOWNLOAD_INFLIGHT <- c("ready", "running")
 #' the cap, so [us_download_run()] defaults to 5 UEIs per job and retries
 #' failures one UEI at a time.
 #'
+#' @section `recipient_search_text` also matches the parent UEI:
+#' **[measured]** The filter matches a transaction whose `recipient_uei` *or*
+#' `recipient_parent_uei` is one of `uei`. Querying a parent organization
+#' therefore returns its subsidiaries' transactions too -- but only the ones
+#' filed while that parent was recorded as the parent. Querying RTI
+#' (`JJHCMK4NT5N3`) returned transactions of International Resources Group
+#' (`R29FEFR7P8H9`), which RTI acquired in 2017: of the 14 transactions on
+#' `CONT_AWD_AIDEPPI110300013_7200_AIDEPPI000300013_7200`, all with IRG as
+#' recipient, only the 2 carrying RTI as parent came back; the earlier ones,
+#' filed under parents L-3 and Engility, did not. A subsidiary's awards thus
+#' arrive with truncated histories. [us_panel()] keeps only UEIs in the
+#' organization map and flags the rest (`awards$in_sample`), and
+#' [us_reconcile()] labels their awards `"out_of_sample"`.
+#'
 #' @param uei Character vector of UEIs (at most 20).
 #' @param award_types Award type codes to include. Defaults to every type.
 #' @param start_date,end_date Bounds on `action_date`. USAspending award search

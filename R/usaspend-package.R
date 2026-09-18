@@ -29,7 +29,7 @@ utils::globalVariables(c(
   "i.subaward_count", "i.subaward_total", "i.recipient_uei", "latest_action_date",
   "loan_face_value", "loan_subsidy_cost", "n", "N", "n_recipients",
   "award_id", "award_total_obligated", "award_total_outlayed",
-  "n_subawards_in", "n_subawards_out", "n_transactions", "naics_code",
+  "in_sample", "n_subawards_in", "n_subawards_out", "n_transactions", "naics_code",
   "net_revenue", "obligation_negative", "obligation_net",
   "obligation_positive", "parent_award_id", "pop_end_date", "pop_start_date",
   "psc_code", "recipient_name", "recipient_parent_uei", "recipient_uei",

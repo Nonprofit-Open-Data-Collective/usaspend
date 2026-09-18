@@ -33,3 +33,19 @@ undocumented. In practice large recipients time out server-side well below
 the cap, so \code{\link[=us_download_run]{us_download_run()}} defaults to 5 UEIs per job and retries
 failures one UEI at a time.
 }
+\section{\code{recipient_search_text} also matches the parent UEI}{
+
+\strong{\link{measured}} The filter matches a transaction whose \code{recipient_uei} \emph{or}
+\code{recipient_parent_uei} is one of \code{uei}. Querying a parent organization
+therefore returns its subsidiaries' transactions too -- but only the ones
+filed while that parent was recorded as the parent. Querying RTI
+(\code{JJHCMK4NT5N3}) returned transactions of International Resources Group
+(\code{R29FEFR7P8H9}), which RTI acquired in 2017: of the 14 transactions on
+\code{CONT_AWD_AIDEPPI110300013_7200_AIDEPPI000300013_7200}, all with IRG as
+recipient, only the 2 carrying RTI as parent came back; the earlier ones,
+filed under parents L-3 and Engility, did not. A subsidiary's awards thus
+arrive with truncated histories. \code{\link[=us_panel]{us_panel()}} keeps only UEIs in the
+organization map and flags the rest (\code{awards$in_sample}), and
+\code{\link[=us_reconcile]{us_reconcile()}} labels their awards \code{"out_of_sample"}.
+}
+

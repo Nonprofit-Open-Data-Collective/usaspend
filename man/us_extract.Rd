@@ -56,6 +56,14 @@ revenue -- are not available from either bulk path. Set \code{subawards = "out"}
 to walk the resulting award keys through \code{\link[=us_fetch_subawards_out]{us_fetch_subawards_out()}}, which
 costs roughly one extra API call per award and is screened so that awards
 reporting no subawards are skipped.
+
+On the API path the recipient filter also matches a transaction's \emph{parent}
+UEI (see \code{\link[=us_download_submit]{us_download_submit()}}): querying a parent organization returns
+the transactions its subsidiaries filed while it was recorded as parent,
+but not their earlier history. The extract keeps these rows as returned;
+\code{\link[=us_panel]{us_panel()}} keeps them out of the panel and flags their awards, and
+\code{\link[=us_reconcile]{us_reconcile()}} labels them \code{"out_of_sample"}. The archive path filters on
+\code{recipient_uei} locally and is not affected.
 }
 \examples{
 \dontrun{

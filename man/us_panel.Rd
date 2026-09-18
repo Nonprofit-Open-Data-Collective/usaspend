@@ -36,9 +36,10 @@ panel's \code{subaward_out_amount} total is a floor, not the total fetched.}
 }
 \value{
 A list of class \code{usaspend_panel}: \code{panel} (org x award x year),
-\code{awards} (the spine), \code{transactions} (the normalized ledger),
-\code{subawards} (normalized, with direction), \code{subawards_in} (org-year
-inbound revenue), and \code{meta}.
+\code{awards} (the spine, with \code{in_sample}), \code{transactions} (the normalized
+ledger), \code{subawards} (normalized, with direction), \code{subawards_in}
+(org-year inbound revenue), \code{org_map} (the \code{uei} to \code{org_id} crosswalk
+used), and \code{meta}.
 }
 \description{
 The end-to-end pipeline: normalize, ledger, net, join subaward flows, attach
@@ -60,6 +61,24 @@ data -- are aggregated per organization-year in the separate
 \code{subawards_in} element, keyed by subawardee UEI, and also joined onto
 matching panel rows as \code{subaward_in_amount} when the prime award key appears
 in the panel (rare: it requires the org to be both prime and subawardee).
+}
+
+\section{Out-of-sample recipients}{
+
+The API filter behind \code{\link[=us_extract]{us_extract()}} also matches a transaction's \emph{parent}
+UEI (see \code{\link[=us_download_submit]{us_download_submit()}}), so an extract can hold transactions of
+subsidiaries that were never requested -- and only the part of their
+history filed while the requested UEI was recorded as parent. The panel
+keeps only transactions on UEIs in the organization map -- the requested
+UEIs; \code{\link[=us_org_map]{us_org_map()}} ignores crosswalk rows for UEIs not requested -- and
+reports how many it dropped. \code{awards} and
+\code{transactions} keep the out-of-sample rows, deliberately: they are what the
+extract returned, and dropping them would hide the leak. \code{awards} flags
+them with \code{in_sample = FALSE}, \code{\link[=us_reconcile]{us_reconcile()}} labels them
+\code{"out_of_sample"}, and \code{awards[(in_sample)]} is the organization's spine.
+To count a subsidiary as part of its parent, request its UEI as well --
+which also retrieves its full history -- and map it to the parent's
+\code{org_id} in \code{org_map}.
 }
 
 \examples{
