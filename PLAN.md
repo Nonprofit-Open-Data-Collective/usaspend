@@ -10,6 +10,8 @@ than measured it says so.
 Companion documents:
 
 - `ACCOUNTING.md` — the reconciliation rules the normalization layer implements
+- `IMPUTATION.md` — the annual-cash layer: File C outlays, the linked ground
+  truth, and the liquidation-curve imputation experiment (all measured)
 - `VIGNETTES.md` — what the user-facing documentation has to teach, and the
   measured material to teach it with
 - `../npmatch/data-dev/usaspending/SUBAWARD-NOTES.md` — research note: fetching
@@ -51,10 +53,14 @@ in the account-level File B/C extracts, which the award endpoints do not expose.
 
 This is the single most consequential thing to state plainly in the
 documentation, because "obligations" and "revenue received" differ by years of
-timing on multi-year awards. The package handles it three ways: `us_money_column("outlay")`
-raises an error rather than substituting something close; `us_reconcile()` reports
-the lifetime obligation-to-outlay ratio per award so the size of the gap is
-visible; and the panel column is named `obligation_net`, never `revenue`.
+timing on multi-year awards. The package's stance: **refuse, measure, or
+impute — never silently substitute.** `us_money_column("outlay")` raises an
+error rather than returning something close; `us_reconcile()` reports the
+lifetime obligation-to-outlay ratio per award; the panel column is named
+`obligation_net`, never `revenue`. Where real annual cash exists (File C,
+FY2022+ within agency coverage) `us_add_outlays()` attaches it, graded; where
+it does not, `us_add_imputed_outlays()` applies the measured
+liquidation-curve model — see Stage 7 and `IMPUTATION.md`.
 
 ---
 
@@ -89,6 +95,10 @@ visible; and the panel column is named `obligation_net`, never `revenue`.
                                             |
                                      us_adjust_inflation()
                                      constant dollars (bundled CPI-U)
+                         |
+              us_add_outlays()                 File C cash on fiscal panels
+              us_add_imputed_outlays()         liquidation-curve estimates
+                                               where File C has no coverage
 ```
 
 Everything above the canonical schema boundary is acquisition and knows about
@@ -362,17 +372,37 @@ costs on the pilot.
 lifetime identity check at scale, the obligation-to-outlay gap distribution, and
 subaward coverage rates.
 
-**Stage 5 — scale.** Run the 1,364-UEI top-1000 sample on the API path. Verify
-the archive schema, then run the full crosswalk on the archive path.
+**Stage 5 — scale (the remaining gap).** Run the 1,364-UEI top-1000 sample on
+the API path, then the full ~120k-UEI crosswalk on the archive path. Every
+prerequisite is now measured and in place: the archive path is verified
+row-by-row against the API (§3), outbound subawards batch per prime award,
+and inbound subawards count-screen per UEI batch so the majority of
+organizations with no inbound rows cost a fraction of a request each. No
+full-crosswalk run is recorded in this repository yet.
 
-**Stage 6 — documentation (in progress).** Vignettes teaching the data model,
-the award-type taxonomy, subaward direction, and the accounting rules. Planned
-set and the measured material to build them from are in `VIGNETTES.md`. Three
-are written and render offline off `us_sample_extract()`: `structure.Rmd`
-(architecture + workflow diagram), `acquisition.Rmd` (API vs archive path),
-`panel.Rmd` (reading the output; rollups; inflation adjustment).
-`VignetteBuilder: knitr` is in `DESCRIPTION`. Still to write: data model,
-award types, subaward direction, accounting rules, reconciliation.
+**Stage 6 — documentation (done, and now ongoing with the code).** Thirteen
+vignettes, all building offline off `us_sample_extract()` or bundled static
+data, grouped on the pkgdown site as "Get started" / "The data" / "The
+pipeline": `usaspend` (intro), `data-model`, `data-dictionary` (ER diagrams,
+keys, code tables, full per-table CSV dictionaries), `award-types`,
+`subawards`, `structure`, `acquisition`, `accounting`, `panel`,
+`reconciliation`, plus the outlay set under Stage 7. `VIGNETTES.md` tracks
+the set and remains the content bank.
+
+**Stage 7 — annual cash: outlays and imputation (done; measured in
+`IMPUTATION.md`).** The panel measures obligations because award data
+carries no annual cash; this stage answers the caveat three ways. *Refuse:*
+`us_money_column("outlay")` still errors rather than substituting. *Measure:*
+`us_fetch_outlays()` / `us_outlays_by_year()` / `us_add_outlays()` attach
+real File C account-level cash to fiscal panels, graded, within its FY2022+
+and agency-coverage limits. *Impute:* a liquidation-curve model fitted on a
+~2,000-award linked ground truth (File C lifetime obligations reconciled to
+the award's own ledger) is bundled as `outlay_model` and applied by
+`us_impute_outlays()` / `us_add_imputed_outlays()`, with
+`reconcile = TRUE` rescaling each award's series to sum exactly to net
+obligations; `us_impute_fit()` / `us_impute_eval()` refit on a user's own
+portfolio. Deployed CV: ~0.28 mean / 0.22 median timing error. Vignettes:
+`obligations-outlays`, `imputation`, `imputation-fitting`.
 
 ### Settled since first written
 
