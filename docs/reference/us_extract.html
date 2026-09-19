@@ -32,6 +32,7 @@ tables, so downstream normalization does not know or care which was used."></hea
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -72,6 +73,7 @@ tables, so downstream normalization does not know or care which was used.</p>
 <span>  award_types <span class="op">=</span> <span class="fu"><a href="us_award_type_codes.html">us_award_type_codes</a></span><span class="op">(</span><span class="st">"all"</span><span class="op">)</span>,</span>
 <span>  source <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"api"</span>, <span class="st">"archive"</span><span class="op">)</span>,</span>
 <span>  subawards <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"in"</span>, <span class="st">"none"</span>, <span class="st">"out"</span>, <span class="st">"both"</span><span class="op">)</span>,</span>
+<span>  subsidiaries <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  dest <span class="op">=</span> <span class="fu"><a href="us_cache_dir.html">us_cache_dir</a></span><span class="op">(</span><span class="st">"raw"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -104,6 +106,12 @@ exist), <code>"out"</code> (pass-through paid: queried by prime award from eithe
 path), or <code>"both"</code>.</p></dd>
 
 
+<dt id="arg-subsidiaries">subsidiaries<a class="anchor" aria-label="anchor" href="#arg-subsidiaries"></a></dt>
+<dd><p>Also extract the full histories of subsidiaries the
+parent-UEI match surfaces, and count them as part of their parent
+organization. API path only. See the Subsidiaries section.</p></dd>
+
+
 <dt id="arg-dest">dest<a class="anchor" aria-label="anchor" href="#arg-dest"></a></dt>
 <dd><p>Directory for intermediate files. Defaults to the package cache.</p></dd>
 
@@ -111,7 +119,10 @@ path), or <code>"both"</code>.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A list of class <code>usaspend_extract</code> with elements <code>transactions</code>,
-<code>subawards</code>, <code>jobs</code> (the acquisition manifest) and <code>meta</code>.</p>
+<code>subawards</code>, <code>jobs</code> (the acquisition manifest), <code>org_map</code> (the UEI
+crosswalk: requested UEIs and discovered subsidiaries, see
+<code><a href="us_find_subsidiaries.html">us_find_subsidiaries()</a></code>) and <code>meta</code>. <code>meta$uei</code> is every UEI whose own
+history was extracted; <code>meta$uei_requested</code> is the original request.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -137,6 +148,27 @@ revenue – are not available from either bulk path. Set <code>subawards = "out"
 to walk the resulting award keys through <code><a href="us_fetch_subawards_out.html">us_fetch_subawards_out()</a></code>, which
 costs roughly one extra API call per award and is screened so that awards
 reporting no subawards are skipped.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="subsidiaries">Subsidiaries<a class="anchor" aria-label="anchor" href="#subsidiaries"></a></h2>
+
+
+<p>On the API path the recipient filter also matches a transaction's <em>parent</em>
+UEI (see <code><a href="us_download_submit.html">us_download_submit()</a></code>): querying a parent organization returns
+the transactions its subsidiaries filed while it was recorded as parent,
+but not their earlier history. Every such subsidiary is recorded in the
+crosswalk <code>org_map</code> (see <code><a href="us_find_subsidiaries.html">us_find_subsidiaries()</a></code>), mapped to the
+requested UEI it rolls up to.</p>
+<p>With <code>subsidiaries = FALSE</code> (the default) their own histories are not
+pulled, and the extract says so when it finishes: <code><a href="us_panel.html">us_panel()</a></code> leaves
+their awards out of the panel and <code><a href="us_reconcile.html">us_reconcile()</a></code> labels them
+<code>"out_of_sample"</code>, because a truncated history cannot reconcile. With
+<code>subsidiaries = TRUE</code> each subsidiary UEI is queried in its own right
+(full history, as <code><a href="us_add_subsidiaries.html">us_add_subsidiaries()</a></code> does) and added to the requested
+set, so the panel counts it as part of its parent organization. See
+<code><a href="../articles/org-map.html">vignette("org-map")</a></code>.</p>
+<p>The archive path filters on <code>recipient_uei</code> locally, so it neither
+receives subsidiaries' rows nor discovers them.</p>
     </div>
 
     <div class="section level2">

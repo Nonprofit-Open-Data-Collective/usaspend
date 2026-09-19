@@ -34,6 +34,10 @@ Cost the API path against the annual-archive path before pulling.
   : Validate a vector of UEIs
 - [`us_org_map()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_org_map.md)
   : Map UEIs to organizations
+- [`us_find_subsidiaries()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_find_subsidiaries.md)
+  : Find subsidiaries surfaced by the parent-UEI match
+- [`us_add_subsidiaries()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_add_subsidiaries.md)
+  : Extract the full histories of an extract's subsidiaries
 
 ## Acquisition: REST API
 

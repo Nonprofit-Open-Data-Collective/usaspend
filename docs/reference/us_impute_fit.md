@@ -13,7 +13,7 @@ in one object. This is the experiment's winning method (`IMPUTATION.md`
 ``` r
 us_impute_fit(
   training,
-  cells = c("dur_bin", "late_start"),
+  cells = c("dur_bin", "late_start", "short_family"),
   min_cell = 8L,
   zero_fill = TRUE
 )
@@ -28,9 +28,16 @@ us_impute_fit(
 
 - cells:
 
-  Feature columns defining the cell. The default, duration x late-start,
-  is what the experiment selected; `late_start` (first obligated
-  Apr-Sep) shifts cash into the next fiscal year.
+  Feature columns defining the cell. The default is duration x late
+  start x `short_family`: `late_start` (first obligated Apr-Sep) shifts
+  cash into the next fiscal year, and `short_family` splits one- and
+  two-year awards into grant, contract and other (see
+  [`us_outlay_features()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_outlay_features.md)).
+  The original experiment selected duration x late start; the family
+  split for short awards was added after pooling the pilot with a
+  1,000-organization sample (`IMPUTATION.md` 7). Training grids built
+  before `short_family` existed get it derived from `award_family` where
+  the awards table carries it.
 
 - min_cell:
 
@@ -75,20 +82,20 @@ m <- us_impute_fit(outlay_training)
 m
 #> 
 #> ── liquidation-curve outlay model ──────────────────────────────────────────────
-#> • fitted on 1184 ground-truth awards (as of FY2026)
-#> • cells: dur_bin x late_start, min cell 8
-#> • global outlay/obligation ratio 0.94
-#> • durations supported: 1 (n=27), 2 (n=273), 3 (n=416), 4 (n=454), 5 (n=13), 6
-#>   (n=1)
+#> • fitted on 2785 ground-truth awards (as of FY2026)
+#> • cells: dur_bin x late_start x short_family, min cell 8
+#> • global outlay/obligation ratio 0.92
+#> • durations supported: 1 (n=529), 2 (n=676), 3 (n=717), 4 (n=633), 5 (n=97), 6
+#>   (n=133)
 # the zero-fill identity: each curve sums to its cell's mean ratio
 m$curves_dur[, .(curve_sum = round(sum(share), 3)), by = dur_bin]
 #> Key: <dur_bin>
 #>    dur_bin curve_sum
 #>      <int>     <num>
-#> 1:       1     0.964
-#> 2:       2     0.939
-#> 3:       3     0.929
-#> 4:       4     0.912
-#> 5:       5     0.986
-#> 6:       6     0.924
+#> 1:       1     0.996
+#> 2:       2     0.968
+#> 3:       3     0.955
+#> 4:       4     0.926
+#> 5:       5     0.993
+#> 6:       6     0.991
 ```

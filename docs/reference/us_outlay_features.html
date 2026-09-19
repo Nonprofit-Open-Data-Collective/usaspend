@@ -34,6 +34,7 @@ taxonomy defined by the imputation experiment (see IMPUTATION.md 6.4)."></head><
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -69,7 +70,7 @@ taxonomy defined by the imputation experiment (see <code>IMPUTATION.md</code> 6.
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">us_outlay_features</span><span class="op">(</span><span class="va">transactions</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">us_outlay_features</span><span class="op">(</span><span class="va">transactions</span>, max_pop_years <span class="op">=</span> <span class="fl">10L</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -80,14 +81,22 @@ taxonomy defined by the imputation experiment (see <code>IMPUTATION.md</code> 6.
 <dd><p>A <code>data.table</code> matching <code>us_schema("transactions")</code>
 (normalized or raw canonical).</p></dd>
 
+
+<dt id="arg-max-pop-years">max_pop_years<a class="anchor" aria-label="anchor" href="#arg-max-pop-years"></a></dt>
+<dd><p>Largest plausible gap, in fiscal years, between the
+last obligation and the final period-of-performance end. Longer gaps
+are treated as a missing end date (see the section on implausible end
+dates). <code>Inf</code> disables the rule.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>One row per award: identifiers, <code>first_fy</code>, <code>last_oblig_fy</code>,
 <code>first_month</code> (fiscal month of the first action, Oct = 1),
 <code>late_start</code> (first obligated Apr-Sep), obligation totals,
-period-of-performance fields, <code>duration</code>, <code>dur_bin</code> (capped at 6),
-extension/reduction booleans and <code>mod_class</code>.</p>
+period-of-performance fields (<code>pop_end_fy</code>, <code>pop_end_fy_reported</code>,
+<code>pop_end_implausible</code>), <code>duration</code>, <code>dur_bin</code> (capped at 6),
+<code>short_family</code>, extension/reduction booleans and <code>mod_class</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="the-modification-taxonomy">The modification taxonomy<a class="anchor" aria-label="anchor" href="#the-modification-taxonomy"></a></h2>
@@ -114,6 +123,35 @@ year, no material extension or reduction.</p></dd>
 
 
 </dl></div>
+    <div class="section level2">
+    <h2 id="implausible-end-dates">Implausible end dates<a class="anchor" aria-label="anchor" href="#implausible-end-dates"></a></h2>
+
+
+<p>Some awards carry placeholder period-of-performance end dates (2079,
+2099) or multi-decade compliance periods that say nothing about when
+cash moves. A final end date whose fiscal year lies more than
+<code>max_pop_years</code> past the last obligation year is treated as <strong>missing</strong>
+for imputation: <code>pop_end_fy</code> is set to <code>NA</code> (so <code>duration</code> falls back to
+the obligation span), the reported year is kept in
+<code>pop_end_fy_reported</code>, and <code>pop_end_implausible</code> is <code>TRUE</code>. Imputed rows
+for such awards carry the flag <code>pop_end_implausible</code>. The default of 10
+years sits well beyond the model's longest duration bin (6+); in a
+1,000-organization test pull the gap was 6 years or less for over 98% of
+awards with an end date.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="short-awards-by-family">Short awards by family<a class="anchor" aria-label="anchor" href="#short-awards-by-family"></a></h2>
+
+
+<p><code>short_family</code> is the award family – <code>"grant"</code>, <code>"contract"</code> or
+<code>"other"</code> (direct payments, loans, IDVs, and anything unlabelled) – for
+awards of one or two years, and <code>"any"</code> for longer ones. Short awards pay
+out on family-specific schedules: a direct payment is cash almost at
+once, a one-year grant is drawn down over the following year. For
+awards of three or more years the family split added nothing and cost
+accuracy on the longest ones, so those keep one curve per duration. See
+<code>IMPUTATION.md</code> 7.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>

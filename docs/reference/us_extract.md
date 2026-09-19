@@ -13,6 +13,7 @@ us_extract(
   award_types = us_award_type_codes("all"),
   source = c("auto", "api", "archive"),
   subawards = c("in", "none", "out", "both"),
+  subsidiaries = FALSE,
   dest = us_cache_dir("raw")
 )
 ```
@@ -44,6 +45,12 @@ us_extract(
   exist), `"out"` (pass-through paid: queried by prime award from either
   path), or `"both"`.
 
+- subsidiaries:
+
+  Also extract the full histories of subsidiaries the parent-UEI match
+  surfaces, and count them as part of their parent organization. API
+  path only. See the Subsidiaries section.
+
 - dest:
 
   Directory for intermediate files. Defaults to the package cache.
@@ -51,7 +58,11 @@ us_extract(
 ## Value
 
 A list of class `usaspend_extract` with elements `transactions`,
-`subawards`, `jobs` (the acquisition manifest) and `meta`.
+`subawards`, `jobs` (the acquisition manifest), `org_map` (the UEI
+crosswalk: requested UEIs and discovered subsidiaries, see
+[`us_find_subsidiaries()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_find_subsidiaries.md))
+and `meta`. `meta$uei` is every UEI whose own history was extracted;
+`meta$uei_requested` is the original request.
 
 ## Details
 
@@ -81,6 +92,33 @@ revenue – are not available from either bulk path. Set
 [`us_fetch_subawards_out()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_out.md),
 which costs roughly one extra API call per award and is screened so that
 awards reporting no subawards are skipped.
+
+## Subsidiaries
+
+On the API path the recipient filter also matches a transaction's
+*parent* UEI (see
+[`us_download_submit()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_download_submit.md)):
+querying a parent organization returns the transactions its subsidiaries
+filed while it was recorded as parent, but not their earlier history.
+Every such subsidiary is recorded in the crosswalk `org_map` (see
+[`us_find_subsidiaries()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_find_subsidiaries.md)),
+mapped to the requested UEI it rolls up to.
+
+With `subsidiaries = FALSE` (the default) their own histories are not
+pulled, and the extract says so when it finishes:
+[`us_panel()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_panel.md)
+leaves their awards out of the panel and
+[`us_reconcile()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_reconcile.md)
+labels them `"out_of_sample"`, because a truncated history cannot
+reconcile. With `subsidiaries = TRUE` each subsidiary UEI is queried in
+its own right (full history, as
+[`us_add_subsidiaries()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_add_subsidiaries.md)
+does) and added to the requested set, so the panel counts it as part of
+its parent organization. See
+[`vignette("org-map")`](https://nonprofit-open-data-collective.github.io/usaspend/articles/org-map.md).
+
+The archive path filters on `recipient_uei` locally, so it neither
+receives subsidiaries' rows nor discovers them.
 
 ## Examples
 

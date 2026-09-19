@@ -64,9 +64,12 @@ d[, .(awards = .N, median_outlay_over_oblig = round(median(outlay_total / oblig)
 #> Key: <era>
 #>        era awards median_outlay_over_oblig
 #>     <char>  <int>                    <num>
-#> 1:  FY2020     83                     0.40
-#> 2:  FY2021     63                     0.84
-#> 3: FY2022+   1848                     0.92
+#> 1:  FY2017    262                     0.00
+#> 2:  FY2018    280                     0.00
+#> 3:  FY2019    390                     0.04
+#> 4:  FY2020    532                     0.54
+#> 5:  FY2021    443                     1.00
+#> 6: FY2022+   2652                     0.95
 ```
 
 The gradient is the mandate, not the spending: FY2020 starts are missing

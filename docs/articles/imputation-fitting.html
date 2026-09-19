@@ -45,6 +45,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -85,14 +86,17 @@
 
     
     
-<p>The bundled <code>outlay_model</code> was fitted on 1,184
-ground-truth awards from 51 nonprofits. If your portfolio looks
-different — other agencies, other award durations, another era — refit
-on your own ground truth. The whole pipeline is three calls:
-<strong>retrieve</strong> (<code><a href="../reference/us_outlay_training.html">us_outlay_training()</a></code>),
-<strong>inspect/extend features</strong>
-(<code><a href="../reference/us_outlay_features.html">us_outlay_features()</a></code>), <strong>fit and evaluate</strong>
-(<code><a href="../reference/us_impute_fit.html">us_impute_fit()</a></code>, <code><a href="../reference/us_impute_eval.html">us_impute_eval()</a></code>).</p>
+<p>The bundled <code>outlay_model</code> was fitted on 2,785
+ground-truth awards pooled from two populations: 51 large nonprofits
+(the pilot) and a 1,000-organization sample. Each population scores best
+on curves fitted to itself (<code>IMPUTATION.md</code> §7), so if your
+portfolio looks different — other agencies, other award durations,
+another era — refit on your own ground truth. The whole pipeline is
+three calls: <strong>retrieve</strong>
+(<code><a href="../reference/us_outlay_training.html">us_outlay_training()</a></code>), <strong>inspect/extend
+features</strong> (<code><a href="../reference/us_outlay_features.html">us_outlay_features()</a></code>), <strong>fit and
+evaluate</strong> (<code><a href="../reference/us_impute_fit.html">us_impute_fit()</a></code>,
+<code><a href="../reference/us_impute_eval.html">us_impute_eval()</a></code>).</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nonprofit-open-data-collective.github.io/usaspend/">usaspend</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-datatable.com" class="external-link">data.table</a></span><span class="op">)</span></span></code></pre></div>
@@ -116,22 +120,22 @@ the two truth tiers.</p>
 <span><span class="va">tr</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">outlay-imputation training set</span> <span style="color: #00BBBB;">────────────────────────────────────────────────────────</span></span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> 7853 candidate awards, 1184 ground truth</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> 905 reconciled, 279 shape-complete</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> 4020 award-year rows, as of FY2026</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> 14022 candidate awards, 2785 ground truth</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> 2464 reconciled, 321 shape-complete</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> 8719 award-year rows, as of FY2026</span></span>
 <span><span class="va">tr</span><span class="op">$</span><span class="va">awards</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">tier</span><span class="op">)</span>, <span class="va">.N</span>, by <span class="op">=</span> <span class="fu">.</span><span class="op">(</span><span class="va">tier</span>, <span class="va">mod_class</span><span class="op">)</span><span class="op">]</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">tier</span>, <span class="op">-</span><span class="va">N</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;               tier              mod_class     N</span></span>
 <span><span class="co">#&gt;             &lt;char&gt;                 &lt;char&gt; &lt;int&gt;</span></span>
-<span><span class="co">#&gt;  1:     reconciled            single_year   386</span></span>
-<span><span class="co">#&gt;  2:     reconciled multi_year_incremental   217</span></span>
-<span><span class="co">#&gt;  3:     reconciled     extension_timeline   166</span></span>
-<span><span class="co">#&gt;  4:     reconciled                reduced   115</span></span>
-<span><span class="co">#&gt;  5:     reconciled       extension_funded    21</span></span>
-<span><span class="co">#&gt;  6: shape_complete multi_year_incremental   115</span></span>
-<span><span class="co">#&gt;  7: shape_complete                reduced    65</span></span>
-<span><span class="co">#&gt;  8: shape_complete     extension_timeline    42</span></span>
-<span><span class="co">#&gt;  9: shape_complete            single_year    32</span></span>
-<span><span class="co">#&gt; 10: shape_complete       extension_funded    25</span></span></code></pre></div>
+<span><span class="co">#&gt;  1:     reconciled            single_year  1390</span></span>
+<span><span class="co">#&gt;  2:     reconciled multi_year_incremental   448</span></span>
+<span><span class="co">#&gt;  3:     reconciled                reduced   276</span></span>
+<span><span class="co">#&gt;  4:     reconciled     extension_timeline   263</span></span>
+<span><span class="co">#&gt;  5:     reconciled       extension_funded    87</span></span>
+<span><span class="co">#&gt;  6: shape_complete multi_year_incremental   128</span></span>
+<span><span class="co">#&gt;  7: shape_complete                reduced    75</span></span>
+<span><span class="co">#&gt;  8: shape_complete            single_year    44</span></span>
+<span><span class="co">#&gt;  9: shape_complete     extension_timeline    43</span></span>
+<span><span class="co">#&gt; 10: shape_complete       extension_funded    31</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="how-the-retrieval-filters-and-why">How the retrieval filters, and why<a class="anchor" aria-label="anchor" href="#how-the-retrieval-filters-and-why"></a>
 </h3>
@@ -204,24 +208,29 @@ both sides.</p>
 <span><span class="co">#&gt; 8:       4       TRUE   212</span></span></code></pre></div>
 <p>The default model cells are <code>dur_bin</code> (award duration in
 fiscal years, capped at 6) × <code>late_start</code> (first obligated
-April–September). The experiment tested award <em>type</em> as a third
-dimension and found it added nearly nothing beyond duration in a
-grant-dominated sample — but the <code>cells</code> argument takes any
-feature columns present in the grid, so a portfolio where type matters
-can use them.</p>
+April–September) × <code>short_family</code> (award family for one- and
+two-year awards: grant, contract or other; <code>"any"</code> for longer
+ones). The original experiment tested award <em>type</em> as a third
+dimension and found it added nearly nothing in a grant-dominated sample;
+pooling in a 1,000-organization sample, where short awards are mostly
+direct payments, changed that for short awards only
+(<code>IMPUTATION.md</code> §7). The <code>cells</code> argument takes
+any feature columns present in the grid, so a portfolio where something
+else matters can use it — and cells too thin to fit (fewer than
+<code>min_cell</code> awards) fall back to the duration curve.</p>
 </div>
 <div class="section level2">
 <h2 id="fit">3. Fit<a class="anchor" aria-label="anchor" href="#fit"></a>
 </h2>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_impute_fit.html">us_impute_fit</a></span><span class="op">(</span><span class="va">tr</span>, cells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dur_bin"</span>, <span class="st">"late_start"</span><span class="op">)</span>, min_cell <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_impute_fit.html">us_impute_fit</a></span><span class="op">(</span><span class="va">tr</span>, min_cell <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
 <span><span class="va">m</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">liquidation-curve outlay model</span> <span style="color: #00BBBB;">────────────────────────────────────────────────────────</span></span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> fitted on 1184 ground-truth awards (as of FY2026)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> cells: dur_bin x late_start, min cell 8</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> global outlay/obligation ratio 0.94</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> durations supported: 1 (n=27), 2 (n=273), 3 (n=416), 4 (n=454), 5 (n=13), 6 (n=1)</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> fitted on 2785 ground-truth awards (as of FY2026)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> cells: dur_bin x late_start x short_family, min cell 8</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> global outlay/obligation ratio 0.92</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> durations supported: 1 (n=529), 2 (n=676), 3 (n=717), 4 (n=633), 5 (n=97), 6 (n=133)</span></span></code></pre></div>
 <p>The fitted object is transparent — plain curve tables you can inspect
 and plot. The duration-4 curves show both regularities the model banks
 on: the lag (mass at years 1–2) and the late-start shift (the
@@ -254,20 +263,20 @@ level too).</p>
 <span><span class="va">ev</span><span class="op">$</span><span class="va">summary</span></span>
 <span><span class="co">#&gt;    metric       method  mean median dollar_weighted</span></span>
 <span><span class="co">#&gt;    &lt;char&gt;       &lt;char&gt; &lt;num&gt;  &lt;num&gt;           &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1:  level        model 0.300  0.232           0.292</span></span>
-<span><span class="co">#&gt; 2:  level  even_spread 0.428  0.423           0.410</span></span>
-<span><span class="co">#&gt; 3:  level as_obligated 0.847  0.968           0.815</span></span>
-<span><span class="co">#&gt; 4: timing        model 0.281  0.220           0.276</span></span>
-<span><span class="co">#&gt; 5: timing  even_spread 0.405  0.410           0.395</span></span>
-<span><span class="co">#&gt; 6: timing as_obligated 0.746  0.898           0.752</span></span>
+<span><span class="co">#&gt; 1:  level        model 0.350  0.303           0.350</span></span>
+<span><span class="co">#&gt; 2:  level  even_spread 0.453  0.469           0.442</span></span>
+<span><span class="co">#&gt; 3:  level as_obligated 0.745  0.884           0.734</span></span>
+<span><span class="co">#&gt; 4: timing        model 0.340  0.291           0.314</span></span>
+<span><span class="co">#&gt; 5: timing  even_spread 0.441  0.459           0.407</span></span>
+<span><span class="co">#&gt; 6: timing as_obligated 0.658  0.829           0.648</span></span>
 <span><span class="va">ev</span><span class="op">$</span><span class="va">by_class</span></span>
 <span><span class="co">#&gt;                 mod_class     n model as_obligated even_spread</span></span>
 <span><span class="co">#&gt;                    &lt;char&gt; &lt;int&gt; &lt;num&gt;        &lt;num&gt;       &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1:       extension_funded    46 0.253        0.550       0.341</span></span>
-<span><span class="co">#&gt; 2:     extension_timeline   208 0.271        0.819       0.405</span></span>
-<span><span class="co">#&gt; 3: multi_year_incremental   332 0.281        0.688       0.422</span></span>
-<span><span class="co">#&gt; 4:                reduced   180 0.303        0.625       0.446</span></span>
-<span><span class="co">#&gt; 5:            single_year   418 0.280        0.831       0.380</span></span></code></pre></div>
+<span><span class="co">#&gt; 1:       extension_funded   118 0.332        0.589       0.376</span></span>
+<span><span class="co">#&gt; 2:     extension_timeline   306 0.316        0.848       0.427</span></span>
+<span><span class="co">#&gt; 3: multi_year_incremental   576 0.347        0.699       0.460</span></span>
+<span><span class="co">#&gt; 4:                reduced   351 0.358        0.694       0.490</span></span>
+<span><span class="co">#&gt; 5:            single_year  1434 0.338        0.598       0.430</span></span></code></pre></div>
 <p>Read <code>ev$by_class</code> before trusting the model on a skewed
 portfolio: <code>reduced</code> awards are the hardest class for every
 method, and a portfolio dominated by them deserves wider error bars, not
@@ -285,8 +294,7 @@ bundled one would be used:</p>
 <span><span class="co">#&gt;    imputation_method  dollars</span></span>
 <span><span class="co">#&gt;               &lt;char&gt;    &lt;num&gt;</span></span>
 <span><span class="co">#&gt; 1:              none        0</span></span>
-<span><span class="co">#&gt; 2: liquidation_curve  9702259</span></span>
-<span><span class="co">#&gt; 3:       even_spread 14874129</span></span></code></pre></div>
+<span><span class="co">#&gt; 2: liquidation_curve 25551466</span></span></code></pre></div>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"outlay-model-2026.rds"</span><span class="op">)</span>          <span class="co"># reuse across sessions</span></span>
 <span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/us_panel.html">us_panel</a></span><span class="op">(</span><span class="va">my_extract</span>, period <span class="op">=</span> <span class="st">"fiscal"</span><span class="op">)</span></span>

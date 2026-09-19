@@ -30,6 +30,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -146,6 +147,8 @@
 <p>Constraints, all measured:</p>
 <ul><li>
 <strong><code>recipient_search_text</code> caps near 20 values.</strong> 20 succeeds, 25 fails. The cap is undocumented. In practice large recipients time out server-side well below it, so the default batch is <strong>5</strong> and failed batches are retried one UEI at a time; a single oversized recipient otherwise poisons its whole batch.</li>
+<li>
+<strong><code>recipient_search_text</code> also matches the parent UEI.</strong> A transaction comes back if the queried UEI is its <code>recipient_uei</code> <em>or</em> its <code>recipient_parent_uei</code>. Querying RTI returned its subsidiary International Resources Group — but only the transactions filed after the 2017 acquisition, with RTI as parent; the same awards’ earlier actions (parents L-3, Engility) did not come back. Subsidiary awards thus arrive with truncated histories. <code><a href="reference/us_panel.html">us_panel()</a></code> keeps them out of <code>panel</code>, flags them <code>awards$in_sample = FALSE</code>, and <code><a href="reference/us_reconcile.html">us_reconcile()</a></code> labels them <code>out_of_sample</code> (370 of 15,420 awards in the 1,000-UEI test, 41 of them former “unexplained” breaks). ACCOUNTING.md §8 has the details. <code><a href="reference/us_extract.html">us_extract()</a></code> records every subsidiary it sees in the extract’s crosswalk (<code>extract$org_map</code>; 18 UEIs under 10 organizations in the 1,000-UEI test) and, with <code>subsidiaries = TRUE</code> or <code><a href="reference/us_add_subsidiaries.html">us_add_subsidiaries()</a></code>, re-queries each on its own UEI for the full history and counts it with its parent. The default, <code>FALSE</code>, lists them and reports that they were not pulled. See <code><a href="articles/org-map.html">vignette("org-map")</a></code>.</li>
 <li>
 <strong>The job state machine is <code>ready → running → finished | failed</code>.</strong> <code>ready</code> is a queue state. Treating anything other than <code>running</code> as terminal reads a freshly-queued job as done and throws the download away.</li>
 <li>
@@ -315,7 +318,9 @@ POST /api/v2/search/spending_by_award/  subawards=true, award_ids=[&lt;=~500 ids
 <li>
 <strong>De-obligation policy.</strong> <code>as_posted</code> is the default. Measure how far <code>restate</code> moves the panel before committing.</li>
 <li>
-<strong>Parent/child UEIs.</strong> Prime summaries carry <code>recipient_parent_uei</code>. USAspending may know about subsidiary registrations absent from the SAM crosswalk.</li>
+<strong>Parent/child UEIs.</strong> Prime summaries carry <code>recipient_parent_uei</code>. USAspending may know about subsidiary registrations absent from the SAM crosswalk — and the API path already surfaces them, since <code>recipient_search_text</code> matches the parent UEI (§3). <code>subsidiaries = TRUE</code> now pulls them in full. Still open: (a) the archive path matches <code>recipient_uei</code> only, so it discovers no subsidiaries; matching <code>recipient_parent_uei</code> in the duckdb filter too would close that gap.
+<ol start="2" style="list-style-type: lower-alpha"><li>Requested UEIs whose parent was not requested (42 in the 1,000-UEI test) are not followed upward. (c) Pre-acquisition years of a pulled subsidiary count toward the parent; a built-in option to trim them may be wanted once a use case settles which view is the default.</li>
+</ol></li>
 <li>
 <strong>Calendar vs fiscal year.</strong> The panel defaults to calendar year as specified. Both bases are derived from <code>action_date</code> rather than trusting <code>action_date_fiscal_year</code>, so they are guaranteed consistent — but the downstream 990 comparison may want the fiscal basis.</li>
 </ol></div>

@@ -358,9 +358,108 @@ Why a given award’s cash column can or cannot be trusted:
   pre-mandate awards.
 - **`pop_start_date` / `pop_end_date`** — period of performance. The end
   date *moves*; the first reported value vs the final value is how
-  extensions and shortenings are detected.
+  extensions and shortenings are detected. Some end dates are
+  placeholders (HHS awards reporting 2079 or 2099) or multi-decade
+  compliance periods (HUD and Education direct payments, 20–34 years
+  out) that carry no information about cash timing. **Rule:** a final
+  end FY more than 10 years past the last obligation FY is treated as
+  missing (`us_outlay_features(max_pop_years = 10)`). The reported year
+  is kept as `pop_end_fy_reported`, `duration` falls back to the
+  obligation span, and imputed rows are flagged `pop_end_implausible`.
+  Without the rule, the 1,000-organization test pull spread \$5.6M
+  across 44 awards past FY2035, with panel rows out to FY2099. With it,
+  228 awards (1.6% of those with an end date, \$45M net obligations) are
+  re-windowed. The gap was 6 years or less for over 98% of awards; the
+  tail past 10 years is almost entirely placeholders and long compliance
+  periods.
 
-## 7. In the package
+## 7. Pooling and the short-award family split (2026-09-18)
+
+A second population tested whether the pilot-fitted model travels: a
+1,000-organization sample (the first 1,000 rows of the npmatch UEI
+crosswalk), with File C fetched for **every** in-sample award active in
+FY2017 or later (8,943 awards; 6,328 carry account-level records; 16
+still failed after a retry pass and are kept out of the truth). The same
+screens (§1), widened to first FY2017+ and any size, gave **1,611 truth
+awards** (1,568 reconciled, 43 shape-complete), against the pilot’s
+1,184. Ten awards appear in both; the pooled set keeps them once, as
+their newer sample record, for **2,785**. All scoring below is
+out-of-sample: the bundled model is scored on sample awards it never
+saw, and every refit is scored out-of-fold (5-fold CV by award, over the
+union of both populations when pooled). The implausible-end-date rule
+(§6.6) was applied to both; it touches 30 sample candidates and no pilot
+award.
+
+**\[measured\] Each population prefers its own curves.** Timing
+misallocation, mean per award:
+
+| model | on sample awards | on pilot awards |
+|----|----|----|
+| bundled (pilot, as shipped) | 0.418 | 0.280 (in-sample) |
+| refit on pilot only | 0.419 | 0.282 |
+| refit on sample only | 0.404 | 0.321 |
+| pooled, duration × late start | 0.399 | 0.300 |
+| **pooled, + family split for short awards** | **0.372** | **0.295** |
+| even spread | 0.467 | 0.405 |
+| as obligated | 0.595 | 0.746 |
+
+Pooling alone was the best model on sample awards but cost the pilot
+0.018 (95% CI 0.014–0.021), all of it in 1–2 year awards: the pooled
+one-year curve is the sample’s (502 one-year truth awards against the
+pilot’s 27), and the two portfolios pay short awards out differently.
+The difference is composition. The pilot’s short awards are grants (57%)
+and contracts (39%), from NIH, NSF and USDA; the sample’s are 55%
+“other” — overwhelmingly HUD direct payments (type 06; also Education,
+SBA, FCC), which turn into cash almost at once.
+
+**\[measured\] A family split for short awards recovers it.** Four
+features known at imputation time were tested as a third cell dimension,
+each applied either to 1–2 year awards only or to every duration
+(`data-raw/outlay-cell-split.R`; pooled 5-fold CV, gain over duration ×
+late start, 95% bootstrap CI):
+
+| split | overall gain | pilot | sample |
+|----|----|----|----|
+| agency group, all durations | 0.021 (0.017–0.025) | 0.007 | 0.032 |
+| **family, all durations** | 0.018 (0.015–0.022) | 0.005 | 0.028 |
+| **family, short awards only** | **0.018 (0.014–0.021)** | **0.005** | **0.027** |
+| size band, all durations | 0.011 | 0.003 | 0.017 |
+| agency group, short only | 0.011 | −0.001 | 0.019 |
+| modification class, all durations | 0.009 | 0.015 | 0.005 |
+| size band, short only | 0.005 | 0.002 | 0.007 |
+| modification class, short only | 0.000 | 0.002 | −0.001 |
+
+The family split for short awards is the one adopted. It targets the
+defect: pilot one-year awards 0.305 → 0.206 (the pilot-only model’s
+0.181), sample two-year awards 0.438 → 0.359. Splitting family at every
+duration is no better overall (0.0004) and worsens the pilot’s 6+ year
+awards (0.58 → 0.65). The agency split scores highest but not
+significantly so (agency minus family: 0.003, CI −0.001 to 0.008), also
+worsens the longest awards (0.75), and would hard-code one training
+mix’s agency list (HUD, NEA, …) into the package; award family is a
+property of every award. Family groups: `grant`, `contract`, `other`
+(direct payments, loans, IDVs, unlabelled).
+
+**The long-award gap closes too.** The pilot had one truth award of six
+or more years, so the bundled model spread those awards’ cash evenly;
+the pooled set has 133. On the 1,000-organization panel those awards
+hold 70% of imputed cash, and switching from even spread to a fitted
+curve moves about a third of all imputed dollars to a different year
+(front-loaded: +50–70% in FY2008–11, −20% to −40% in FY2024–31). The
+imputed total rises 4%. Where both models used a curve, only 14% of cash
+moved.
+
+**Deployed model.** `outlay_training` is now the pooled truth
+(`meta$sources` records both populations and their screens) and
+`outlay_model` is fitted on it with cells duration × late start ×
+`short_family`. Pooled 5-fold CV: 0.340 mean / 0.291 median timing
+(0.350 / 0.303 with the level charged), against 0.441 for even spread
+and 0.658 for booking cash in the commitment year; by population 0.372
+(sample) and 0.295 (pilot). The sample’s truth is harder than the
+pilot’s under every method — even spread scores 0.467 there against
+0.405 — so the pooled headline is not comparable to the pilot-only 0.28.
+
+## 8. In the package
 
 The winning configuration ships as package features:
 [`us_outlay_features()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_outlay_features.md)
@@ -375,30 +474,39 @@ The winning configuration ships as package features:
 /
 [`us_add_imputed_outlays()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_add_imputed_outlays.md)
 (imputation with an explicit even-spread fallback outside the model’s
-support envelope — never `NA` dollars). The bundled `outlay_model` is M6
-fitted on this ground truth with the **zero-filled estimator** (every
-cell award counted at every event-year, zero past its own end), which
-makes `sum(curve) = cell mean lifetime ratio` an exact identity and
-lifted deployed CV to 0.28 mean / 0.22 median timing (0.30 / 0.23 with
-the level charged). The model returns the *typical payment schedule*;
-`reconcile = TRUE` rescales each award’s series to sum exactly to net
-obligations for analyses that need the accounting identity.
-`outlay_training` is the ground truth itself. See
+support envelope — never `NA` dollars). The model is M6 with the
+**zero-filled estimator** (every cell award counted at every event-year,
+zero past its own end), which makes
+`sum(curve) = cell mean lifetime ratio` an exact identity; on the pilot
+truth alone it scored 0.28 mean / 0.22 median timing (0.30 / 0.23 with
+the level charged). Since §7 the bundled `outlay_model` is fitted on the
+pooled pilot + 1,000-organization truth with cells duration × late start
+× `short_family`: 0.340 mean / 0.291 median pooled CV. The model returns
+the *typical payment schedule*; `reconcile = TRUE` rescales each award’s
+series to sum exactly to net obligations for analyses that need the
+accounting identity. `outlay_training` is the ground truth itself. See
 [`vignette("imputation")`](https://nonprofit-open-data-collective.github.io/usaspend/articles/imputation.md)
 for the approach with worked graphical cases and
 [`vignette("imputation-fitting")`](https://nonprofit-open-data-collective.github.io/usaspend/articles/imputation-fitting.md)
 for refitting on your own portfolio.
 
-## 8. Reproduction
+## 9. Reproduction
 
     data-raw/outlay-imputation-experiment.R   dataset + methods + scoring
     data-raw/outlay-timing-analysis.R         coverage and lag probe behind 2.4
-    data-raw/make-outlay-model.R              fits and bundles outlay_model/_training
+    data-raw/make-outlay-model.R              pools, fits and bundles outlay_model/_training
+    data-raw/outlay-truth-pilot.rds           pilot truth snapshot (input to the above)
+    data-raw/outlay-truth-sample1000.rds      1,000-organization truth snapshot (input)
     data-raw/outlay-imputation-results.rds    scored results (grid, score, slev, gt)
 
-Both scripts fetch via
+The experiment scripts fetch via
 [`us_fetch_outlays()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_outlays.md);
 set `FUNDING_RDS` / `PILOT_FUNDING_RDS` / `PILOT_TX_RDS` to reuse
-prefetched pulls. Sustained pulls beyond ~1,000 requests can trigger a
-temporary host-level block; the fetch scripts run in resumable slices at
-1 request/second.
+prefetched pulls. `make-outlay-model.R` builds offline from the two
+truth snapshots; with `USASPEND_ROOT` pointing at the 1,000-organization
+test database it rebuilds the sample truth from its panel and File C
+chunks and refreshes that snapshot. The §7 comparisons are
+`data-raw/outlay-pooled-refit.R` and `data-raw/outlay-cell-split.R`
+(copies of the test-database scripts). Sustained pulls beyond ~1,000
+requests can trigger a temporary host-level block; the fetch scripts run
+in resumable slices at 1 request/second.

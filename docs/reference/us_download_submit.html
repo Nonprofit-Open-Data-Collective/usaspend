@@ -32,6 +32,7 @@ server-assigned file name, which is the job handle."></head><body>
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -102,6 +103,25 @@ the full database.</p></dd>
 undocumented. In practice large recipients time out server-side well below
 the cap, so <code><a href="us_download_run.html">us_download_run()</a></code> defaults to 5 UEIs per job and retries
 failures one UEI at a time.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="recipient-search-text-also-matches-the-parent-uei"><code>recipient_search_text</code> also matches the parent UEI<a class="anchor" aria-label="anchor" href="#recipient-search-text-also-matches-the-parent-uei"></a></h2>
+
+
+<p><strong>measured</strong> The filter matches a transaction whose <code>recipient_uei</code> <em>or</em>
+<code>recipient_parent_uei</code> is one of <code>uei</code>. Querying a parent organization
+therefore returns its subsidiaries' transactions too – but only the ones
+filed while that parent was recorded as the parent. Querying RTI
+(<code>JJHCMK4NT5N3</code>) returned transactions of International Resources Group
+(<code>R29FEFR7P8H9</code>), which RTI acquired in 2017: of the 14 transactions on
+<code>CONT_AWD_AIDEPPI110300013_7200_AIDEPPI000300013_7200</code>, all with IRG as
+recipient, only the 2 carrying RTI as parent came back; the earlier ones,
+filed under parents L-3 and Engility, did not. A subsidiary's awards thus
+arrive with truncated histories. <code><a href="us_panel.html">us_panel()</a></code> keeps only UEIs in the
+organization map and flags the rest (<code>awards$in_sample</code>), and
+<code><a href="us_reconcile.html">us_reconcile()</a></code> labels their awards <code>"out_of_sample"</code>, unless their full
+histories are pulled with <code>us_extract(subsidiaries = TRUE)</code> or
+<code><a href="us_add_subsidiaries.html">us_add_subsidiaries()</a></code>.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

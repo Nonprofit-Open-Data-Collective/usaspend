@@ -40,6 +40,7 @@ periods), and imputation_method says which rule produced each row."></head><body
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -117,7 +118,12 @@ obligations, and a duration the training data supports (at least
 <code>min_cell</code> ground-truth awards of that duration – the support envelope).
 Everything else – missing period-of-performance dates, a missing start
 month, durations beyond the envelope – falls back to even spread, with
-the reason in <code>imputation_flags</code>. An award still in progress is <em>not</em> a
+the reason in <code>imputation_flags</code>. A period-of-performance end more than
+10 fiscal years past the last obligation (placeholders such as 2099) is
+treated as missing and flagged <code>pop_end_implausible</code>, so no award's cash
+is spread decades into the future; pass a feature table from
+<code><a href="us_outlay_features.html">us_outlay_features()</a></code> with its <code>max_pop_years</code> to change the threshold.
+An award still in progress is <em>not</em> a
 fallback case: the curve projects its remaining cash, including fiscal
 years after the data pull; those rows simply carry future <code>fy</code> values.</p>
     </div>
@@ -145,13 +151,12 @@ full projected life, not over any partial window observed to date.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> 8 rows flagged</span>
 <span class="r-in"><span><span class="va">imp</span> <span class="op">&lt;-</span> <span class="fu">us_impute_outlays</span><span class="op">(</span><span class="va">tx</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Imputed outlays for 18 awards.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> even_spread=8 liquidation_curve=4 none=6</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> liquidation_curve=12 none=6</span>
 <span class="r-in"><span><span class="va">imp</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span>dollars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">outlay_imputed</span><span class="op">)</span><span class="op">)</span>, by <span class="op">=</span> <span class="va">imputation_method</span><span class="op">]</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    imputation_method  dollars</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>               &lt;char&gt;    &lt;num&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1:              none        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2: liquidation_curve  9702259</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3:       even_spread 14874129</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2: liquidation_curve 25551466</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

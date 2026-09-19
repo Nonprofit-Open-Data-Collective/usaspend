@@ -42,6 +42,7 @@ in one object. This is the experiment's winning method (IMPUTATION.md
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -83,7 +84,7 @@ in one object. This is the experiment's winning method (<code>IMPUTATION.md</cod
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">us_impute_fit</span><span class="op">(</span></span>
 <span>  <span class="va">training</span>,</span>
-<span>  cells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dur_bin"</span>, <span class="st">"late_start"</span><span class="op">)</span>,</span>
+<span>  cells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dur_bin"</span>, <span class="st">"late_start"</span>, <span class="st">"short_family"</span><span class="op">)</span>,</span>
 <span>  min_cell <span class="op">=</span> <span class="fl">8L</span>,</span>
 <span>  zero_fill <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -98,9 +99,15 @@ in one object. This is the experiment's winning method (<code>IMPUTATION.md</cod
 
 
 <dt id="arg-cells">cells<a class="anchor" aria-label="anchor" href="#arg-cells"></a></dt>
-<dd><p>Feature columns defining the cell. The default,
-duration x late-start, is what the experiment selected; <code>late_start</code>
-(first obligated Apr-Sep) shifts cash into the next fiscal year.</p></dd>
+<dd><p>Feature columns defining the cell. The default is duration
+x late start x <code>short_family</code>: <code>late_start</code> (first obligated Apr-Sep)
+shifts cash into the next fiscal year, and <code>short_family</code> splits one-
+and two-year awards into grant, contract and other (see
+<code><a href="us_outlay_features.html">us_outlay_features()</a></code>). The original experiment selected duration x
+late start; the family split for short awards was added after pooling
+the pilot with a 1,000-organization sample (<code>IMPUTATION.md</code> 7).
+Training grids built before <code>short_family</code> existed get it derived from
+<code>award_family</code> where the awards table carries it.</p></dd>
 
 
 <dt id="arg-min-cell">min_cell<a class="anchor" aria-label="anchor" href="#arg-min-cell"></a></dt>
@@ -147,22 +154,22 @@ when the analysis wants dollars that tie out to the obligations ledger.</p>
 <span class="r-in"><span><span class="va">m</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">liquidation-curve outlay model</span> <span style="color: #00BBBB;">──────────────────────────────────────────────</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> fitted on 1184 ground-truth awards (as of FY2026)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> cells: dur_bin x late_start, min cell 8</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> global outlay/obligation ratio 0.94</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> durations supported: 1 (n=27), 2 (n=273), 3 (n=416), 4 (n=454), 5 (n=13), 6</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   (n=1)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> fitted on 2785 ground-truth awards (as of FY2026)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> cells: dur_bin x late_start x short_family, min cell 8</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> global outlay/obligation ratio 0.92</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> durations supported: 1 (n=529), 2 (n=676), 3 (n=717), 4 (n=633), 5 (n=97), 6</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>   (n=133)</span>
 <span class="r-in"><span><span class="co"># the zero-fill identity: each curve sums to its cell's mean ratio</span></span></span>
 <span class="r-in"><span><span class="va">m</span><span class="op">$</span><span class="va">curves_dur</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span>curve_sum <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">share</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>, by <span class="op">=</span> <span class="va">dur_bin</span><span class="op">]</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Key: &lt;dur_bin&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    dur_bin curve_sum</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      &lt;int&gt;     &lt;num&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1:       1     0.964</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2:       2     0.939</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3:       3     0.929</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4:       4     0.912</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5:       5     0.986</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6:       6     0.924</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1:       1     0.996</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2:       2     0.968</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3:       3     0.955</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4:       4     0.926</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5:       5     0.993</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6:       6     0.991</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -27,7 +27,9 @@ us_panel(
 - org_map:
 
   Optional `uei` to `org_id` crosswalk, see
-  [`us_org_map()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_org_map.md).
+  [`us_org_map()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_org_map.md)
+  and the crosswalk section below. Extracted subsidiaries need not be
+  listed: they inherit their parent's `org_id`.
 
 - period:
 
@@ -59,9 +61,10 @@ us_panel(
 ## Value
 
 A list of class `usaspend_panel`: `panel` (org x award x year), `awards`
-(the spine), `transactions` (the normalized ledger), `subawards`
-(normalized, with direction), `subawards_in` (org-year inbound revenue),
-and `meta`.
+(the spine, with `in_sample`), `transactions` (the normalized ledger),
+`subawards` (normalized, with direction), `subawards_in` (org-year
+inbound revenue), `org_map` (the resolved crosswalk: `uei`, `org_id`,
+`relationship`, `root_uei`, ..., and `in_sample`), and `meta`.
 
 ## What the panel measures
 
@@ -82,6 +85,41 @@ data – are aggregated per organization-year in the separate
 matching panel rows as `subaward_in_amount` when the prime award key
 appears in the panel (rare: it requires the org to be both prime and
 subawardee).
+
+## Organizations, subsidiaries and the crosswalk
+
+The organization map is built from the extract's crosswalk
+(`extract$org_map`, see
+[`us_find_subsidiaries()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_find_subsidiaries.md))
+and `org_map`:
+
+- Every UEI whose own history was extracted is in sample: the requested
+  UEIs, plus subsidiaries pulled with `us_extract(subsidiaries = TRUE)`
+  or
+  [`us_add_subsidiaries()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_add_subsidiaries.md).
+
+- A requested UEI takes its `org_id` from `org_map`, else its own UEI.
+
+- A subsidiary takes its `org_id` from `org_map` if listed there, else
+  the `org_id` of the requested UEI it rolls up to – so it counts as
+  part of its parent without being listed.
+
+- `org_map` rows for UEIs not in the extract are ignored, with a
+  message: a crosswalk cannot add data that was never pulled.
+
+Subsidiaries the extract found but did not pull are out of sample. The
+API filter also matches a transaction's *parent* UEI (see
+[`us_download_submit()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_download_submit.md)),
+so the extract holds part of their history – only what they filed while
+a requested UEI was recorded as parent. The panel leaves those
+transactions out and reports how many it dropped. `awards` and
+`transactions` keep them, deliberately: they are what the extract
+returned, and dropping them would hide the leak. `awards` flags them
+with `in_sample = FALSE`,
+[`us_reconcile()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_reconcile.md)
+labels them `"out_of_sample"`, and `awards[(in_sample)]` is the
+organizations' spine. See
+[`vignette("org-map")`](https://nonprofit-open-data-collective.github.io/usaspend/articles/org-map.md).
 
 ## Examples
 
