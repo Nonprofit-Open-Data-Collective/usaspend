@@ -16,6 +16,22 @@ DOWNLOAD_INFLIGHT <- c("ready", "running")
 #' the cap, so [us_download_run()] defaults to 5 UEIs per job and retries
 #' failures one UEI at a time.
 #'
+#' @section `recipient_search_text` also matches the parent UEI:
+#' **[measured]** The filter matches a transaction whose `recipient_uei` *or*
+#' `recipient_parent_uei` is one of `uei`. Querying a parent organization
+#' therefore returns its subsidiaries' transactions too -- but only the ones
+#' filed while that parent was recorded as the parent. Querying RTI
+#' (`JJHCMK4NT5N3`) returned transactions of International Resources Group
+#' (`R29FEFR7P8H9`), which RTI acquired in 2017: of the 14 transactions on
+#' `CONT_AWD_AIDEPPI110300013_7200_AIDEPPI000300013_7200`, all with IRG as
+#' recipient, only the 2 carrying RTI as parent came back; the earlier ones,
+#' filed under parents L-3 and Engility, did not. A subsidiary's awards thus
+#' arrive with truncated histories. [us_panel()] keeps only UEIs in the
+#' organization map and flags the rest (`awards$in_sample`), and
+#' [us_reconcile()] labels their awards `"out_of_sample"`, unless their full
+#' histories are pulled with `us_extract(subsidiaries = TRUE)` or
+#' [us_add_subsidiaries()].
+#'
 #' @param uei Character vector of UEIs (at most 20).
 #' @param award_types Award type codes to include. Defaults to every type.
 #' @param start_date,end_date Bounds on `action_date`. USAspending award search
@@ -144,7 +160,9 @@ us_download_run <- function(uei,
 #'
 #' @param jobs Manifest from [us_download_run()].
 #' @param dest Directory for the unzipped CSVs. Defaults to the package cache.
-#' @return Character vector of extracted CSV paths.
+#' @return Character vector of the CSV paths in `dest`, with attribute
+#'   `fetched`: the job file names that were downloaded and unzipped. A job
+#'   that failed either step is warned about and left out of `fetched`.
 #' @export
 us_download_fetch <- function(jobs, dest = us_cache_dir("raw")) {
   jobs <- data.table::as.data.table(jobs)
@@ -154,6 +172,7 @@ us_download_fetch <- function(jobs, dest = us_cache_dir("raw")) {
     return(character(0))
   }
   zipdir <- us_cache_dir("jobs")
+  fetched <- character(0)
   for (i in seq_len(nrow(ok))) {
     z <- file.path(zipdir, ok$file_name[i])
     if (!file.exists(z)) {
@@ -163,11 +182,22 @@ us_download_fetch <- function(jobs, dest = us_cache_dir("raw")) {
         next
       }
     }
-    try(utils::unzip(z, exdir = dest), silent = TRUE)
+    ## a failed unzip must not pass silently: the job would look finished
+    ## while its rows never reach the extract. On Windows the usual cause is
+    ## a destination path near the 260-character limit.
+    got <- tryCatch(utils::unzip(z, exdir = dest),
+                    error = function(e) character(0),
+                    warning = function(w) character(0))
+    if (length(got)) {
+      fetched <- c(fetched, ok$file_name[i])
+    } else {
+      cli::cli_warn(c("Failed to unzip {.file {ok$file_name[i]}} into {.path {dest}}.",
+                      "i" = "On Windows, check that the path is well under 260 characters."))
+    }
   }
   f <- list.files(dest, pattern = "[.]csv$", full.names = TRUE)
   us_msg("Extracted {length(f)} CSV file{?s} ({round(sum(file.size(f)) / 1e6, 1)} MB) to {.path {dest}}.")
-  f
+  structure(f, fetched = fetched)
 }
 
 ## Read the four file families the download endpoint emits and harmonize each.

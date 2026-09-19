@@ -236,3 +236,67 @@ test_that("a multi-org award-year does not double-count pass-through", {
   expect_equal(nrow(a24), 2L)                       # two org rows, one award-year
   expect_equal(sum(a24$subaward_out_amount), 10000) # counted once, not twice
 })
+
+test_that("awards reached only through a parent UEI are out_of_sample", {
+  # recipient_search_text also matches recipient_parent_uei: simulate a
+  # subsidiary award returned because a requested UEI is its parent
+  ex <- us_sample_extract()
+  key <- "ASST_NON_HDTRA12310001_097"   # reconciles exactly when in sample
+  tx <- ex$transactions
+  k <- tx$award_key == key
+  parent <- tx$recipient_uei[which(k)[1]]
+  tx$recipient_parent_uei[k] <- parent
+  tx$recipient_uei[k] <- "R29FEFR7P8H9"
+  ex$transactions <- tx
+
+  p <- suppressWarnings(suppressMessages(us_panel(ex)))
+  expect_false(key %in% p$panel$award_key)            # left out of the panel
+  expect_true(key %in% p$awards$award_key)            # but kept, flagged
+  expect_false(p$awards[award_key == key, in_sample])
+  expect_true(all(p$awards[award_key != key, in_sample]))
+  expect_setequal(p$org_map$uei, ex$meta$uei)
+
+  expect_message(r <- suppressWarnings(us_reconcile(p)), "out_of_sample")
+  # the label wins even over an exact reconciliation
+  expect_equal(r[award_key == key, status], "out_of_sample")
+  expect_false(r[award_key == key, in_sample])
+  expect_equal(r[status == "out_of_sample", .N], 1L)
+
+  # requesting the subsidiary's UEI brings the award back into the sample
+  ex$meta$uei <- c(ex$meta$uei, "R29FEFR7P8H9")
+  om <- data.table::data.table(uei = ex$meta$uei,
+                               org_id = c(ex$meta$uei[1:3], parent))
+  p2 <- suppressWarnings(suppressMessages(us_panel(ex, org_map = om)))
+  expect_true(p2$awards[award_key == key, in_sample])
+  expect_equal(unique(p2$panel[award_key == key, org_id]), parent)
+  r2 <- suppressWarnings(suppressMessages(us_reconcile(p2)))
+  expect_equal(r2[award_key == key, status], "ok")
+})
+
+test_that("a multi-recipient award with one in-sample slice stays in sample", {
+  ex <- us_sample_extract()
+  key <- "ASST_NON_HDTRA12310001_097"
+  tx <- ex$transactions
+  k <- which(tx$award_key == key)
+  stopifnot(length(k) >= 2)
+  tx$recipient_uei[k[1]] <- "ZZZZZZZZZZZ9"   # an institution never requested
+  ex$transactions <- tx
+  p <- suppressWarnings(suppressMessages(us_panel(ex)))
+  expect_true(p$awards[award_key == key, in_sample])
+  r <- suppressWarnings(suppressMessages(us_reconcile(p)))
+  expect_false(r[award_key == key, status] == "out_of_sample")
+})
+
+test_that("panels without a stored org map fall back to is_stray_uei", {
+  p <- sample_panel()
+  key <- p$awards$award_key[1]
+  p$org_map <- NULL                            # as built by older versions
+  p$transactions[award_key == key, "is_stray_uei" := TRUE]
+  r <- suppressWarnings(suppressMessages(us_reconcile(p)))
+  expect_equal(r[award_key == key, status], "out_of_sample")
+  expect_equal(r[status == "out_of_sample", .N], 1L)
+  # with no flag at all, nothing is out of sample
+  p$transactions[, "is_stray_uei" := NULL]
+  r <- suppressWarnings(suppressMessages(us_reconcile(p)))
+  expect_equal(r[status == "out_of_sample", .N], 0L)
+})

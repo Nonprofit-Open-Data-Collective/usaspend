@@ -188,8 +188,10 @@ stories and why the panel never carries the net alone (§5.3).
 5. **Flag anomalies, do not silently repair them.** A non-zero amount on an
    `administrative` action; an `action_date` outside the award's period of
    performance; an `action_date` before 2007-10-01 (impossible, given the search
-   floor); a `recipient_uei` that was never requested (the API matches on text,
-   so strays are possible).
+   floor); a `recipient_uei` that was never requested (`is_stray_uei`). Strays
+   are routine, not rare: `recipient_search_text` also matches
+   `recipient_parent_uei`, so querying a parent returns its subsidiaries'
+   transactions — see §8, *Out-of-sample awards*.
 
 6. **Never group on description strings.** **[measured]** The sample carries
    `"DELIVERY ORDER"` and `"DO"` for award type code C, and `"PURCHASE ORDER"`
@@ -444,6 +446,18 @@ registrations and USAspending splits their awards across them — NYU has three
 UEIs holding 2,687 / 4,721 / 9 awards. Supply a crosswalk to `us_org_map()` and
 every table is keyed on `org_id`; without one, each UEI is its own organization.
 
+Subsidiaries are the other half of the mapping. The API's parent-UEI match
+(§8) surfaces them unasked, and `us_extract()` records each in the extract's
+crosswalk (`extract$org_map`) under the requested UEI it rolls up to. The rule
+for the panel: **a UEI is in sample only if its own history was extracted.**
+With `subsidiaries = FALSE` (the default) the subsidiaries are listed but not
+pulled, and the extract says so when it finishes; their partial histories stay
+out of the panel. With `subsidiaries = TRUE` (or `us_add_subsidiaries()` on an
+existing extract) each is queried on its own UEI, so it arrives with its full
+history, and inherits its parent's `org_id` unless `org_map` lists it. A
+crosswalk row for a UEI that was never pulled is ignored, with a message,
+because a crosswalk cannot add data. See `vignette("org-map")`.
+
 ---
 
 ## 8. Reconciliation — `us_reconcile()` and `us_audit()`
@@ -510,6 +524,39 @@ the transactions, which makes them a genuine external check.
    organization* was obligated — which is exactly the org × award × year
    number, and is *supposed* to differ from the award's lifetime total when
    the award moved.
+
+   **Out-of-sample awards — the parent-UEI match.** **[measured]** The bulk
+   download's `recipient_search_text` filter matches `recipient_parent_uei`
+   as well as `recipient_uei`. Querying RTI (`JJHCMK4NT5N3`) returned
+   transactions of International Resources Group (`R29FEFR7P8H9`), which RTI
+   acquired in 2017 — but only the ones filed with RTI as parent. A download
+   by award ID for `CONT_AWD_AIDEPPI110300013_7200_AIDEPPI000300013_7200`
+   found 14 transactions, all with IRG as recipient; the UEI-filtered extract
+   held only the 2 carrying RTI as parent, not the earlier ones filed under
+   parents L-3 and Engility. A subsidiary's award therefore arrives with a
+   history truncated at the acquisition, and fails the identity for reasons
+   unrelated to the netting.
+
+   The rule: an award is **in sample** when at least one of its transactions
+   is on a UEI in the organization map (the requested UEIs). `us_panel()`
+   already kept out-of-sample transactions out of `panel` ("Dropping N
+   transactions on K UEIs outside the organization map"). It now also flags
+   them in the spine (`awards$in_sample`) and records the map it used
+   (`panel$org_map`); `us_reconcile()` labels them `out_of_sample` *before*
+   every other test, since such an award is not the organization's even when
+   it happens to reconcile. `awards` and `transactions` keep the rows on
+   purpose — they are what the extract returned, and dropping them silently
+   would hide the leak. Filter with `awards[(in_sample)]`. A multi-recipient
+   award with any in-sample slice stays in sample (`multi_recipient`).
+
+   **[measured]** In the 1,000-UEI test, 370 of 15,420 awards were out of
+   sample: 200 would otherwise have been `ok`, 109 `no_reported_total`, 20
+   `window_edge` — and 41 `break` ($232M of gap, 28 of them IRG awards), which
+   no longer count as unexplained. To count a subsidiary as part of its
+   parent, request the subsidiary's UEI as well (a query on its own UEI
+   returns its whole history) and map both to one `org_id`; `us_org_map()`
+   ignores crosswalk rows for UEIs that were not requested. The archive path
+   filters on `recipient_uei` locally and has no parent match.
 
 2. **The outlay gap.** Report `total_outlayed / total_obligated` per award. This
    is the size of the promise-versus-payment gap — the number that tells a

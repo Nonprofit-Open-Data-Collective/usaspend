@@ -10,6 +10,7 @@ us_extract(
   award_types = us_award_type_codes("all"),
   source = c("auto", "api", "archive"),
   subawards = c("in", "none", "out", "both"),
+  subsidiaries = FALSE,
   dest = us_cache_dir("raw")
 )
 }
@@ -28,11 +29,18 @@ which count-screens each UEI batch and fetches only where inbound rows
 exist), \code{"out"} (pass-through paid: queried by prime award from either
 path), or \code{"both"}.}
 
+\item{subsidiaries}{Also extract the full histories of subsidiaries the
+parent-UEI match surfaces, and count them as part of their parent
+organization. API path only. See the Subsidiaries section.}
+
 \item{dest}{Directory for intermediate files. Defaults to the package cache.}
 }
 \value{
 A list of class \code{usaspend_extract} with elements \code{transactions},
-\code{subawards}, \code{jobs} (the acquisition manifest) and \code{meta}.
+\code{subawards}, \code{jobs} (the acquisition manifest), \code{org_map} (the UEI
+crosswalk: requested UEIs and discovered subsidiaries, see
+\code{\link[=us_find_subsidiaries]{us_find_subsidiaries()}}) and \code{meta}. \code{meta$uei} is every UEI whose own
+history was extracted; \code{meta$uei_requested} is the original request.
 }
 \description{
 The single entry point for acquisition. Both paths return the same canonical
@@ -57,6 +65,28 @@ to walk the resulting award keys through \code{\link[=us_fetch_subawards_out]{us
 costs roughly one extra API call per award and is screened so that awards
 reporting no subawards are skipped.
 }
+\section{Subsidiaries}{
+
+On the API path the recipient filter also matches a transaction's \emph{parent}
+UEI (see \code{\link[=us_download_submit]{us_download_submit()}}): querying a parent organization returns
+the transactions its subsidiaries filed while it was recorded as parent,
+but not their earlier history. Every such subsidiary is recorded in the
+crosswalk \code{org_map} (see \code{\link[=us_find_subsidiaries]{us_find_subsidiaries()}}), mapped to the
+requested UEI it rolls up to.
+
+With \code{subsidiaries = FALSE} (the default) their own histories are not
+pulled, and the extract says so when it finishes: \code{\link[=us_panel]{us_panel()}} leaves
+their awards out of the panel and \code{\link[=us_reconcile]{us_reconcile()}} labels them
+\code{"out_of_sample"}, because a truncated history cannot reconcile. With
+\code{subsidiaries = TRUE} each subsidiary UEI is queried in its own right
+(full history, as \code{\link[=us_add_subsidiaries]{us_add_subsidiaries()}} does) and added to the requested
+set, so the panel counts it as part of its parent organization. See
+\code{vignette("org-map")}.
+
+The archive path filters on \code{recipient_uei} locally, so it neither
+receives subsidiaries' rows nor discovers them.
+}
+
 \examples{
 \dontrun{
 # one organization, the API path

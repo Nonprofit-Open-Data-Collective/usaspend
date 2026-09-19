@@ -33,6 +33,8 @@ reference:
   - us_award_counts
   - us_validate_uei
   - us_org_map
+  - us_find_subsidiaries
+  - us_add_subsidiaries
 
 - title: "Acquisition: REST API"
   desc: Bulk transaction download jobs, for one organization or a small batch.
@@ -162,6 +164,7 @@ articles:
   contents:
   - structure
   - acquisition
+  - org-map
   - accounting
   - panel
   - reconciliation
