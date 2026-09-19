@@ -184,3 +184,53 @@ test_that("us_add_imputed_outlays appends without touching money measures", {
   pc <- suppressMessages(us_panel(us_sample_extract()))
   expect_error(us_add_imputed_outlays(pc), "fiscal")
 })
+
+test_that("short_family splits one- and two-year awards by family only", {
+  sf <- usaspend:::cell_short_family(
+    dur_bin      = c(1L, 2L, 2L, 1L, 3L, 6L, NA),
+    award_family = c("grant", "contract", "direct_payment", NA, "grant", "contract", "grant"))
+  expect_equal(sf, c("grant", "contract", "other", "other", "any", "any", "any"))
+
+  f <- us_outlay_features(us_sample_extract()$transactions)
+  expect_true("short_family" %in% names(f))
+  expect_true(all(f[dur_bin >= 3L, short_family] == "any"))
+  expect_true(all(f[dur_bin <= 2L, short_family] %in% c("grant", "contract", "other")))
+})
+
+test_that("the bundled model uses the short-award family split", {
+  m <- outlay_model
+  expect_equal(m$cells, c("dur_bin", "late_start", "short_family"))
+  expect_true("short_family" %in% names(outlay_training$grid))
+  # long awards carry no family split; short ones do, with real support
+  expect_true(all(m$curves_cell[dur_bin >= 3L, short_family] == "any"))
+  expect_setequal(m$curves_cell[dur_bin <= 2L, unique(short_family)],
+                  c("grant", "contract", "other"))
+  expect_true(m$curves_cell[dur_bin == 1L & short_family == "grant", max(n)] >= m$min_cell)
+  expect_true(m$curves_cell[dur_bin == 1L & short_family == "other", max(n)] >= m$min_cell)
+  # two one-year awards identical but for family get different schedules
+  base <- outlay_training$awards[!is.na(tier) & dur_bin == 1L & late_start == TRUE][1]
+  two <- rbind(copy(base)[, `:=`(award_key = "G", award_family = "grant")],
+               copy(base)[, `:=`(award_key = "O", award_family = "direct_payment")])
+  two[, short_family := NULL]
+  pr <- usaspend:::impute_from_features(two, m)
+  sg <- pr[award_key == "G", outlay_imputed]; so <- pr[award_key == "O", outlay_imputed]
+  expect_false(isTRUE(all.equal(sg / sum(sg), so / sum(so))))
+})
+
+test_that("training grids and feature tables without short_family still work", {
+  tr <- outlay_training
+  tr$grid <- copy(tr$grid)[, short_family := NULL]
+  tr$awards <- copy(tr$awards)[, short_family := NULL]
+  m <- us_impute_fit(tr)            # derived from awards$award_family
+  key <- c(outlay_model$cells, "t")
+  expect_equal(data.table::setorderv(copy(m$curves_cell), key)$share,
+               data.table::setorderv(copy(outlay_model$curves_cell), key)$share)
+  feat <- copy(tr$awards[!is.na(tier)][1:20])
+  p1 <- usaspend:::impute_from_features(feat, outlay_model)
+  p2 <- usaspend:::impute_from_features(outlay_training$awards[award_key %in% feat$award_key],
+                                        outlay_model)
+  expect_equal(p1[order(award_key, fy), outlay_imputed], p2[order(award_key, fy), outlay_imputed])
+  # the old two-cell configuration is still available
+  m2 <- us_impute_fit(outlay_training, cells = c("dur_bin", "late_start"))
+  expect_equal(m2$cells, c("dur_bin", "late_start"))
+})

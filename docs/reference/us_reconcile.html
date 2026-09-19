@@ -36,6 +36,7 @@ most breaks are structural (truncation, recipient changes), not bugs."></head><b
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -90,8 +91,47 @@ most breaks are structural (truncation, recipient changes), not bugs.</p>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code>data.table</code>, one row per award: <code>tx_sum</code>, <code>reported</code>, <code>gap</code>,
-<code>status</code> (<code>"ok"</code>, <code>"no_reported_total"</code>, <code>"window_edge"</code>,
-<code>"multi_recipient"</code>, <code>"recent_open"</code>, <code>"break"</code>), and the outlay ratio.</p>
+<code>status</code> (<code>"out_of_sample"</code>, <code>"no_reported_total"</code>, <code>"ok"</code>,
+<code>"multi_recipient"</code>, <code>"window_edge"</code>, <code>"recent_open"</code>, <code>"break"</code>, tested
+in that order), the outlay ratio, and <code>in_sample</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>An award is <code>window_edge</code> when its history evidently begins before the pull
+window: its earliest reported period-of-performance start (on the award
+record or any of its transactions) precedes the first action date in the
+extract, or its first in-extract action falls within a year of the window
+opening. The second test alone misses awards made before the window whose
+first in-window action is a later modification: <code>base_action_date</code> is the
+earliest action <em>in the extract</em>, so it can never precede the window. The
+period-of-performance test is added to it rather than replacing it, because
+a later modification can move an award's reported start date forward past
+its first obligation.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="out-of-sample-awards">Out-of-sample awards<a class="anchor" aria-label="anchor" href="#out-of-sample-awards"></a></h2>
+
+
+<p>An award is <code>"out_of_sample"</code> when none of its transactions carry a
+recipient UEI in the panel's organization map – the UEIs whose own
+histories <code><a href="us_extract.html">us_extract()</a></code> pulled. The bulk download filters on
+<code>recipient_search_text</code>, which also matches a transaction's <em>parent</em> UEI
+(see <code><a href="us_download_submit.html">us_download_submit()</a></code>), so querying a parent returns its
+subsidiaries' transactions – but only those filed while the parent was
+recorded as parent. Querying RTI (<code>JJHCMK4NT5N3</code>) returned transactions of
+its subsidiary International Resources Group from 2017 on, after the
+acquisition; the same awards' earlier actions, filed under the previous
+parents, were not returned. Such a history is truncated by construction, so
+the identity fails for reasons that say nothing about the netting.</p>
+<p>The test runs first, ahead of every other label: an out-of-sample award is
+not part of the organization's panel whether or not it happens to
+reconcile. <code><a href="us_panel.html">us_panel()</a></code> already leaves these transactions out of <code>panel</code>;
+they stay in <code>awards</code> and <code>transactions</code>, flagged <code>in_sample = FALSE</code>, so
+the leak stays visible. To count subsidiaries as part of their parents,
+extract their full histories with <code>us_extract(subsidiaries = TRUE)</code> or
+<code><a href="us_add_subsidiaries.html">us_add_subsidiaries()</a></code>; see <code><a href="../articles/org-map.html">vignette("org-map")</a></code>. Panels built before
+<code><a href="us_panel.html">us_panel()</a></code> recorded its organization map fall back to the transactions'
+<code>is_stray_uei</code> flag.</p>
     </div>
 
     <div class="section level2">

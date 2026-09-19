@@ -13,8 +13,10 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>",
 options(datatable.print.trunc.cols = TRUE, width = 90)
 ```
 
-The bundled `outlay_model` was fitted on 1,184 ground-truth awards from 51
-nonprofits. If your portfolio looks different — other agencies, other award
+The bundled `outlay_model` was fitted on 2,785 ground-truth awards pooled
+from two populations: 51 large nonprofits (the pilot) and a
+1,000-organization sample. Each population scores best on curves fitted
+to itself (`IMPUTATION.md` §7), so if your portfolio looks different — other agencies, other award
 durations, another era — refit on your own ground truth. The whole pipeline
 is three calls: **retrieve** (`us_outlay_training()`), **inspect/extend
 features** (`us_outlay_features()`), **fit and evaluate**
@@ -101,16 +103,21 @@ f[, .N, by = .(dur_bin, late_start)][order(dur_bin, late_start)][1:8]
 ```
 
 The default model cells are `dur_bin` (award duration in fiscal years,
-capped at 6) × `late_start` (first obligated April–September). The
-experiment tested award *type* as a third dimension and found it added
-nearly nothing beyond duration in a grant-dominated sample — but the
-`cells` argument takes any feature columns present in the grid, so a
-portfolio where type matters can use them.
+capped at 6) × `late_start` (first obligated April–September) ×
+`short_family` (award family for one- and two-year awards: grant,
+contract or other; `"any"` for longer ones). The original experiment
+tested award *type* as a third dimension and found it added nearly
+nothing in a grant-dominated sample; pooling in a 1,000-organization
+sample, where short awards are mostly direct payments, changed that for
+short awards only (`IMPUTATION.md` §7). The `cells` argument takes any
+feature columns present in the grid, so a portfolio where something else
+matters can use it — and cells too thin to fit (fewer than `min_cell`
+awards) fall back to the duration curve.
 
 ## 3. Fit
 
 ```{r fit}
-m <- us_impute_fit(tr, cells = c("dur_bin", "late_start"), min_cell = 8)
+m <- us_impute_fit(tr, min_cell = 8)
 m
 ```
 

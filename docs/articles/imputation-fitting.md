@@ -1,9 +1,11 @@
 # Fitting an outlay-imputation model
 
-The bundled `outlay_model` was fitted on 1,184 ground-truth awards from
-51 nonprofits. If your portfolio looks different — other agencies, other
-award durations, another era — refit on your own ground truth. The whole
-pipeline is three calls: **retrieve**
+The bundled `outlay_model` was fitted on 2,785 ground-truth awards
+pooled from two populations: 51 large nonprofits (the pilot) and a
+1,000-organization sample. Each population scores best on curves fitted
+to itself (`IMPUTATION.md` §7), so if your portfolio looks different —
+other agencies, other award durations, another era — refit on your own
+ground truth. The whole pipeline is three calls: **retrieve**
 ([`us_outlay_training()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_outlay_training.md)),
 **inspect/extend features**
 ([`us_outlay_features()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_outlay_features.md)),
@@ -40,22 +42,22 @@ tr <- outlay_training
 tr
 #> 
 #> ── outlay-imputation training set ────────────────────────────────────────────────────────
-#> • 7853 candidate awards, 1184 ground truth
-#> • 905 reconciled, 279 shape-complete
-#> • 4020 award-year rows, as of FY2026
+#> • 14022 candidate awards, 2785 ground truth
+#> • 2464 reconciled, 321 shape-complete
+#> • 8719 award-year rows, as of FY2026
 tr$awards[!is.na(tier), .N, by = .(tier, mod_class)][order(tier, -N)]
 #>               tier              mod_class     N
 #>             <char>                 <char> <int>
-#>  1:     reconciled            single_year   386
-#>  2:     reconciled multi_year_incremental   217
-#>  3:     reconciled     extension_timeline   166
-#>  4:     reconciled                reduced   115
-#>  5:     reconciled       extension_funded    21
-#>  6: shape_complete multi_year_incremental   115
-#>  7: shape_complete                reduced    65
-#>  8: shape_complete     extension_timeline    42
-#>  9: shape_complete            single_year    32
-#> 10: shape_complete       extension_funded    25
+#>  1:     reconciled            single_year  1390
+#>  2:     reconciled multi_year_incremental   448
+#>  3:     reconciled                reduced   276
+#>  4:     reconciled     extension_timeline   263
+#>  5:     reconciled       extension_funded    87
+#>  6: shape_complete multi_year_incremental   128
+#>  7: shape_complete                reduced    75
+#>  8: shape_complete            single_year    44
+#>  9: shape_complete     extension_timeline    43
+#> 10: shape_complete       extension_funded    31
 ```
 
 ### How the retrieval filters, and why
@@ -126,23 +128,28 @@ f[, .N, by = .(dur_bin, late_start)][order(dur_bin, late_start)][1:8]
 ```
 
 The default model cells are `dur_bin` (award duration in fiscal years,
-capped at 6) × `late_start` (first obligated April–September). The
-experiment tested award *type* as a third dimension and found it added
-nearly nothing beyond duration in a grant-dominated sample — but the
-`cells` argument takes any feature columns present in the grid, so a
-portfolio where type matters can use them.
+capped at 6) × `late_start` (first obligated April–September) ×
+`short_family` (award family for one- and two-year awards: grant,
+contract or other; `"any"` for longer ones). The original experiment
+tested award *type* as a third dimension and found it added nearly
+nothing in a grant-dominated sample; pooling in a 1,000-organization
+sample, where short awards are mostly direct payments, changed that for
+short awards only (`IMPUTATION.md` §7). The `cells` argument takes any
+feature columns present in the grid, so a portfolio where something else
+matters can use it — and cells too thin to fit (fewer than `min_cell`
+awards) fall back to the duration curve.
 
 ## 3. Fit
 
 ``` r
-m <- us_impute_fit(tr, cells = c("dur_bin", "late_start"), min_cell = 8)
+m <- us_impute_fit(tr, min_cell = 8)
 m
 #> 
 #> ── liquidation-curve outlay model ────────────────────────────────────────────────────────
-#> • fitted on 1184 ground-truth awards (as of FY2026)
-#> • cells: dur_bin x late_start, min cell 8
-#> • global outlay/obligation ratio 0.94
-#> • durations supported: 1 (n=27), 2 (n=273), 3 (n=416), 4 (n=454), 5 (n=13), 6 (n=1)
+#> • fitted on 2785 ground-truth awards (as of FY2026)
+#> • cells: dur_bin x late_start x short_family, min cell 8
+#> • global outlay/obligation ratio 0.92
+#> • durations supported: 1 (n=529), 2 (n=676), 3 (n=717), 4 (n=633), 5 (n=97), 6 (n=133)
 ```
 
 The fitted object is transparent — plain curve tables you can inspect
@@ -179,20 +186,20 @@ ev <- us_impute_eval(tr, folds = 5)
 ev$summary
 #>    metric       method  mean median dollar_weighted
 #>    <char>       <char> <num>  <num>           <num>
-#> 1:  level        model 0.300  0.232           0.292
-#> 2:  level  even_spread 0.428  0.423           0.410
-#> 3:  level as_obligated 0.847  0.968           0.815
-#> 4: timing        model 0.281  0.220           0.276
-#> 5: timing  even_spread 0.405  0.410           0.395
-#> 6: timing as_obligated 0.746  0.898           0.752
+#> 1:  level        model 0.350  0.303           0.350
+#> 2:  level  even_spread 0.453  0.469           0.442
+#> 3:  level as_obligated 0.745  0.884           0.734
+#> 4: timing        model 0.340  0.291           0.314
+#> 5: timing  even_spread 0.441  0.459           0.407
+#> 6: timing as_obligated 0.658  0.829           0.648
 ev$by_class
 #>                 mod_class     n model as_obligated even_spread
 #>                    <char> <int> <num>        <num>       <num>
-#> 1:       extension_funded    46 0.253        0.550       0.341
-#> 2:     extension_timeline   208 0.271        0.819       0.405
-#> 3: multi_year_incremental   332 0.281        0.688       0.422
-#> 4:                reduced   180 0.303        0.625       0.446
-#> 5:            single_year   418 0.280        0.831       0.380
+#> 1:       extension_funded   118 0.332        0.589       0.376
+#> 2:     extension_timeline   306 0.316        0.848       0.427
+#> 3: multi_year_incremental   576 0.347        0.699       0.460
+#> 4:                reduced   351 0.358        0.694       0.490
+#> 5:            single_year  1434 0.338        0.598       0.430
 ```
 
 Read `ev$by_class` before trusting the model on a skewed portfolio:
@@ -212,8 +219,7 @@ imp[, .(dollars = round(sum(outlay_imputed))), by = imputation_method]
 #>    imputation_method  dollars
 #>               <char>    <num>
 #> 1:              none        0
-#> 2: liquidation_curve  9702259
-#> 3:       even_spread 14874129
+#> 2: liquidation_curve 25551466
 ```
 
 ``` r

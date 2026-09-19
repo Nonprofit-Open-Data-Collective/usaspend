@@ -25,12 +25,13 @@ A `usaspend_panel` is a list of tables, not just the panel itself:
 | `transactions` | award action | the normalized ledger the panel was netted from |
 | `subawards` | FSRS report line | normalized subawards, with direction |
 | `subawards_in` | org × year | subaward dollars *received* — see below |
+| `org_map` | UEI | the crosswalk used: `org_id`, relationship, and which UEIs are in sample — see [`vignette("org-map")`](https://nonprofit-open-data-collective.github.io/usaspend/articles/org-map.md) |
 | `meta` | — | period, measure, de-obligation policy, build time |
 
 ``` r
 names(p)
 #> [1] "panel"        "awards"       "transactions" "subawards"    "subawards_in"
-#> [6] "meta"
+#> [6] "org_map"      "meta"
 p$panel[1:3, .(org_id, award_key, year, obligation_net, net_revenue)]
 #>          org_id                                          award_key  year obligation_net
 #>          <char>                                             <char> <int>          <num>

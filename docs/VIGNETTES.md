@@ -37,6 +37,7 @@ the Get-started page). This file remains the content bank behind them.
 | `accounting.Rmd` | **written** | Modifications, de-obligations, the year a claw-back belongs to | `ACCOUNTING.md` §5 |
 | `reconciliation.Rmd` | **written** | Why 72% is a good number, and how to read a break | `ACCOUNTING.md` §8 |
 | `disruption.Rmd` | **written** (2026-09-18) | detecting and measuring disruption: a four-part taxonomy (termination, reduction, delay, transfer), the ten-year baseline, case ledgers, transaction types worth tracking, and what persists when an agency closes (USAID -\> State); runs on `disruption_sample` via [`us_disruption_flags()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_disruption_flags.md) | `data-raw/make-disruption-sample.R` |
+| `org-map.Rmd` | **written** (2026-09-18) | UEIs vs organizations: the crosswalk, multiple registrations, parent/subsidiary UEIs and the parent-UEI match, `subsidiaries =`, what the crosswalk does not hold | `ACCOUNTING.md` §7-8 |
 
 The set is complete. Overlaps are handled by linking: `panel.Rmd`
 carries the loan/direct-payment treatment in depth, `acquisition.Rmd`

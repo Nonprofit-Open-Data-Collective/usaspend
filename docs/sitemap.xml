@@ -11,6 +11,7 @@
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/imputation.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/index.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/obligations-outlays.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/org-map.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/panel.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/reconciliation.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/articles/structure.html</loc></url>
@@ -30,6 +31,7 @@
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/usaspend-package.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_add_imputed_outlays.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_add_outlays.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_add_subsidiaries.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_adjust_inflation.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_api.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_archive_download.html</loc></url>
@@ -55,6 +57,7 @@
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_batch.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_in.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_out.html</loc></url>
+<url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_find_subsidiaries.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_harmonize_transactions.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_impute_eval.html</loc></url>
 <url><loc>https://nonprofit-open-data-collective.github.io/usaspend/reference/us_impute_fit.html</loc></url>

@@ -21,4 +21,6 @@ us_download_fetch(jobs, dest = us_cache_dir("raw"))
 
 ## Value
 
-Character vector of extracted CSV paths.
+Character vector of the CSV paths in `dest`, with attribute `fetched`:
+the job file names that were downloaded and unzipped. A job that failed
+either step is warned about and left out of `fetched`.

@@ -32,6 +32,7 @@ award attributes."></head><body>
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -86,7 +87,9 @@ award attributes.</p>
 
 
 <dt id="arg-org-map">org_map<a class="anchor" aria-label="anchor" href="#arg-org-map"></a></dt>
-<dd><p>Optional <code>uei</code> to <code>org_id</code> crosswalk, see <code><a href="us_org_map.html">us_org_map()</a></code>.</p></dd>
+<dd><p>Optional <code>uei</code> to <code>org_id</code> crosswalk, see <code><a href="us_org_map.html">us_org_map()</a></code>
+and the crosswalk section below. Extracted subsidiaries need not be
+listed: they inherit their parent's <code>org_id</code>.</p></dd>
 
 
 <dt id="arg-period">period<a class="anchor" aria-label="anchor" href="#arg-period"></a></dt>
@@ -115,9 +118,10 @@ panel's <code>subaward_out_amount</code> total is a floor, not the total fetched
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A list of class <code>usaspend_panel</code>: <code>panel</code> (org x award x year),
-<code>awards</code> (the spine), <code>transactions</code> (the normalized ledger),
-<code>subawards</code> (normalized, with direction), <code>subawards_in</code> (org-year
-inbound revenue), and <code>meta</code>.</p>
+<code>awards</code> (the spine, with <code>in_sample</code>), <code>transactions</code> (the normalized
+ledger), <code>subawards</code> (normalized, with direction), <code>subawards_in</code>
+(org-year inbound revenue), <code>org_map</code> (the resolved crosswalk: <code>uei</code>,
+<code>org_id</code>, <code>relationship</code>, <code>root_uei</code>, ..., and <code>in_sample</code>), and <code>meta</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="what-the-panel-measures">What the panel measures<a class="anchor" aria-label="anchor" href="#what-the-panel-measures"></a></h2>
@@ -136,6 +140,31 @@ data – are aggregated per organization-year in the separate
 <code>subawards_in</code> element, keyed by subawardee UEI, and also joined onto
 matching panel rows as <code>subaward_in_amount</code> when the prime award key appears
 in the panel (rare: it requires the org to be both prime and subawardee).</p>
+    </div>
+    <div class="section level2">
+    <h2 id="organizations-subsidiaries-and-the-crosswalk">Organizations, subsidiaries and the crosswalk<a class="anchor" aria-label="anchor" href="#organizations-subsidiaries-and-the-crosswalk"></a></h2>
+
+
+<p>The organization map is built from the extract's crosswalk
+(<code>extract$org_map</code>, see <code><a href="us_find_subsidiaries.html">us_find_subsidiaries()</a></code>) and <code>org_map</code>:</p><ul><li><p>Every UEI whose own history was extracted is in sample: the
+requested UEIs, plus subsidiaries pulled with
+<code>us_extract(subsidiaries = TRUE)</code> or <code><a href="us_add_subsidiaries.html">us_add_subsidiaries()</a></code>.</p></li>
+<li><p>A requested UEI takes its <code>org_id</code> from <code>org_map</code>, else its own UEI.</p></li>
+<li><p>A subsidiary takes its <code>org_id</code> from <code>org_map</code> if listed there,
+else the <code>org_id</code> of the requested UEI it rolls up to – so it counts
+as part of its parent without being listed.</p></li>
+<li><p><code>org_map</code> rows for UEIs not in the extract are ignored, with a
+message: a crosswalk cannot add data that was never pulled.</p></li>
+</ul><p>Subsidiaries the extract found but did not pull are out of sample. The API
+filter also matches a transaction's <em>parent</em> UEI (see
+<code><a href="us_download_submit.html">us_download_submit()</a></code>), so the extract holds part of their history –
+only what they filed while a requested UEI was recorded as parent. The
+panel leaves those transactions out and reports how many it dropped.
+<code>awards</code> and <code>transactions</code> keep them, deliberately: they are what the
+extract returned, and dropping them would hide the leak. <code>awards</code> flags
+them with <code>in_sample = FALSE</code>, <code><a href="us_reconcile.html">us_reconcile()</a></code> labels them
+<code>"out_of_sample"</code>, and <code>awards[(in_sample)]</code> is the organizations' spine.
+See <code><a href="../articles/org-map.html">vignette("org-map")</a></code>.</p>
     </div>
 
     <div class="section level2">

@@ -61,10 +61,10 @@ p <- us_panel(us_sample_extract(), period = "fiscal")
 #>   fetch pass-through by prime award.
 p <- us_add_imputed_outlays(p)
 #> Imputed outlays for 18 awards.
-#> • even_spread=8 liquidation_curve=4 none=6
-#> Added 26 imputed-outlay years outside the panel's activity rows.
+#> • liquidation_curve=12 none=6
+#> Added 41 imputed-outlay years outside the panel's activity rows.
 p$panel[, .(oblig = sum(obligation_net), imputed = sum(outlay_imputed))]
 #>       oblig  imputed
 #>       <num>    <num>
-#> 1: 25383391 24576388
+#> 1: 25383391 25551466
 ```

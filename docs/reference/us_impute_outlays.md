@@ -45,9 +45,15 @@ obligations, and a duration the training data supports (at least
 `min_cell` ground-truth awards of that duration – the support envelope).
 Everything else – missing period-of-performance dates, a missing start
 month, durations beyond the envelope – falls back to even spread, with
-the reason in `imputation_flags`. An award still in progress is *not* a
-fallback case: the curve projects its remaining cash, including fiscal
-years after the data pull; those rows simply carry future `fy` values.
+the reason in `imputation_flags`. A period-of-performance end more than
+10 fiscal years past the last obligation (placeholders such as 2099) is
+treated as missing and flagged `pop_end_implausible`, so no award's cash
+is spread decades into the future; pass a feature table from
+[`us_outlay_features()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_outlay_features.md)
+with its `max_pop_years` to change the threshold. An award still in
+progress is *not* a fallback case: the curve projects its remaining
+cash, including fiscal years after the data pull; those rows simply
+carry future `fy` values.
 
 ## The `reconcile` switch – typical cash versus the accounting identity
 
@@ -71,11 +77,10 @@ tx <- us_normalize_transactions(us_sample_extract()$transactions)
 #> • 8 rows flagged
 imp <- us_impute_outlays(tx)
 #> Imputed outlays for 18 awards.
-#> • even_spread=8 liquidation_curve=4 none=6
+#> • liquidation_curve=12 none=6
 imp[, .(dollars = sum(outlay_imputed)), by = imputation_method]
 #>    imputation_method  dollars
 #>               <char>    <num>
 #> 1:              none        0
-#> 2: liquidation_curve  9702259
-#> 3:       even_spread 14874129
+#> 2: liquidation_curve 25551466
 ```

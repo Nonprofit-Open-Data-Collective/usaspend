@@ -42,6 +42,7 @@ the point of imputation."></head><body>
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -131,12 +132,12 @@ and <code>meta$imputation</code> recording the model and method tally.</p>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span>   fetch pass-through by prime award.</span>
 <span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">us_add_imputed_outlays</span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Imputed outlays for 18 awards.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> even_spread=8 liquidation_curve=4 none=6</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Added 26 imputed-outlay years outside the panel's activity rows.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> liquidation_curve=12 none=6</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Added 41 imputed-outlay years outside the panel's activity rows.</span>
 <span class="r-in"><span><span class="va">p</span><span class="op">$</span><span class="va">panel</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span>oblig <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">obligation_net</span><span class="op">)</span>, imputed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">outlay_imputed</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       oblig  imputed</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       &lt;num&gt;    &lt;num&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1: 25383391 24576388</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1: 25383391 25551466</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

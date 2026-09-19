@@ -12,7 +12,7 @@ performance window). Reports both metrics from the experiment: `timing`
 ``` r
 us_impute_eval(
   training,
-  cells = c("dur_bin", "late_start"),
+  cells = c("dur_bin", "late_start", "short_family"),
   min_cell = 8L,
   folds = 5L,
   seed = 1L
@@ -51,10 +51,10 @@ ev <- us_impute_eval(outlay_training)
 ev$summary
 #>    metric       method  mean median dollar_weighted
 #>    <char>       <char> <num>  <num>           <num>
-#> 1:  level        model 0.300  0.232           0.292
-#> 2:  level  even_spread 0.428  0.423           0.410
-#> 3:  level as_obligated 0.847  0.968           0.815
-#> 4: timing        model 0.281  0.220           0.276
-#> 5: timing  even_spread 0.405  0.410           0.395
-#> 6: timing as_obligated 0.746  0.898           0.752
+#> 1:  level        model 0.350  0.303           0.350
+#> 2:  level  even_spread 0.453  0.469           0.442
+#> 3:  level as_obligated 0.745  0.884           0.734
+#> 4: timing        model 0.340  0.291           0.314
+#> 5: timing  even_spread 0.441  0.459           0.407
+#> 6: timing as_obligated 0.658  0.829           0.648
 ```

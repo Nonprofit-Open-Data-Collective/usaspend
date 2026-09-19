@@ -140,6 +140,10 @@ Cost the API path against the annual-archive path before pulling.
   : Validate a vector of UEIs
 - [`us_org_map()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_org_map.md)
   : Map UEIs to organizations
+- [`us_find_subsidiaries()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_find_subsidiaries.md)
+  : Find subsidiaries surfaced by the parent-UEI match
+- [`us_add_subsidiaries()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_add_subsidiaries.md)
+  : Extract the full histories of an extract's subsidiaries
 
 ## Acquisition: REST API
 
@@ -332,6 +336,8 @@ subawards in both directions, and the finished panel.
   architecture](https://nonprofit-open-data-collective.github.io/usaspend/articles/structure.md):
 - [Choosing an acquisition path: API jobs or annual
   archives](https://nonprofit-open-data-collective.github.io/usaspend/articles/acquisition.md):
+- [Organizations, UEIs and the
+  crosswalk](https://nonprofit-open-data-collective.github.io/usaspend/articles/org-map.md):
 - [Accounting: from a raw ledger to net dollars per
   year](https://nonprofit-open-data-collective.github.io/usaspend/articles/accounting.md):
 - [The panel: reading, rolling up, and deflating the

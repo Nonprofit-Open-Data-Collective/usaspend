@@ -25,9 +25,10 @@ agencies (`vignette("data-model")`). For everything else, this vignette's
 tools *impute* a cash calendar from the obligations side.
 
 Everything here runs offline on two bundled objects: `outlay_training`
-(1,184 awards whose File C cash story is fully trustworthy — the ground
-truth of the experiment documented in `IMPUTATION.md`) and `outlay_model`
-(the default model fitted on it).
+(2,785 awards whose File C cash story is fully trustworthy, pooled from
+the 50-nonprofit pilot and a 1,000-organization sample — the ground truth
+documented in `IMPUTATION.md`) and `outlay_model` (the default model
+fitted on it).
 
 ```{r setup, message = FALSE}
 library(usaspend)
@@ -39,8 +40,10 @@ outlay_model
 
 For each award-duration × start-timing cell, the model stores the mean
 share of an award's **net obligations** outlaid in each event-year `t`
-(years since first obligation). One object carries all three measured
-regularities:
+(years since first obligation). One- and two-year awards are split once
+more, by award family — grant, contract, or other (mostly direct
+payments, which turn into cash almost at once). One object carries all
+three measured regularities:
 
 * **the lag** — the curve's mass sits in years 1–2, not year 0;
 * **the late-start shift** — an award first obligated April–September
@@ -69,9 +72,11 @@ obligations (see below).
 The scoring metric is the **misallocation share** — the fraction of an
 award's dollars placed in the wrong fiscal year (`us_misallocation()`;
 `IMPUTATION.md` §3 explains why this beats correlation for an allocation
-task). Cross-validated on the ground truth, the model scores 0.28 mean /
-0.22 median (timing) and 0.30 / 0.23 (level + timing) against 0.41/0.43
-for even spread and 0.75/0.85 for booking cash in the commitment year.
+task). Cross-validated on the pooled ground truth, the model scores 0.34
+mean / 0.29 median (timing) and 0.35 / 0.30 (level + timing) against
+0.44/0.45 for even spread and 0.66/0.75 for booking cash in the commitment
+year. The pilot's awards score 0.30 and the sample's 0.37 — the sample's
+truth is harder under every method (even spread: 0.41 against 0.47).
 
 ## The typical pattern, and the state of the real data
 

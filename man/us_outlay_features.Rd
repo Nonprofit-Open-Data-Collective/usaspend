@@ -21,7 +21,7 @@ One row per award: identifiers, \code{first_fy}, \code{last_oblig_fy},
 \code{late_start} (first obligated Apr-Sep), obligation totals,
 period-of-performance fields (\code{pop_end_fy}, \code{pop_end_fy_reported},
 \code{pop_end_implausible}), \code{duration}, \code{dur_bin} (capped at 6),
-extension/reduction booleans and \code{mod_class}.
+\code{short_family}, extension/reduction booleans and \code{mod_class}.
 }
 \description{
 Collapses a transaction ledger to one row per award carrying the traits
@@ -57,6 +57,18 @@ for such awards carry the flag \code{pop_end_implausible}. The default of 10
 years sits well beyond the model's longest duration bin (6+); in a
 1,000-organization test pull the gap was 6 years or less for over 98\% of
 awards with an end date.
+}
+
+\section{Short awards by family}{
+
+\code{short_family} is the award family -- \code{"grant"}, \code{"contract"} or
+\code{"other"} (direct payments, loans, IDVs, and anything unlabelled) -- for
+awards of one or two years, and \code{"any"} for longer ones. Short awards pay
+out on family-specific schedules: a direct payment is cash almost at
+once, a one-year grant is drawn down over the following year. For
+awards of three or more years the family split added nothing and cost
+accuracy on the longest ones, so those keep one curve per duration. See
+\code{IMPUTATION.md} 7.
 }
 
 \examples{

@@ -19,6 +19,8 @@
   architecture](https://nonprofit-open-data-collective.github.io/usaspend/articles/structure.md):
 - [Choosing an acquisition path: API jobs or annual
   archives](https://nonprofit-open-data-collective.github.io/usaspend/articles/acquisition.md):
+- [Organizations, UEIs and the
+  crosswalk](https://nonprofit-open-data-collective.github.io/usaspend/articles/org-map.md):
 - [Accounting: from a raw ledger to net dollars per
   year](https://nonprofit-open-data-collective.github.io/usaspend/articles/accounting.md):
 - [The panel: reading, rolling up, and deflating the

@@ -13,9 +13,10 @@ For everything else, this vignette’s tools *impute* a cash calendar from
 the obligations side.
 
 Everything here runs offline on two bundled objects: `outlay_training`
-(1,184 awards whose File C cash story is fully trustworthy — the ground
-truth of the experiment documented in `IMPUTATION.md`) and
-`outlay_model` (the default model fitted on it).
+(2,785 awards whose File C cash story is fully trustworthy, pooled from
+the 50-nonprofit pilot and a 1,000-organization sample — the ground
+truth documented in `IMPUTATION.md`) and `outlay_model` (the default
+model fitted on it).
 
 ``` r
 library(usaspend)
@@ -27,27 +28,30 @@ outlay_model
 
 For each award-duration × start-timing cell, the model stores the mean
 share of an award’s **net obligations** outlaid in each event-year `t`
-(years since first obligation). One object carries all three measured
-regularities:
+(years since first obligation). One- and two-year awards are split once
+more, by award family — grant, contract, or other (mostly direct
+payments, which turn into cash almost at once). One object carries all
+three measured regularities:
 
 - **the lag** — the curve’s mass sits in years 1–2, not year 0;
 - **the late-start shift** — an award first obligated April–September
   pushes most of its first-year cash into the next fiscal year, so
   `late_start` cells have flatter year-0 shares;
 - **the outlay/obligation ratio** — the curve’s *sum* is the cell’s
-  liquidation ratio (globally 0.94), so imputed totals land at realistic
+  liquidation ratio (globally 0.92), so imputed totals land at realistic
   cash levels, not at the obligation level.
 
 ``` r
 outlay_model$curves_dur[dur_bin == 4]
 #> Key: <dur_bin>
-#>    dur_bin     t       share     n
-#>      <int> <int>       <num> <int>
-#> 1:       4     0 0.063772487   454
-#> 2:       4     1 0.360364818   454
-#> 3:       4     2 0.346694238   454
-#> 4:       4     3 0.133250505   454
-#> 5:       4     4 0.007561823   454
+#>    dur_bin     t        share     n
+#>      <int> <int>        <num> <int>
+#> 1:       4     0 0.0763453715   633
+#> 2:       4     1 0.3891211323   633
+#> 3:       4     2 0.3273282667   633
+#> 4:       4     3 0.1250985812   633
+#> 5:       4     4 0.0080780603   633
+#> 6:       4     5 0.0000087693   633
 ```
 
 **Be precise about what the model returns.** It is the *typical payment
@@ -65,9 +69,12 @@ The scoring metric is the **misallocation share** — the fraction of an
 award’s dollars placed in the wrong fiscal year
 ([`us_misallocation()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_misallocation.md);
 `IMPUTATION.md` §3 explains why this beats correlation for an allocation
-task). Cross-validated on the ground truth, the model scores 0.28 mean /
-0.22 median (timing) and 0.30 / 0.23 (level + timing) against 0.41/0.43
-for even spread and 0.75/0.85 for booking cash in the commitment year.
+task). Cross-validated on the pooled ground truth, the model scores 0.34
+mean / 0.29 median (timing) and 0.35 / 0.30 (level + timing) against
+0.44/0.45 for even spread and 0.66/0.75 for booking cash in the
+commitment year. The pilot’s awards score 0.30 and the sample’s 0.37 —
+the sample’s truth is harder under every method (even spread: 0.41
+against 0.47).
 
 ## The typical pattern, and the state of the real data
 
@@ -133,8 +140,7 @@ imp[, .(awards = uniqueN(award_key), dollars = round(sum(outlay_imputed))),
 #>    imputation_method awards  dollars
 #>               <char>  <int>    <num>
 #> 1:              none      6        0
-#> 2: liquidation_curve      4  9702259
-#> 3:       even_spread      8 14874129
+#> 2: liquidation_curve     12 25551466
 ```
 
 With `reconcile = TRUE`, each award’s series is rescaled so imputed cash
@@ -175,13 +181,13 @@ p$panel[, .(obligations = round(sum(obligation_net)),
 #>     year obligations imputed_cash
 #>    <int>       <num>        <num>
 #> 1:  2008           0            0
-#> 2:  2009       17370        15824
-#> 3:  2010      309991        42242
-#> 4:  2011      405951        82928
-#> 5:  2012     1846021       296209
-#> 6:  2013        7086       296209
-#> 7:  2014      320901       382201
-#> 8:  2015       27370       366378
+#> 2:  2009       17370        45917
+#> 3:  2010      309991        79154
+#> 4:  2011      405951       107665
+#> 5:  2012     1846021       333920
+#> 6:  2013        7086       575481
+#> 7:  2014      320901       551651
+#> 8:  2015       27370       496365
 ```
 
 ## Four cases, drawn

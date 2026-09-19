@@ -199,6 +199,19 @@ lessons:
   window (`window_edge`, `recent_open`) or the award moved between
   institutions (`multi_recipient`).
 
+The sample has no instance of the first label tested, but large pulls
+do:
+
+- **`out_of_sample`** — every transaction on the award is on a UEI
+  nobody requested. The bulk download’s recipient filter also matches
+  the *parent* UEI, so querying a parent returns its subsidiaries’
+  actions — only those filed while it was recorded as parent, so the
+  history is truncated.
+  [`us_panel()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_panel.md)
+  leaves these out of the panel and flags them
+  `awards$in_sample = FALSE`; in the 1,000-UEI test they were 370 of
+  15,420 awards, 41 of which had been counted as unexplained breaks.
+
 ### The same test at scale
 
 On the full 50-org pilot (61,738 awards), after normalization:
@@ -208,7 +221,7 @@ On the full 50-org pilot (61,738 awards), after normalization:
 | **ok — exact to the dollar** | 44,680 (72%) | both assumptions hold |
 | no reported total | 4,955 | nothing to check against |
 | recent/open award | 4,133 | corrections keep arriving after the pull (API-audited) |
-| window edge | 1,564 | pre-2008 history sits below the search floor |
+| window edge | 1,564 | pre-2008 history sits below the search floor (the award’s period of performance starts before the window, or its first action falls in the window’s first year) |
 | multi-recipient | 129 | the award’s other slice belongs to another organization |
 | unexplained | ~10% | API audit: mostly the same mechanisms mid-window, dominated by NIH awards following a PI between institutions |
 

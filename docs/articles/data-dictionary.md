@@ -209,11 +209,13 @@ fields](https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vig
 | `award_family` | the include/exclude switch (loans, student aid) |
 | `flags` | `subawards_out_not_fetched` ⇒ `net_revenue = obligation_net` |
 
-**`$awards`** — the spine ([full dictionary, 33
+**`$awards`** — the spine ([full dictionary, 34
 fields](https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/awards.csv)):
 attributes as of the latest action, `total_obligated` (the
 reconciliation target), `obligated_in_extract` (what this window saw),
-and `n_recipients` (\> 1 flags PI-transfer awards).
+`n_recipients` (\> 1 flags PI-transfer awards), and `in_sample` (`FALSE`
+for subsidiary awards the parent-UEI match pulled in; see
+[`?us_panel`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_panel.md)).
 
 **`$transactions` / `$subawards`** — the normalized inputs, same shapes
 as §2 plus normalization flags (`is_zero_dollar`, `is_deobligation`,

@@ -30,6 +30,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -120,6 +121,12 @@
 <td>detecting and measuring disruption: a four-part taxonomy (termination, reduction, delay, transfer), the ten-year baseline, case ledgers, transaction types worth tracking, and what persists when an agency closes (USAID -&gt; State); runs on <code>disruption_sample</code> via <code><a href="reference/us_disruption_flags.html">us_disruption_flags()</a></code>
 </td>
 <td><code>data-raw/make-disruption-sample.R</code></td>
+</tr><tr class="even"><td><code>org-map.Rmd</code></td>
+<td>
+<strong>written</strong> (2026-09-18)</td>
+<td>UEIs vs organizations: the crosswalk, multiple registrations, parent/subsidiary UEIs and the parent-UEI match, <code>subsidiaries =</code>, what the crosswalk does not hold</td>
+<td>
+<code>ACCOUNTING.md</code> §7-8</td>
 </tr></tbody></table><p>The set is complete. Overlaps are handled by linking: <code>panel.Rmd</code> carries the loan/direct-payment treatment in depth, <code>acquisition.Rmd</code> the measured path comparison, and the others cross-reference rather than repeat.</p>
 <p>Teaching order matters more than completeness. A reader who has not yet internalised “an award is a ledger of modifications, not a payment” will misread every number in every other vignette, so the intro vignette must carry the worked eight-modification example from <code>ACCOUNTING.md</code> §1 before it shows a single aggregate.</p>
 <hr></div>

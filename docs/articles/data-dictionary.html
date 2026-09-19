@@ -45,6 +45,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -480,10 +481,12 @@ dictionary, 30 fields</a>):</p>
 </tbody>
 </table>
 <p><strong><code>$awards</code></strong> — the spine (<a href="https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/awards.csv" class="external-link">full
-dictionary, 33 fields</a>): attributes as of the latest action,
+dictionary, 34 fields</a>): attributes as of the latest action,
 <code>total_obligated</code> (the reconciliation target),
-<code>obligated_in_extract</code> (what this window saw), and
-<code>n_recipients</code> (&gt; 1 flags PI-transfer awards).</p>
+<code>obligated_in_extract</code> (what this window saw),
+<code>n_recipients</code> (&gt; 1 flags PI-transfer awards), and
+<code>in_sample</code> (<code>FALSE</code> for subsidiary awards the
+parent-UEI match pulled in; see <code><a href="../reference/us_panel.html">?us_panel</a></code>).</p>
 <p><strong><code>$transactions</code> / <code>$subawards</code></strong>
 — the normalized inputs, same shapes as §2 plus normalization flags
 (<code>is_zero_dollar</code>, <code>is_deobligation</code>,

@@ -45,6 +45,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -139,6 +140,13 @@ itself:</p>
 <td>subaward dollars <em>received</em> — see below</td>
 </tr>
 <tr class="even">
+<td><code>org_map</code></td>
+<td>UEI</td>
+<td>the crosswalk used: <code>org_id</code>, relationship, and which
+UEIs are in sample — see <code><a href="../articles/org-map.html">vignette("org-map")</a></code>
+</td>
+</tr>
+<tr class="odd">
 <td><code>meta</code></td>
 <td>—</td>
 <td>period, measure, de-obligation policy, build time</td>
@@ -148,7 +156,7 @@ itself:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "panel"        "awards"       "transactions" "subawards"    "subawards_in"</span></span>
-<span><span class="co">#&gt; [6] "meta"</span></span>
+<span><span class="co">#&gt; [6] "org_map"      "meta"</span></span>
 <span><span class="va">p</span><span class="op">$</span><span class="va">panel</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="fu">.</span><span class="op">(</span><span class="va">org_id</span>, <span class="va">award_key</span>, <span class="va">year</span>, <span class="va">obligation_net</span>, <span class="va">net_revenue</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;          org_id                                          award_key  year obligation_net</span></span>
 <span><span class="co">#&gt;          &lt;char&gt;                                             &lt;char&gt; &lt;int&gt;          &lt;num&gt;</span></span>

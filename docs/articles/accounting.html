@@ -45,6 +45,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -1491,7 +1492,7 @@ TN
 reports it (award-level fields are sparse across modifications).</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">p</span><span class="op">$</span><span class="va">awards</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 2166   32</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 2166   33</span></span></code></pre></div>
 <div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:260px; overflow-x: scroll; width:100%; ">
 <table class="table table table-striped table-condensed" style="font-size: 11px; margin-left: auto; margin-right: auto;">
 <thead><tr>
@@ -1696,6 +1697,9 @@ n_recipients
 <th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
 obligated_in_extract
 </th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+in_sample
+</th>
 </tr></thead>
 <tbody>
 <tr>
@@ -1795,6 +1799,9 @@ NA
 <td style="text-align:right;">
 188304619
 </td>
+<td style="text-align:left;">
+TRUE
+</td>
 </tr>
 <tr>
 <td style="text-align:left;">
@@ -1892,6 +1899,9 @@ NA
 </td>
 <td style="text-align:right;">
 143679156
+</td>
+<td style="text-align:left;">
+TRUE
 </td>
 </tr>
 <tr>
@@ -1991,6 +2001,9 @@ NA
 <td style="text-align:right;">
 141454389
 </td>
+<td style="text-align:left;">
+TRUE
+</td>
 </tr>
 <tr>
 <td style="text-align:left;">
@@ -2088,6 +2101,9 @@ NA
 </td>
 <td style="text-align:right;">
 77080095
+</td>
+<td style="text-align:left;">
+TRUE
 </td>
 </tr>
 <tr>
@@ -2187,6 +2203,9 @@ NA
 <td style="text-align:right;">
 122688213
 </td>
+<td style="text-align:left;">
+TRUE
+</td>
 </tr>
 <tr>
 <td style="text-align:left;">
@@ -2284,6 +2303,9 @@ NA
 </td>
 <td style="text-align:right;">
 107693015
+</td>
+<td style="text-align:left;">
+TRUE
 </td>
 </tr>
 <tr>
@@ -2383,6 +2405,9 @@ NA
 <td style="text-align:right;">
 49995944
 </td>
+<td style="text-align:left;">
+TRUE
+</td>
 </tr>
 <tr>
 <td style="text-align:left;">
@@ -2480,6 +2505,9 @@ NA
 </td>
 <td style="text-align:right;">
 42376789
+</td>
+<td style="text-align:left;">
+TRUE
 </td>
 </tr>
 <tr>
@@ -2579,6 +2607,9 @@ NA
 <td style="text-align:right;">
 952482
 </td>
+<td style="text-align:left;">
+TRUE
+</td>
 </tr>
 <tr>
 <td style="text-align:left;">
@@ -2676,6 +2707,9 @@ NA
 </td>
 <td style="text-align:right;">
 8233388
+</td>
+<td style="text-align:left;">
+TRUE
 </td>
 </tr>
 </tbody>
@@ -5530,7 +5564,7 @@ n_subawards_in
 <span><span class="co">#&gt;  $ deobligation_policy  : chr "as_posted"</span></span>
 <span><span class="co">#&gt;  $ subawards_out_fetched: logi TRUE</span></span>
 <span><span class="co">#&gt;  $ n_orgs               : int 1</span></span>
-<span><span class="co">#&gt;  $ built_at             : POSIXct[1:1], format: "2026-09-18 10:41:42"</span></span></code></pre></div>
+<span><span class="co">#&gt;  $ built_at             : POSIXct[1:1], format: "2026-09-18 20:57:28"</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">

@@ -40,6 +40,7 @@ level_timing (no rescaling – the method is charged for the level too)."></head
     <li><h6 class="dropdown-header" data-toc-skip>The pipeline</h6></li>
     <li><a class="dropdown-item" href="../articles/structure.html">Package architecture</a></li>
     <li><a class="dropdown-item" href="../articles/acquisition.html">Choosing an acquisition path: API jobs or annual archives</a></li>
+    <li><a class="dropdown-item" href="../articles/org-map.html">Organizations, UEIs and the crosswalk</a></li>
     <li><a class="dropdown-item" href="../articles/accounting.html">Accounting: from a raw ledger to net dollars per year</a></li>
     <li><a class="dropdown-item" href="../articles/panel.html">The panel: reading, rolling up, and deflating the output</a></li>
     <li><a class="dropdown-item" href="../articles/reconciliation.html">Reconciliation: accounting identities</a></li>
@@ -80,7 +81,7 @@ performance window). Reports both metrics from the experiment: <code>timing</cod
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">us_impute_eval</span><span class="op">(</span></span>
 <span>  <span class="va">training</span>,</span>
-<span>  cells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dur_bin"</span>, <span class="st">"late_start"</span><span class="op">)</span>,</span>
+<span>  cells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dur_bin"</span>, <span class="st">"late_start"</span>, <span class="st">"short_family"</span><span class="op">)</span>,</span>
 <span>  min_cell <span class="op">=</span> <span class="fl">8L</span>,</span>
 <span>  folds <span class="op">=</span> <span class="fl">5L</span>,</span>
 <span>  seed <span class="op">=</span> <span class="fl">1L</span></span>
@@ -120,12 +121,12 @@ metric), <code>by_class</code> (mean timing misallocation by <code>mod_class</co
 <span class="r-in"><span><span class="va">ev</span><span class="op">$</span><span class="va">summary</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    metric       method  mean median dollar_weighted</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    &lt;char&gt;       &lt;char&gt; &lt;num&gt;  &lt;num&gt;           &lt;num&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1:  level        model 0.300  0.232           0.292</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2:  level  even_spread 0.428  0.423           0.410</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3:  level as_obligated 0.847  0.968           0.815</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4: timing        model 0.281  0.220           0.276</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5: timing  even_spread 0.405  0.410           0.395</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6: timing as_obligated 0.746  0.898           0.752</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1:  level        model 0.350  0.303           0.350</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2:  level  even_spread 0.453  0.469           0.442</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3:  level as_obligated 0.745  0.884           0.734</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4: timing        model 0.340  0.291           0.314</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5: timing  even_spread 0.441  0.459           0.407</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6: timing as_obligated 0.658  0.829           0.648</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
