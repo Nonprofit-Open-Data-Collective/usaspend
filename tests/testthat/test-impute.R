@@ -69,6 +69,45 @@ test_that("reconcile = TRUE makes every imputed total equal net obligations", {
   expect_true(isTRUE(p2$meta$imputation$reconciled))
 })
 
+test_that("placeholder pop_end dates are treated as missing and flagged", {
+  tx <- data.table::data.table(
+    award_key = c("PLACEHOLDER", "PLACEHOLDER", "NORMAL"),
+    action_date = as.Date(c("2020-11-15", "2021-11-15", "2020-11-15")),
+    action_fiscal_year = c(2021L, 2022L, 2021L),
+    federal_action_obligation = c(600000, 400000, 500000),
+    pop_end_date = as.Date(c("2099-12-31", "2099-12-31", "2023-06-30")))
+  f <- us_outlay_features(tx)
+  ph <- f[award_key == "PLACEHOLDER"]
+  expect_true(ph$pop_end_implausible)
+  expect_equal(ph$pop_end_fy_reported, 2100L)
+  expect_true(is.na(ph$pop_end_fy))
+  expect_equal(ph$duration, 2L)          # obligation span, not 80 years
+  expect_false(f[award_key == "NORMAL"]$pop_end_implausible)
+  expect_equal(f[award_key == "NORMAL"]$pop_end_fy, 2023L)
+
+  imp <- suppressMessages(us_impute_outlays(tx))
+  expect_true(max(imp[award_key == "PLACEHOLDER", fy]) <= 2022L + 10L)
+  expect_true(all(grepl("pop_end_implausible",
+                        imp[award_key == "PLACEHOLDER", imputation_flags])))
+  expect_false(any(grepl("pop_end_missing",
+                         imp[award_key == "PLACEHOLDER", imputation_flags])))
+  expect_false(any(grepl("pop_end_implausible",
+                         imp[award_key == "NORMAL", imputation_flags])))
+
+  # the even-spread fallback also stays bounded (model with no support)
+  m0 <- outlay_model
+  m0$support$n_awards <- 0L
+  ev <- suppressMessages(us_impute_outlays(tx, model = m0))
+  expect_equal(ev[award_key == "PLACEHOLDER", sort(fy)], c(2021L, 2022L))
+  expect_equal(ev[award_key == "PLACEHOLDER", sum(outlay_imputed)],
+               m0$global_ratio * 1e6, tolerance = 1e-9)
+
+  # the rule can be disabled
+  f_off <- us_outlay_features(tx, max_pop_years = Inf)
+  expect_equal(f_off[award_key == "PLACEHOLDER"]$pop_end_fy, 2100L)
+  expect_false(f_off[award_key == "PLACEHOLDER"]$pop_end_implausible)
+})
+
 test_that("us_misallocation behaves at the boundaries", {
   expect_equal(us_misallocation(c(10, 90), c(10, 90)), 0)
   expect_equal(us_misallocation(c(90, 10), c(10, 90)), 0.8)

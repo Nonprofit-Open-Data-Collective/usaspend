@@ -341,7 +341,19 @@ Why a given award's cash column can or cannot be trusted:
   stamped on award records; no annual form; undercounts pre-mandate awards.
 * **`pop_start_date` / `pop_end_date`** — period of performance. The end
   date *moves*; the first reported value vs the final value is how
-  extensions and shortenings are detected.
+  extensions and shortenings are detected. Some end dates are placeholders
+  (HHS awards reporting 2079 or 2099) or multi-decade compliance periods
+  (HUD and Education direct payments, 20–34 years out) that carry no
+  information about cash timing. **Rule:** a final end FY more than 10
+  years past the last obligation FY is treated as missing
+  (`us_outlay_features(max_pop_years = 10)`). The reported year is kept as
+  `pop_end_fy_reported`, `duration` falls back to the obligation span, and
+  imputed rows are flagged `pop_end_implausible`. Without the rule, the
+  1,000-organization test pull spread $5.6M across 44 awards past FY2035,
+  with panel rows out to FY2099. With it, 228 awards (1.6% of those with
+  an end date, $45M net obligations) are re-windowed. The gap was 6 years
+  or less for over 98% of awards; the tail past 10 years is almost
+  entirely placeholders and long compliance periods.
 
 ## 7. In the package
 

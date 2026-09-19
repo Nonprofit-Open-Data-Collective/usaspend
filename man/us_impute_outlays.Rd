@@ -38,7 +38,12 @@ obligations, and a duration the training data supports (at least
 \code{min_cell} ground-truth awards of that duration -- the support envelope).
 Everything else -- missing period-of-performance dates, a missing start
 month, durations beyond the envelope -- falls back to even spread, with
-the reason in \code{imputation_flags}. An award still in progress is \emph{not} a
+the reason in \code{imputation_flags}. A period-of-performance end more than
+10 fiscal years past the last obligation (placeholders such as 2099) is
+treated as missing and flagged \code{pop_end_implausible}, so no award's cash
+is spread decades into the future; pass a feature table from
+\code{\link[=us_outlay_features]{us_outlay_features()}} with its \code{max_pop_years} to change the threshold.
+An award still in progress is \emph{not} a
 fallback case: the curve projects its remaining cash, including fiscal
 years after the data pull; those rows simply carry future \code{fy} values.
 }

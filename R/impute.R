@@ -31,19 +31,39 @@
 #'   \item{`single_year`}{All obligations in one fiscal year.}
 #' }
 #'
+#' @section Implausible end dates:
+#' Some awards carry placeholder period-of-performance end dates (2079,
+#' 2099) or multi-decade compliance periods that say nothing about when
+#' cash moves. A final end date whose fiscal year lies more than
+#' `max_pop_years` past the last obligation year is treated as **missing**
+#' for imputation: `pop_end_fy` is set to `NA` (so `duration` falls back to
+#' the obligation span), the reported year is kept in
+#' `pop_end_fy_reported`, and `pop_end_implausible` is `TRUE`. Imputed rows
+#' for such awards carry the flag `pop_end_implausible`. The default of 10
+#' years sits well beyond the model's longest duration bin (6+); in a
+#' 1,000-organization test pull the gap was 6 years or less for over 98% of
+#' awards with an end date.
+#'
 #' @param transactions A `data.table` matching `us_schema("transactions")`
 #'   (normalized or raw canonical).
+#' @param max_pop_years Largest plausible gap, in fiscal years, between the
+#'   last obligation and the final period-of-performance end. Longer gaps
+#'   are treated as a missing end date (see the section on implausible end
+#'   dates). `Inf` disables the rule.
 #' @return One row per award: identifiers, `first_fy`, `last_oblig_fy`,
 #'   `first_month` (fiscal month of the first action, Oct = 1),
 #'   `late_start` (first obligated Apr-Sep), obligation totals,
-#'   period-of-performance fields, `duration`, `dur_bin` (capped at 6),
+#'   period-of-performance fields (`pop_end_fy`, `pop_end_fy_reported`,
+#'   `pop_end_implausible`), `duration`, `dur_bin` (capped at 6),
 #'   extension/reduction booleans and `mod_class`.
 #' @export
 #' @examples
 #' f <- us_outlay_features(us_sample_extract()$transactions)
 #' f[, .N, by = mod_class]
-us_outlay_features <- function(transactions) {
-  stopifnot(is.data.frame(transactions))
+us_outlay_features <- function(transactions, max_pop_years = 10L) {
+  stopifnot(is.data.frame(transactions), is.numeric(max_pop_years),
+            length(max_pop_years) == 1L, !is.na(max_pop_years),
+            max_pop_years >= 0)
   need <- c("award_key", "action_date", "federal_action_obligation")
   missing <- setdiff(need, names(transactions))
   if (length(missing)) {
@@ -101,7 +121,12 @@ us_outlay_features <- function(transactions) {
     extended,                 "extension_timeline",
     last_oblig_fy > first_fy, "multi_year_incremental",
     default =                 "single_year")]
-  feat[, "pop_end_fy"  := fiscal_year(pop_final_end)]
+  ## placeholder / multi-decade end dates are not a cash window: treat as missing
+  feat[, "pop_end_fy_reported" := fiscal_year(pop_final_end)]
+  feat[, "pop_end_implausible" := !is.na(pop_end_fy_reported) &
+         pop_end_fy_reported - last_oblig_fy > max_pop_years]
+  feat[, "pop_end_fy" := data.table::fifelse(pop_end_implausible, NA_integer_,
+                                             as.integer(pop_end_fy_reported))]
   feat[, "pop0_end_fy" := fiscal_year(pop0_end)]
   feat[, "duration" := pmax(pop_end_fy - first_fy + 1L,
                             last_oblig_fy - first_fy + 1L, 1L)]
@@ -465,6 +490,8 @@ impute_from_features <- function(feat, model) {
     data.table::setattr(out, "global_ratio", model$global_ratio)
     return(out)
   }
+  ## feature tables built before the implausible-end rule lack the column
+  if (!"pop_end_implausible" %in% names(f)) f[, "pop_end_implausible" := FALSE]
   sup <- model$support
   f <- merge(f, sup, by = "dur_bin", all.x = TRUE)
   f[is.na(n_awards), "n_awards" := 0L]
@@ -477,7 +504,8 @@ impute_from_features <- function(feat, model) {
     data.table::fifelse(method == "even_spread" & n_awards < model$min_cell &
                           !is.na(first_fy) & !is.na(oblig) & oblig > 0,
                         "duration_outside_support", ""),
-    data.table::fifelse(is.na(pop_end_fy), "pop_end_missing", ""),
+    data.table::fifelse(pop_end_implausible, "pop_end_implausible",
+      data.table::fifelse(is.na(pop_end_fy), "pop_end_missing", "")),
     data.table::fifelse(is.na(late_start), "start_month_missing", ""),
     data.table::fifelse(method == "none", "nonpositive_obligation", "")))]
   f[, "flags" := gsub("\\s+", ";", flags)]
@@ -551,7 +579,12 @@ impute_from_features <- function(feat, model) {
 #' `min_cell` ground-truth awards of that duration -- the support envelope).
 #' Everything else -- missing period-of-performance dates, a missing start
 #' month, durations beyond the envelope -- falls back to even spread, with
-#' the reason in `imputation_flags`. An award still in progress is *not* a
+#' the reason in `imputation_flags`. A period-of-performance end more than
+#' 10 fiscal years past the last obligation (placeholders such as 2099) is
+#' treated as missing and flagged `pop_end_implausible`, so no award's cash
+#' is spread decades into the future; pass a feature table from
+#' [us_outlay_features()] with its `max_pop_years` to change the threshold.
+#' An award still in progress is *not* a
 #' fallback case: the curve projects its remaining cash, including fiscal
 #' years after the data pull; those rows simply carry future `fy` values.
 #'

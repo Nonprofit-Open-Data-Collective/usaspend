@@ -4,17 +4,23 @@
 \alias{us_outlay_features}
 \title{Award-level features for outlay imputation}
 \usage{
-us_outlay_features(transactions)
+us_outlay_features(transactions, max_pop_years = 10L)
 }
 \arguments{
 \item{transactions}{A \code{data.table} matching \code{us_schema("transactions")}
 (normalized or raw canonical).}
+
+\item{max_pop_years}{Largest plausible gap, in fiscal years, between the
+last obligation and the final period-of-performance end. Longer gaps
+are treated as a missing end date (see the section on implausible end
+dates). \code{Inf} disables the rule.}
 }
 \value{
 One row per award: identifiers, \code{first_fy}, \code{last_oblig_fy},
 \code{first_month} (fiscal month of the first action, Oct = 1),
 \code{late_start} (first obligated Apr-Sep), obligation totals,
-period-of-performance fields, \code{duration}, \code{dur_bin} (capped at 6),
+period-of-performance fields (\code{pop_end_fy}, \code{pop_end_fy_reported},
+\code{pop_end_implausible}), \code{duration}, \code{dur_bin} (capped at 6),
 extension/reduction booleans and \code{mod_class}.
 }
 \description{
@@ -36,6 +42,21 @@ money -- a no-cost extension.}
 year, no material extension or reduction.}
 \item{\code{single_year}}{All obligations in one fiscal year.}
 }
+}
+
+\section{Implausible end dates}{
+
+Some awards carry placeholder period-of-performance end dates (2079,
+2099) or multi-decade compliance periods that say nothing about when
+cash moves. A final end date whose fiscal year lies more than
+\code{max_pop_years} past the last obligation year is treated as \strong{missing}
+for imputation: \code{pop_end_fy} is set to \code{NA} (so \code{duration} falls back to
+the obligation span), the reported year is kept in
+\code{pop_end_fy_reported}, and \code{pop_end_implausible} is \code{TRUE}. Imputed rows
+for such awards carry the flag \code{pop_end_implausible}. The default of 10
+years sits well beyond the model's longest duration bin (6+); in a
+1,000-organization test pull the gap was 6 years or less for over 98\% of
+awards with an end date.
 }
 
 \examples{
