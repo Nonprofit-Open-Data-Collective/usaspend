@@ -13,8 +13,9 @@ us_reconcile(panel, tolerance = 1)
 }
 \value{
 A \code{data.table}, one row per award: \code{tx_sum}, \code{reported}, \code{gap},
-\code{status} (\code{"ok"}, \code{"no_reported_total"}, \code{"window_edge"},
-\code{"multi_recipient"}, \code{"recent_open"}, \code{"break"}), and the outlay ratio.
+\code{status} (\code{"out_of_sample"}, \code{"no_reported_total"}, \code{"ok"},
+\code{"multi_recipient"}, \code{"window_edge"}, \code{"recent_open"}, \code{"break"}, tested
+in that order), the outlay ratio, and \code{in_sample}.
 }
 \description{
 The invariant: for an award whose whole history is inside the extract, the
@@ -22,6 +23,43 @@ sum of \code{federal_action_obligation} across its transactions equals the
 award's reported lifetime total. A break is classified, not just counted --
 most breaks are structural (truncation, recipient changes), not bugs.
 }
+\details{
+An award is \code{window_edge} when its history evidently begins before the pull
+window: its earliest reported period-of-performance start (on the award
+record or any of its transactions) precedes the first action date in the
+extract, or its first in-extract action falls within a year of the window
+opening. The second test alone misses awards made before the window whose
+first in-window action is a later modification: \code{base_action_date} is the
+earliest action \emph{in the extract}, so it can never precede the window. The
+period-of-performance test is added to it rather than replacing it, because
+a later modification can move an award's reported start date forward past
+its first obligation.
+}
+\section{Out-of-sample awards}{
+
+An award is \code{"out_of_sample"} when none of its transactions carry a
+recipient UEI in the panel's organization map -- the UEIs whose own
+histories \code{\link[=us_extract]{us_extract()}} pulled. The bulk download filters on
+\code{recipient_search_text}, which also matches a transaction's \emph{parent} UEI
+(see \code{\link[=us_download_submit]{us_download_submit()}}), so querying a parent returns its
+subsidiaries' transactions -- but only those filed while the parent was
+recorded as parent. Querying RTI (\code{JJHCMK4NT5N3}) returned transactions of
+its subsidiary International Resources Group from 2017 on, after the
+acquisition; the same awards' earlier actions, filed under the previous
+parents, were not returned. Such a history is truncated by construction, so
+the identity fails for reasons that say nothing about the netting.
+
+The test runs first, ahead of every other label: an out-of-sample award is
+not part of the organization's panel whether or not it happens to
+reconcile. \code{\link[=us_panel]{us_panel()}} already leaves these transactions out of \code{panel};
+they stay in \code{awards} and \code{transactions}, flagged \code{in_sample = FALSE}, so
+the leak stays visible. To count subsidiaries as part of their parents,
+extract their full histories with \code{us_extract(subsidiaries = TRUE)} or
+\code{\link[=us_add_subsidiaries]{us_add_subsidiaries()}}; see \code{vignette("org-map")}. Panels built before
+\code{\link[=us_panel]{us_panel()}} recorded its organization map fall back to the transactions'
+\code{is_stray_uei} flag.
+}
+
 \examples{
 p <- us_panel(us_sample_extract())
 r <- us_reconcile(p)

@@ -31,3 +31,4 @@ n_transactions,integer,derived,Number of actions on this award inside the extrac
 n_years,integer,derived,Number of distinct years with actions inside the window.
 n_recipients,integer,derived,Distinct recipient UEIs seen on this award's transactions in the window. Greater than 1 flags multi-recipient awards (PI transfers) whose slices belong to different organizations.
 obligated_in_extract,numeric,derived,Sum of this award's obligations inside the extract window. Compared with total_obligated by us_reconcile(); differs legitimately when the award's history extends beyond the window.
+in_sample,logical,derived,"TRUE when at least one of the award's transactions is on a UEI in the organization map. FALSE marks awards returned only because recipient_search_text also matches the parent UEI (subsidiaries, with truncated histories); they are left out of the panel and us_reconcile() labels them out_of_sample. Added by us_panel()."

@@ -1,0 +1,352 @@
+# usaspend
+
+An R package that takes a list of SAM.gov UEIs and returns a clean,
+normalized panel of federal award activity from USAspending.gov, at
+**organization × award × year** grain.
+
+> **Status: acquisition layer works; the accounting layer is specified
+> but not yet implemented.** The normalization and netting functions are
+> documented placeholders that fail loudly with a pointer to their
+> specification. They are being written against a 50-nonprofit pilot
+> extract. See
+> [PLAN.md](https://nonprofit-open-data-collective.github.io/usaspend/PLAN.md)
+> §7 for the roadmap.
+
+## What it does
+
+Transaction data is a ledger of promises: new awards, continuations,
+revisions, zero-dollar administrative modifications, and claw-backs. The
+panel needs one row per organization, award and year carrying the
+awarding agency, the award type, the net dollars obligated in that year,
+and the dollars passed through as subawards.
+
+``` r
+# one organization
+ex <- us_extract("CFFMYPABYAG3", years = 2015:2025, subawards = "both")
+
+# a batch, via the annual bulk archives instead of the API
+ueis <- readLines("TOP1000-UEIS.txt")
+ex   <- us_extract(ueis, years = 2008:2025, source = "archive")
+
+# not implemented yet -- see ACCOUNTING.md
+p <- us_panel(ex, org_map = crosswalk, period = "calendar")
+```
+
+Not sure which path?
+[`us_extract_plan()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_extract_plan.md)
+costs both from measured constants and recommends one; `source = "auto"`
+follows it. Crossover is around 2,900 UEIs at 18 fiscal years.
+
+## Two acquisition paths, one schema
+
+|  | API (`source = "api"`) | Archive (`source = "archive"`) |
+|----|----|----|
+| endpoint | `POST /api/v2/download/transactions/` | `FY####_All_{Assistance,Contracts}_Full.zip` |
+| cost scales with | number of UEIs | number of fiscal years |
+| best for | one org, or up to a few thousand UEIs | large batches |
+| subawards | inbound only, as a by-product | none |
+
+Both land on the same canonical schema
+([`us_schema()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_schema.md)),
+so nothing downstream knows or cares which was used.
+
+## Three things that will bite you
+
+1.  **Obligations are not payments.** The panel measures commitments.
+    Federal award data carries no annual cash figure — lifetime outlays
+    only, and those are complete only for awards begun after the FY2022
+    monthly reporting mandate (for some agencies not even then).
+    `us_money_column("outlay")` errors rather than substituting
+    something close;
+    [`us_add_outlays()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_add_outlays.md)
+    can attach account-level annual outlays to a fiscal panel as a
+    separate, coverage-graded column.
+2.  **Bulk subawards run the wrong way.** Filtering on
+    `recipient_search_text` returns subawards where your UEI is the
+    *subawardee*, not the prime. A three-UEI test pull returned 32
+    subaward rows, all 32 inbound. Pass-through has to be queried per
+    prime award —
+    [`us_fetch_subawards_out()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_out.md).
+3.  **De-obligations are real and must be kept.** Dropping them inflates
+    every affected year. Which year a claw-back lands in is a policy
+    choice, not a cleanup step; both policies are implemented and
+    neither is applied silently.
+
+## Documentation
+
+- **[PLAN.md](https://nonprofit-open-data-collective.github.io/usaspend/PLAN.md)**
+  — architecture, both acquisition paths with measured constraints,
+  roadmap, open questions
+- **[ACCOUNTING.md](https://nonprofit-open-data-collective.github.io/usaspend/ACCOUNTING.md)**
+  — the reconciliation rules: what counts as money, netting,
+  de-obligation policy, subaward direction, reconciliation invariants
+
+## Install
+
+``` r
+# install.packages("remotes")
+remotes::install_github("Nonprofit-Open-Data-Collective/usaspend")
+```
+
+Requires `httr2`, `data.table`, `duckdb`, `DBI` and `cli`.
+
+## Test fixture
+
+[`us_sample_extract()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_sample_extract.md)
+returns a real 152-row three-UEI pull, shipped verbatim. It is small but
+already contains an award whose transactions reconcile exactly to its
+lifetime total, a de-obligating revision, 30 zero-dollar administrative
+modifications, IDV rows with blank award types, unstable description
+strings, and a \$40M ceiling against \$0 obligated. It caught two live
+bugs during development.
+
+## License
+
+MIT © Nonprofit Open Data Collective
+
+# Package index
+
+## The pipeline
+
+From a list of UEIs to an ORG x AWARD x YEAR panel of net federal
+revenue.
+[`us_extract()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_extract.md)
+acquires,
+[`us_panel()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_panel.md)
+normalizes and nets,
+[`us_rollup()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_rollup.md)
+aggregates.
+
+- [`us_extract()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_extract.md)
+  : Extract raw award data for a set of UEIs
+- [`us_panel()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_panel.md)
+  : Build the organization x award x year panel
+- [`us_rollup()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_rollup.md)
+  : Roll the panel up across grouping dimensions
+- [`us_adjust_inflation()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_adjust_inflation.md)
+  : Adjust panel dollars for inflation
+- [`us_org_year()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_org_year.md)
+  : Roll the award panel up to organization x year
+
+## Planning an extraction
+
+Cost the API path against the annual-archive path before pulling.
+
+- [`us_extract_plan()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_extract_plan.md)
+  : Plan an extraction before running it
+- [`us_award_counts()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_award_counts.md)
+  : Pre-flight award counts for a set of UEIs
+- [`us_validate_uei()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_validate_uei.md)
+  : Validate a vector of UEIs
+- [`us_org_map()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_org_map.md)
+  : Map UEIs to organizations
+
+## Acquisition: REST API
+
+Bulk transaction download jobs, for one organization or a small batch.
+
+- [`us_download_run()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_download_run.md)
+  : Run a set of download jobs to completion
+- [`us_download_submit()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_download_submit.md)
+  : Submit a bulk transaction download job
+- [`us_download_status()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_download_status.md)
+  : Poll a download job
+- [`us_download_fetch()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_download_fetch.md)
+  : Download and unzip finished jobs
+- [`us_api()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_api.md)
+  : Call the USAspending API
+
+## Acquisition: annual archives
+
+Whole-fiscal-year files filtered locally with duckdb, for large batches.
+
+- [`us_archive_manifest()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_archive_manifest.md)
+  : List available annual archive files
+- [`us_archive_size()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_archive_size.md)
+  : Size an archive pull before committing to it
+- [`us_archive_download()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_archive_download.md)
+  : Download and unpack annual archives
+- [`us_archive_filter()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_archive_filter.md)
+  : Filter unpacked archives down to a set of UEIs
+- [`us_archive_verify_schema()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_archive_verify_schema.md)
+  : Check that an archive matches the canonical field map
+
+## Subawards
+
+Pass-through paid (fetched by prime award) and subawards received (a
+by-product of recipient-filtered pulls). Direction matters.
+
+- [`us_fetch_subawards_batch()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_batch.md)
+  : Batched outbound subaward fetch
+- [`us_fetch_subawards_out()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_out.md)
+  : Subawards paid out by a prime award
+- [`us_fetch_subawards_in()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_subawards_in.md)
+  : Fetch inbound subawards for a set of UEIs
+- [`us_fetch_award()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_award.md)
+  : Prime award overview
+- [`us_subaward_by_year()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_subaward_by_year.md)
+  : Aggregate subawards by year
+
+## Annual outlays (File C)
+
+The optional cash layer. Annual disbursements exist only in
+account-level File C data, complete only from the FY2022 monthly mandate
+and absent for whole agencies – fetched per award, graded for coverage,
+and attached to a fiscal panel without ever substituting for
+obligations.
+
+- [`us_fetch_outlays()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_fetch_outlays.md)
+  : Fetch account-level (File C) funding history per award
+- [`us_outlays_by_year()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_outlays_by_year.md)
+  : Collapse File C funding records to annual outlays per award
+- [`us_add_outlays()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_add_outlays.md)
+  : Attach annual outlays to a panel
+
+## Outlay imputation
+
+Where real File C outlays don’t reach, impute the cash calendar from
+obligations: liquidation curves fitted on reconciled ground truth, with
+an explicit even-spread fallback outside the model’s support.
+
+- [`us_impute_outlays()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_impute_outlays.md)
+  : Impute annual outlays from obligations data
+- [`us_add_imputed_outlays()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_add_imputed_outlays.md)
+  : Attach imputed outlays to a panel
+- [`us_impute_fit()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_impute_fit.md)
+  : Fit a liquidation-curve outlay model
+- [`us_impute_eval()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_impute_eval.md)
+  : Cross-validated evaluation of an outlay-imputation configuration
+- [`us_outlay_training()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_outlay_training.md)
+  : Build an outlay-imputation training set
+- [`us_outlay_features()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_outlay_features.md)
+  : Award-level features for outlay imputation
+- [`us_misallocation()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_misallocation.md)
+  : Misallocation share between an imputed and an actual annual series
+- [`outlay_model`](https://nonprofit-open-data-collective.github.io/usaspend/reference/outlay_model.md)
+  : The default liquidation-curve outlay model
+- [`outlay_training`](https://nonprofit-open-data-collective.github.io/usaspend/reference/outlay_training.md)
+  : Outlay-imputation ground truth
+
+## Disruption
+
+Detecting terminations, reductions, delays and transfers from the
+non-monetary fields of the ledger – action codes, end-date and ceiling
+changes, description text. See
+[`vignette("disruption")`](https://nonprofit-open-data-collective.github.io/usaspend/articles/disruption.md).
+
+- [`us_disruption_flags()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_disruption_flags.md)
+  : Flag disruption signals on a transaction ledger
+- [`disruption_sample`](https://nonprofit-open-data-collective.github.io/usaspend/reference/disruption_sample.md)
+  : Disruption in federal funding: a 1,000-nonprofit sample,
+  FY2016–FY2026
+
+## Normalization and accounting
+
+The rules that turn a raw modification ledger into clean signed
+transactions, specified in ACCOUNTING.md.
+
+- [`us_normalize_transactions()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_normalize_transactions.md)
+  : Normalize a raw transaction ledger
+- [`us_normalize_awards()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_normalize_awards.md)
+  : Build the prime award spine
+- [`us_normalize_subawards()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_normalize_subawards.md)
+  : Normalize a subaward ledger and assign direction
+- [`us_ledger()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_ledger.md)
+  : Build a signed accounting ledger
+- [`us_net_by_year()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_net_by_year.md)
+  : Net an award ledger into organization x award x year records
+- [`us_money_column()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_money_column.md)
+  : Which transaction amount counts as money
+
+## Schema and code tables
+
+- [`us_schema()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_schema.md)
+  [`us_empty()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_schema.md)
+  : Canonical table schemas
+- [`us_harmonize_transactions()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_harmonize_transactions.md)
+  [`us_harmonize_subawards()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_harmonize_transactions.md)
+  : Harmonize raw USAspending files to the canonical schema
+- [`us_classify_award_type()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_classify_award_type.md)
+  : Classify award type codes
+- [`us_classify_action()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_classify_action.md)
+  : Classify transaction action types
+- [`us_award_type_codes()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_award_type_codes.md)
+  : Award type codes accepted by the download endpoints
+
+## Reconciliation and audit
+
+External and structural checks, run on every rebuild.
+
+- [`us_reconcile()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_reconcile.md)
+  : Reconcile netted transactions against award lifetime totals
+- [`us_audit()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_audit.md)
+  : Audit a finished panel
+
+## Example data
+
+Vanderbilt University Medical Center, FY2008-FY2025 - a complete
+single-organization example shipped with the package: raw transactions,
+subawards in both directions, and the finished panel.
+
+- [`vumc_transactions`](https://nonprofit-open-data-collective.github.io/usaspend/reference/vumc_transactions.md)
+  : Vanderbilt University Medical Center: raw transactions
+- [`vumc_subawards`](https://nonprofit-open-data-collective.github.io/usaspend/reference/vumc_subawards.md)
+  : Vanderbilt University Medical Center: subaward rows, both directions
+- [`vumc_panel`](https://nonprofit-open-data-collective.github.io/usaspend/reference/vumc_panel.md)
+  : Vanderbilt University Medical Center: the finished panel
+
+## Reference data and infrastructure
+
+- [`us_price_index()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_price_index.md)
+  : Annual price index bundled with the package
+- [`us_sample_extract()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_sample_extract.md)
+  : A bundled sample extract
+- [`us_cache_dir()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_cache_dir.md)
+  [`us_cache_clear()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_cache_dir.md)
+  [`us_cache_status()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_cache_dir.md)
+  : Cache location
+- [`usaspend-options`](https://nonprofit-open-data-collective.github.io/usaspend/reference/usaspend-options.md)
+  : Package options
+- [`usaspend`](https://nonprofit-open-data-collective.github.io/usaspend/reference/usaspend-package.md)
+  [`usaspend-package`](https://nonprofit-open-data-collective.github.io/usaspend/reference/usaspend-package.md)
+  : usaspend: Normalized Federal Award Panels from USAspending
+
+# Articles
+
+### The data
+
+- [How USAspending data is
+  structured](https://nonprofit-open-data-collective.github.io/usaspend/articles/data-model.md):
+- [Data dictionary: tables, keys, and
+  relationships](https://nonprofit-open-data-collective.github.io/usaspend/articles/data-dictionary.md):
+- [Award types: what is actually in the
+  data](https://nonprofit-open-data-collective.github.io/usaspend/articles/award-types.md):
+- [Subawards: pass-through, direction, and what FSRS cannot
+  see](https://nonprofit-open-data-collective.github.io/usaspend/articles/subawards.md):
+- [Obligations versus outlays: the two
+  ledgers](https://nonprofit-open-data-collective.github.io/usaspend/articles/obligations-outlays.md):
+
+### The pipeline
+
+- [Package
+  architecture](https://nonprofit-open-data-collective.github.io/usaspend/articles/structure.md):
+- [Choosing an acquisition path: API jobs or annual
+  archives](https://nonprofit-open-data-collective.github.io/usaspend/articles/acquisition.md):
+- [Accounting: from a raw ledger to net dollars per
+  year](https://nonprofit-open-data-collective.github.io/usaspend/articles/accounting.md):
+- [The panel: reading, rolling up, and deflating the
+  output](https://nonprofit-open-data-collective.github.io/usaspend/articles/panel.md):
+- [Reconciliation: accounting
+  identities](https://nonprofit-open-data-collective.github.io/usaspend/articles/reconciliation.md):
+
+### Outlays
+
+- [Imputing outlays: turning promises into a cash
+  calendar](https://nonprofit-open-data-collective.github.io/usaspend/articles/imputation.md):
+- [Fitting an outlay-imputation
+  model](https://nonprofit-open-data-collective.github.io/usaspend/articles/imputation-fitting.md):
+
+### Disruption
+
+- [Detecting disruption in federal
+  funding](https://nonprofit-open-data-collective.github.io/usaspend/articles/disruption.md):

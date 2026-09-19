@@ -21,11 +21,46 @@
 #' award's reported lifetime total. A break is classified, not just counted --
 #' most breaks are structural (truncation, recipient changes), not bugs.
 #'
+#' An award is `window_edge` when its history evidently begins before the pull
+#' window: its earliest reported period-of-performance start (on the award
+#' record or any of its transactions) precedes the first action date in the
+#' extract, or its first in-extract action falls within a year of the window
+#' opening. The second test alone misses awards made before the window whose
+#' first in-window action is a later modification: `base_action_date` is the
+#' earliest action *in the extract*, so it can never precede the window. The
+#' period-of-performance test is added to it rather than replacing it, because
+#' a later modification can move an award's reported start date forward past
+#' its first obligation.
+#'
 #' @param panel A `usaspend_panel` from [us_panel()].
 #' @param tolerance Absolute dollar tolerance for the identity.
 #' @return A `data.table`, one row per award: `tx_sum`, `reported`, `gap`,
-#'   `status` (`"ok"`, `"no_reported_total"`, `"window_edge"`,
-#'   `"multi_recipient"`, `"recent_open"`, `"break"`), and the outlay ratio.
+#'   `status` (`"out_of_sample"`, `"no_reported_total"`, `"ok"`,
+#'   `"multi_recipient"`, `"window_edge"`, `"recent_open"`, `"break"`, tested
+#'   in that order), the outlay ratio, and `in_sample`.
+#'
+#' @section Out-of-sample awards:
+#' An award is `"out_of_sample"` when none of its transactions carry a
+#' recipient UEI in the panel's organization map -- the UEIs whose own
+#' histories [us_extract()] pulled. The bulk download filters on
+#' `recipient_search_text`, which also matches a transaction's *parent* UEI
+#' (see [us_download_submit()]), so querying a parent returns its
+#' subsidiaries' transactions -- but only those filed while the parent was
+#' recorded as parent. Querying RTI (`JJHCMK4NT5N3`) returned transactions of
+#' its subsidiary International Resources Group from 2017 on, after the
+#' acquisition; the same awards' earlier actions, filed under the previous
+#' parents, were not returned. Such a history is truncated by construction, so
+#' the identity fails for reasons that say nothing about the netting.
+#'
+#' The test runs first, ahead of every other label: an out-of-sample award is
+#' not part of the organization's panel whether or not it happens to
+#' reconcile. [us_panel()] already leaves these transactions out of `panel`;
+#' they stay in `awards` and `transactions`, flagged `in_sample = FALSE`, so
+#' the leak stays visible. To count subsidiaries as part of their parents,
+#' extract their full histories with `us_extract(subsidiaries = TRUE)` or
+#' [us_add_subsidiaries()]; see `vignette("org-map")`. Panels built before
+#' [us_panel()] recorded its organization map fall back to the transactions'
+#' `is_stray_uei` flag.
 #' @export
 #' @examples
 #' p <- us_panel(us_sample_extract())
@@ -42,9 +77,18 @@ us_reconcile <- function(panel, tolerance = 1) {
   sums <- tx[, .(tx_sum = sum(federal_action_obligation, na.rm = TRUE)),
              by = award_key]
   r <- merge(aw[, c("award_key", "total_obligated", "total_outlayed",
-                    "base_action_date", "latest_action_date", "n_recipients")],
+                    "base_action_date", "latest_action_date", "n_recipients",
+                    "pop_start_date")],
              sums, by = "award_key", all.x = TRUE)
   r[is.na(tx_sum), "tx_sum" := 0]
+
+  ## earliest period-of-performance start on record. The award row carries the
+  ## latest-reported value, which later modifications can move forward, so the
+  ## transactions' own values are consulted too.
+  pop <- tx[!is.na(pop_start_date), .(pop_tx = min(pop_start_date)),
+            by = award_key]
+  r[pop, "pop_start_date" := pmin(pop_start_date, i.pop_tx, na.rm = TRUE),
+    on = "award_key"]
   r[, "gap" := total_obligated - tx_sum]
   r[, "outlay_ratio" := data.table::fifelse(
       !is.na(total_outlayed) & !is.na(total_obligated) & total_obligated != 0,
@@ -54,23 +98,54 @@ us_reconcile <- function(panel, tolerance = 1) {
   win_lo <- suppressWarnings(min(tx$action_date, na.rm = TRUE))
   win_hi <- suppressWarnings(max(tx$action_date, na.rm = TRUE))
 
+  ## awards held entirely by UEIs outside the organization map -- chiefly
+  ## subsidiaries matched through their parent UEI -- are not the sample's
+  r[, "in_sample" := award_key %in% in_sample_awards(panel)]
+
   r[, "status" := data.table::fcase(
-      is.na(total_obligated),                       "no_reported_total",
+      !in_sample,                                   "out_of_sample",
+      is.na(total_obligated),                      "no_reported_total",
       abs(gap) <= tolerance,                        "ok",
       n_recipients > 1L,                            "multi_recipient",
+      !is.na(pop_start_date) & pop_start_date < win_lo, "window_edge",
       base_action_date <= win_lo + 370,             "window_edge",
       latest_action_date >= win_hi - 370,           "recent_open",
       default = "break")]
+  r[, "pop_start_date" := NULL]
 
   tally <- r[, .N, by = status][order(-N)]
   us_msg(c("Reconciled {nrow(r)} award{?s}: {r[status == 'ok', .N]} exact ({round(100 * r[status == 'ok', .N] / max(nrow(r), 1))}%).",
            "*" = "{paste0(tally$status, '=', tally$N, collapse = ' ')}"))
+  n_out <- r[status == "out_of_sample", .N]
+  if (n_out) {
+    us_msg("{n_out} award{?s} held only by UEIs outside the organization map: {.val out_of_sample} (typically subsidiaries matched through a parent UEI, histories truncated).")
+  }
   n_hard <- r[status == "break", .N]
   if (n_hard) {
     cli::cli_warn("{n_hard} award{?s} break the lifetime identity with no structural explanation -- inspect before publishing.")
   }
   data.table::setorderv(r, "gap", order = -1L)
   r[]
+}
+
+## Award keys with at least one transaction on a UEI in the panel's
+## organization map. Panels built before us_panel() stored the map fall back
+## to the requested-UEI flag set by us_normalize_transactions().
+in_sample_awards <- function(panel) {
+  tx <- panel$transactions
+  if (!nrow(tx)) return(character(0))
+  om <- panel$org_map
+  uei <- if (is.null(om)) NULL else if ("in_sample" %in% names(om)) {
+    om$uei[om$in_sample]
+  } else om$uei
+  keep <- if (!is.null(uei)) {
+    !is.na(tx$recipient_uei) & tx$recipient_uei %in% uei
+  } else if ("is_stray_uei" %in% names(tx)) {
+    !tx$is_stray_uei
+  } else {
+    rep(TRUE, nrow(tx))
+  }
+  unique(tx$award_key[keep])
 }
 
 #' Audit a finished panel

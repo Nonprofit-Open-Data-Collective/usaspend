@@ -33,6 +33,8 @@ reference:
   - us_award_counts
   - us_validate_uei
   - us_org_map
+  - us_find_subsidiaries
+  - us_add_subsidiaries
 
 - title: "Acquisition: REST API"
   desc: Bulk transaction download jobs, for one organization or a small batch.
@@ -90,6 +92,15 @@ reference:
   - us_misallocation
   - outlay_model
   - outlay_training
+
+- title: Disruption
+  desc: >
+    Detecting terminations, reductions, delays and transfers from the
+    non-monetary fields of the ledger -- action codes, end-date and ceiling
+    changes, description text. See `vignette("disruption")`.
+  contents:
+  - us_disruption_flags
+  - disruption_sample
 
 - title: Normalization and accounting
   desc: >
@@ -153,6 +164,7 @@ articles:
   contents:
   - structure
   - acquisition
+  - org-map
   - accounting
   - panel
   - reconciliation
@@ -161,3 +173,7 @@ articles:
   contents:
   - imputation
   - imputation-fitting
+- title: Disruption
+  navbar: Disruption
+  contents:
+  - disruption

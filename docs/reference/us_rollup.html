@@ -41,6 +41,9 @@ paid), and inflows (subawards received, which never appear in prime data)."></he
     <li><h6 class="dropdown-header" data-toc-skip>Outlays</h6></li>
     <li><a class="dropdown-item" href="../articles/imputation.html">Imputing outlays: turning promises into a cash calendar</a></li>
     <li><a class="dropdown-item" href="../articles/imputation-fitting.html">Fitting an outlay-imputation model</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Disruption</h6></li>
+    <li><a class="dropdown-item" href="../articles/disruption.html">Detecting disruption in federal funding</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -198,6 +201,7 @@ where an organization is prime and subawardee on the same award).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 35: H7LMD1ANJNN4  2024        4              9             4761584</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 36: H7LMD1ANJNN4  2025        3              6              368879</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>           org_id  year n_awards n_transactions obligation_positive</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           &lt;char&gt; &lt;int&gt;    &lt;int&gt;          &lt;int&gt;               &lt;num&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     obligation_negative obligation_net loan_face_value subaward_out_amount</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                   &lt;num&gt;          &lt;num&gt;           &lt;num&gt;               &lt;num&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1:                0.00       27370.00               0                   0</span>
@@ -237,6 +241,7 @@ where an organization is prime and subawardee on the same award).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 35:          -310999.00     4450585.00               0                   0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 36:                0.00      368879.00               0                   0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     obligation_negative obligation_net loan_face_value subaward_out_amount</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                   &lt;num&gt;          &lt;num&gt;           &lt;num&gt;               &lt;num&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     n_subawards_out subaward_in_amount n_subawards_in net_revenue   total_net</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>               &lt;int&gt;              &lt;num&gt;          &lt;int&gt;       &lt;num&gt;       &lt;num&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1:               0                0.0              0    27370.00    27370.00</span>
@@ -276,6 +281,7 @@ where an organization is prime and subawardee on the same award).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 35:               0          1665812.0              5  4450585.00  6116397.00</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 36:               0          1680678.0              4   368879.00  2049557.00</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     n_subawards_out subaward_in_amount n_subawards_in net_revenue   total_net</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>               &lt;int&gt;              &lt;num&gt;          &lt;int&gt;       &lt;num&gt;       &lt;num&gt;</span>
 <span class="r-in"><span><span class="fu">us_rollup</span><span class="op">(</span><span class="va">p</span>, org_id <span class="op">=</span> <span class="cn">FALSE</span>, year <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>  <span class="co"># sector-wide trend</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Key: &lt;year&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      year n_awards n_transactions obligation_positive obligation_negative</span>
@@ -369,7 +375,7 @@ where an organization is prime and subawardee on the same award).</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

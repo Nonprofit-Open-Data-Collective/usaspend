@@ -1,7 +1,11 @@
 # The packaged VUMC example data: schema conformance and internal consistency.
 
 test_that("vumc_transactions matches the canonical schema", {
-  expect_identical(names(vumc_transactions), us_schema("transactions")$field)
+  ## built before the optional disruption fields existed; normalization fills them
+  expect_identical(names(vumc_transactions),
+                   setdiff(us_schema("transactions")$field, usaspend:::tx_optional_fields()))
+  expect_true(all(usaspend:::tx_optional_fields() %in%
+                  names(suppressMessages(us_normalize_transactions(vumc_transactions)))))
   expect_equal(nrow(vumc_transactions), 12085L)
   expect_equal(unique(vumc_transactions$recipient_uei), "GYLUH9UXHDX5")
   # the claw-back featured in the accounting vignette is present

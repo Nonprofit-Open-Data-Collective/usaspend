@@ -26,10 +26,10 @@ utils::globalVariables(c(
   "awarding_agency_code", "awarding_agency_name", "awarding_sub_agency_name",
   "base_action_date", "cfda_number", "cfda_title", "correction_delete_code",
   "deobligation_prior_year", "flags", "funding_agency_name", "gap",
-  "i.subaward_count", "i.subaward_total", "i.recipient_uei", "latest_action_date",
+  "i.subaward_count", "i.subaward_total", "i.recipient_uei", "i.pop_tx", "latest_action_date",
   "loan_face_value", "loan_subsidy_cost", "n", "N", "n_recipients",
   "award_id", "award_total_obligated", "award_total_outlayed",
-  "n_subawards_in", "n_subawards_out", "n_transactions", "naics_code",
+  "in_sample", "n_subawards_in", "n_subawards_out", "n_transactions", "naics_code",
   "net_revenue", "obligation_negative", "obligation_net",
   "obligation_positive", "parent_award_id", "pop_end_date", "pop_start_date",
   "psc_code", "recipient_name", "recipient_parent_uei", "recipient_uei",
@@ -43,6 +43,8 @@ utils::globalVariables(c(
   "reporting_fiscal_year", "reporting_fiscal_month", "gross_outlay_amount",
   "transaction_obligated_amount", "fiscal_year", "outlay", "filec_obligation",
   "has_outlay_rows", "outlay_amount", "outlay_coverage", "first_year",
+  ## disruption flags
+  "base_and_all_options_value", "sched_end", "end_shift_days", "ceiling_change",
   "oblig", "filec",
   ## outlay imputation
   ".fy_month", ".share", "first_fy", "last_oblig_fy", "first_month",
@@ -54,5 +56,8 @@ utils::globalVariables(c(
   "sh", "tmax", "end_fy", "n_periods", "n_awards", "method",
   "outlay_imputed", "imputation_method", "imputation_flags", "fold",
   "in_pop", "pop_n", "timing_model", "timing_as_obligated",
-  "timing_even_spread", "y0", "y1", ".tot", "ssum", "n_obs", "short_family"
+  "timing_even_spread", "y0", "y1", ".tot", "ssum", "n_obs", "short_family",
+  ## subsidiary crosswalk
+  "relationship", "extracted", "root_uei", "parent_uei", "ueis",
+  "n_parent_matched"
 ))

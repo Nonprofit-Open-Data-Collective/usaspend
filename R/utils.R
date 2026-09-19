@@ -30,6 +30,48 @@ us_todo <- function(fn, section) {
 ## USAspending CSVs are read as character so that nothing is silently mangled
 ## on the way in; every cast is explicit and failures become NA, never errors.
 
+## Read a USAspending CSV as all-character. The files are RFC 4180: comma
+## separated, free text double-quoted, embedded quotes doubled, and embedded
+## newlines allowed inside quotes (subaward descriptions routinely have them).
+## fread gets two things wrong on these:
+##   1. Its dialect sniffer is fooled when a file has few rows and a quoted
+##      multi-line field whose continuation lines contain commas -- it reports
+##      "improper quoting", finds 2 columns, and returns garbage or stops early.
+##      Pinning sep/quote is not enough on its own, so the result is checked
+##      against the header's field count and any warning, and on failure the
+##      file is re-read with utils::read.csv, which parses RFC 4180 correctly.
+##   2. It never un-escapes doubled quotes: `"say ""hi"""` comes back as
+##      `say ""hi""`. In a correctly quoted file a literal `""` can only be an
+##      escaped quote, so collapsing them afterwards is exact.
+us_read_csv <- function(f) {
+  if (!file.size(f)) return(data.table::data.table())
+  n_hdr <- length(scan(f, what = "", sep = ",", quote = "\"", nlines = 1L,
+                       quiet = TRUE, encoding = "UTF-8"))
+  warned <- FALSE
+  dt <- tryCatch(withCallingHandlers(
+    data.table::fread(f, sep = ",", quote = "\"", header = TRUE, fill = FALSE,
+                      colClasses = "character", encoding = "UTF-8",
+                      showProgress = FALSE),
+    warning = function(w) {
+      warned <<- TRUE
+      invokeRestart("muffleWarning")
+    }), error = function(e) NULL)
+
+  if (is.null(dt) || warned || ncol(dt) != n_hdr) {
+    dt <- data.table::as.data.table(utils::read.csv(
+      f, colClasses = "character", check.names = FALSE, encoding = "UTF-8",
+      strip.white = TRUE))  # as fread: trims unquoted fields only
+    if (ncol(dt) != n_hdr) {
+      us_abort("Could not parse {.file {f}}: header has {n_hdr} field{?s}, data has {ncol(dt)}.")
+    }
+    return(dt[])
+  }
+  for (j in which(vapply(dt, function(x) any(grepl("\"\"", x, fixed = TRUE)), TRUE))) {
+    data.table::set(dt, j = j, value = gsub("\"\"", "\"", dt[[j]], fixed = TRUE))
+  }
+  dt[]
+}
+
 as_num <- function(x) {
   if (is.numeric(x)) return(as.numeric(x))
   x <- trimws(as.character(x))

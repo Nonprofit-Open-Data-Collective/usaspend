@@ -24,8 +24,7 @@
 us_sample_extract <- function() {
   dir <- system.file("extdata", "sample", package = "usaspend")
   if (!nzchar(dir)) us_abort("Sample data not installed.")
-  rd <- function(f) data.table::fread(file.path(dir, f), colClasses = "character",
-                                      showProgress = FALSE)
+  rd <- function(f) us_read_csv(file.path(dir, f))
   tx <- data.table::rbindlist(list(
     us_harmonize_transactions(rd("Assistance_PrimeTransactions_sample.csv"),
                               "assistance", "Assistance_PrimeTransactions_sample.csv"),

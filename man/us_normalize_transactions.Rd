@@ -11,7 +11,11 @@ us_normalize_transactions(
 )
 }
 \arguments{
-\item{transactions}{A \code{data.table} matching \code{us_schema("transactions")}.}
+\item{transactions}{A \code{data.table} matching \code{us_schema("transactions")}.
+The five disruption fields (\code{transaction_description},
+\code{base_and_all_options_value}, \code{awarding_office_code}/\verb{_name},
+\code{pop_potential_end_date}) are optional: extracts harmonized before they
+were added are accepted and the fields filled with \code{NA}.}
 
 \item{requested_uei}{Optional character vector of the UEIs actually asked
 for, used to flag strays returned by the API's text matching.}
