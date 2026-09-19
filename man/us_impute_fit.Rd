@@ -6,7 +6,7 @@
 \usage{
 us_impute_fit(
   training,
-  cells = c("dur_bin", "late_start"),
+  cells = c("dur_bin", "late_start", "short_family"),
   min_cell = 8L,
   zero_fill = TRUE
 )
@@ -14,9 +14,15 @@ us_impute_fit(
 \arguments{
 \item{training}{A \code{usaspend_outlay_training} from \code{\link[=us_outlay_training]{us_outlay_training()}}.}
 
-\item{cells}{Feature columns defining the cell. The default,
-duration x late-start, is what the experiment selected; \code{late_start}
-(first obligated Apr-Sep) shifts cash into the next fiscal year.}
+\item{cells}{Feature columns defining the cell. The default is duration
+x late start x \code{short_family}: \code{late_start} (first obligated Apr-Sep)
+shifts cash into the next fiscal year, and \code{short_family} splits one-
+and two-year awards into grant, contract and other (see
+\code{\link[=us_outlay_features]{us_outlay_features()}}). The original experiment selected duration x
+late start; the family split for short awards was added after pooling
+the pilot with a 1,000-organization sample (\code{IMPUTATION.md} 7).
+Training grids built before \code{short_family} existed get it derived from
+\code{award_family} where the awards table carries it.}
 
 \item{min_cell}{Minimum training awards for a cell to be used.}
 

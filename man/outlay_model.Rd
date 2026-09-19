@@ -13,12 +13,14 @@ outlay_model
 \description{
 The model \code{\link[=us_impute_outlays]{us_impute_outlays()}} uses when none is supplied: empirical
 liquidation curves (share of net obligations outlaid per event-year, by
-award duration x late-fiscal-year start, zero-filled estimator) fitted
-on \link{outlay_training}. Cross-validated performance: mean misallocation
-0.28 (timing) and 0.30 (level + timing) against 0.41/0.43 for even
-spread and 0.75/0.85 for treating obligations as cash. Durations of 1-5
-years are inside the support envelope; longer awards fall back to even
-spread.
+award duration x late-fiscal-year start, with one- and two-year awards
+further split by award family -- \code{short_family}; zero-filled estimator)
+fitted on \link{outlay_training}. Cross-validated performance on the pooled
+truth: mean misallocation 0.34 (timing) and 0.35 (level + timing)
+against 0.44/0.45 for even spread and 0.66/0.75 for treating
+obligations as cash; 0.30 on the pilot's awards and 0.37 on the
+sample's, whose truth is harder under every method. Every duration bin,
+including 6+ years (133 awards), is inside the support envelope.
 }
 \examples{
 outlay_model

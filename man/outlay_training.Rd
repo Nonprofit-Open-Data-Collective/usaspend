@@ -7,28 +7,34 @@
 \format{
 A list of class \code{usaspend_outlay_training}:
 \describe{
-\item{awards}{One row per candidate award (7,853): the features from
-\code{\link[=us_outlay_features]{us_outlay_features()}}, File C lifetime figures, \code{linked}, and \code{tier}
-(\code{NA} for awards that failed the truth screen).}
+\item{awards}{One row per candidate award (14,022): the features from
+\code{\link[=us_outlay_features]{us_outlay_features()}} (including \code{short_family}), File C lifetime
+figures, \code{linked}, \code{tier} (\code{NA} for awards that failed the truth
+screen), and \code{population} (\code{"pilot"} or \code{"sample"}).}
 \item{grid}{One row per ground-truth award x fiscal year: \code{oblig_fy}
 (net obligations booked that year), \code{actual} (File C outlays), event
-time \code{t}.}
-\item{meta}{Screen parameters and build time (\code{as_of} FY2026).}
+time \code{t}, and the cell features.}
+\item{meta}{\code{as_of} (FY2026), \code{sources} (each population's screens and
+truth count), and build time.}
 }
 }
 \usage{
 outlay_training
 }
 \description{
-The training set behind the bundled \link{outlay_model}: 1,184 awards from
-VUMC plus the 50-nonprofit pilot whose annual File C outlays are fully
-trustworthy -- File C obligations reconcile with the award's own ledger,
-and either lifetime outlays match lifetime obligations within 10\%
-(\code{tier = "reconciled"}, 905 awards) or the award began inside the FY2022
-monthly reporting mandate with a completed, plateaued cash series
-(\code{tier = "shape_complete"}, 279). Built by
-\code{data-raw/make-outlay-model.R}; the experiment that designed the screens
-and picked the model is documented in \code{IMPUTATION.md}.
+The training set behind the bundled \link{outlay_model}: 2,785 awards whose
+annual File C outlays are fully trustworthy, pooled from two
+populations -- 1,174 from VUMC plus the 50-nonprofit pilot (first
+obligated FY2020+, over $50K) and 1,611 from a 1,000-organization sample
+pulled 2026-09-18 (first obligated FY2017+, any size). File C
+obligations reconcile with the award's own ledger, and either lifetime
+outlays match lifetime obligations within 10\% (\code{tier = "reconciled"},
+2,464 awards) or the award began inside the FY2022 monthly reporting
+mandate with a completed, plateaued cash series
+(\code{tier = "shape_complete"}, 321). Ten awards in both populations are kept
+once, as their sample record. Built by \code{data-raw/make-outlay-model.R};
+the experiment that designed the screens and picked the model is
+documented in \code{IMPUTATION.md}, the pooling in its section 7.
 }
 \examples{
 outlay_training

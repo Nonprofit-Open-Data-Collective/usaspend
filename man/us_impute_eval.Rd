@@ -6,7 +6,7 @@
 \usage{
 us_impute_eval(
   training,
-  cells = c("dur_bin", "late_start"),
+  cells = c("dur_bin", "late_start", "short_family"),
   min_cell = 8L,
   folds = 5L,
   seed = 1L

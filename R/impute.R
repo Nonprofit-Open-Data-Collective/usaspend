@@ -44,6 +44,16 @@
 #' 1,000-organization test pull the gap was 6 years or less for over 98% of
 #' awards with an end date.
 #'
+#' @section Short awards by family:
+#' `short_family` is the award family -- `"grant"`, `"contract"` or
+#' `"other"` (direct payments, loans, IDVs, and anything unlabelled) -- for
+#' awards of one or two years, and `"any"` for longer ones. Short awards pay
+#' out on family-specific schedules: a direct payment is cash almost at
+#' once, a one-year grant is drawn down over the following year. For
+#' awards of three or more years the family split added nothing and cost
+#' accuracy on the longest ones, so those keep one curve per duration. See
+#' `IMPUTATION.md` 7.
+#'
 #' @param transactions A `data.table` matching `us_schema("transactions")`
 #'   (normalized or raw canonical).
 #' @param max_pop_years Largest plausible gap, in fiscal years, between the
@@ -55,7 +65,7 @@
 #'   `late_start` (first obligated Apr-Sep), obligation totals,
 #'   period-of-performance fields (`pop_end_fy`, `pop_end_fy_reported`,
 #'   `pop_end_implausible`), `duration`, `dur_bin` (capped at 6),
-#'   extension/reduction booleans and `mod_class`.
+#'   `short_family`, extension/reduction booleans and `mod_class`.
 #' @export
 #' @examples
 #' f <- us_outlay_features(us_sample_extract()$transactions)
@@ -133,7 +143,32 @@ us_outlay_features <- function(transactions, max_pop_years = 10L) {
   feat[is.na(duration), "duration" := last_oblig_fy - first_fy + 1L]
   feat[, "dur_bin" := pmin(duration, 6L)]
   feat[, "late_start" := first_month >= 7L]
+  feat[, "short_family" := cell_short_family(dur_bin, award_family)]
   feat[]
+}
+
+## The cell feature splitting short awards by family (see us_outlay_features).
+cell_short_family <- function(dur_bin, award_family) {
+  fam <- data.table::fcase(award_family %in% "grant",    "grant",
+                           award_family %in% "contract", "contract",
+                           default =                     "other")
+  data.table::fifelse(!is.na(dur_bin) & dur_bin <= 2L, fam, "any")
+}
+
+## Feature tables and training grids built before short_family existed lack
+## it; derive it where the inputs are there (from `awards` for a grid).
+with_cell_features <- function(d, awards = NULL) {
+  if ("short_family" %in% names(d)) return(d)
+  d <- data.table::copy(data.table::as.data.table(d))
+  ## family is looked up, not joined on: the table keeps its own columns
+  fam <- if ("award_family" %in% names(d)) d$award_family else if (
+    !is.null(awards) && all(c("award_key", "award_family") %in% names(awards))) {
+    awards$award_family[match(d$award_key, awards$award_key)]
+  }
+  if (!is.null(fam) && "dur_bin" %in% names(d)) {
+    d[, "short_family" := cell_short_family(dur_bin, fam)]
+  }
+  d
 }
 
 ## ---- training data ---------------------------------------------------------
@@ -225,7 +260,7 @@ us_outlay_training <- function(transactions, funding = NULL,
     g <- merge(g, obl_fy, by = c("award_key", "fy"), all.x = TRUE)
     for (cc in c("actual", "oblig_fy")) g[is.na(get(cc)), (cc) := 0]
     g <- merge(g, gt[, .(award_key, first_fy, oblig, dur_bin, late_start,
-                         mod_class, tier)], by = "award_key")
+                         short_family, mod_class, tier)], by = "award_key")
     g[, "t" := fy - first_fy]
     g[]
   } else {
@@ -276,9 +311,15 @@ print.usaspend_outlay_training <- function(x, ...) {
 #' when the analysis wants dollars that tie out to the obligations ledger.
 #'
 #' @param training A `usaspend_outlay_training` from [us_outlay_training()].
-#' @param cells Feature columns defining the cell. The default,
-#'   duration x late-start, is what the experiment selected; `late_start`
-#'   (first obligated Apr-Sep) shifts cash into the next fiscal year.
+#' @param cells Feature columns defining the cell. The default is duration
+#'   x late start x `short_family`: `late_start` (first obligated Apr-Sep)
+#'   shifts cash into the next fiscal year, and `short_family` splits one-
+#'   and two-year awards into grant, contract and other (see
+#'   [us_outlay_features()]). The original experiment selected duration x
+#'   late start; the family split for short awards was added after pooling
+#'   the pilot with a 1,000-organization sample (`IMPUTATION.md` 7).
+#'   Training grids built before `short_family` existed get it derived from
+#'   `award_family` where the awards table carries it.
 #' @param min_cell Minimum training awards for a cell to be used.
 #' @param zero_fill Estimator for the per-event-year mean. `TRUE` (default)
 #'   counts every cell award at every event-year, zero share past its own
@@ -296,13 +337,13 @@ print.usaspend_outlay_training <- function(x, ...) {
 #' m
 #' # the zero-fill identity: each curve sums to its cell's mean ratio
 #' m$curves_dur[, .(curve_sum = round(sum(share), 3)), by = dur_bin]
-us_impute_fit <- function(training, cells = c("dur_bin", "late_start"),
+us_impute_fit <- function(training, cells = c("dur_bin", "late_start", "short_family"),
                           min_cell = 8L, zero_fill = TRUE) {
   stopifnot(is.logical(zero_fill), length(zero_fill) == 1L)
   if (!inherits(training, "usaspend_outlay_training")) {
     us_abort("{.arg training} must come from {.fn us_outlay_training}.")
   }
-  g <- data.table::copy(training$grid)
+  g <- with_cell_features(data.table::copy(training$grid), training$awards)
   if (!nrow(g)) us_abort("The training set has no ground-truth awards.")
   missing <- setdiff(cells, names(g))
   if (length(missing)) {
@@ -407,12 +448,12 @@ us_misallocation <- function(imputed, actual, normalize = TRUE) {
 #' @examples
 #' ev <- us_impute_eval(outlay_training)
 #' ev$summary
-us_impute_eval <- function(training, cells = c("dur_bin", "late_start"),
+us_impute_eval <- function(training, cells = c("dur_bin", "late_start", "short_family"),
                            min_cell = 8L, folds = 5L, seed = 1L) {
   if (!inherits(training, "usaspend_outlay_training")) {
     us_abort("{.arg training} must come from {.fn us_outlay_training}.")
   }
-  g <- data.table::copy(training$grid)[oblig > 0]
+  g <- with_cell_features(data.table::copy(training$grid), training$awards)[oblig > 0]
   if (!nrow(g)) us_abort("The training set has no ground-truth awards.")
   set.seed(seed)
   fmap <- g[, .(fold = 0L), by = award_key]
@@ -481,7 +522,7 @@ us_impute_eval <- function(training, cells = c("dur_bin", "late_start"),
 ## start year exists; otherwise the even-spread fallback (global ratio x
 ## even allocation over the performance window). Never returns NA dollars.
 impute_from_features <- function(feat, model) {
-  f <- data.table::copy(data.table::as.data.table(feat))
+  f <- with_cell_features(data.table::copy(data.table::as.data.table(feat)))
   if (!nrow(f)) {
     out <- data.table::data.table(award_key = character(0), fy = integer(0),
                                   t = integer(0), outlay_imputed = numeric(0),
