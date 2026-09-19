@@ -22,6 +22,18 @@ sum of \code{federal_action_obligation} across its transactions equals the
 award's reported lifetime total. A break is classified, not just counted --
 most breaks are structural (truncation, recipient changes), not bugs.
 }
+\details{
+An award is \code{window_edge} when its history evidently begins before the pull
+window: its earliest reported period-of-performance start (on the award
+record or any of its transactions) precedes the first action date in the
+extract, or its first in-extract action falls within a year of the window
+opening. The second test alone misses awards made before the window whose
+first in-window action is a later modification: \code{base_action_date} is the
+earliest action \emph{in the extract}, so it can never precede the window. The
+period-of-performance test is added to it rather than replacing it, because
+a later modification can move an award's reported start date forward past
+its first obligation.
+}
 \examples{
 p <- us_panel(us_sample_extract())
 r <- us_reconcile(p)
