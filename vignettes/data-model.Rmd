@@ -52,6 +52,100 @@ one lifetime total and no dates money moved; the transaction grain has a
 signed amount and a date on every action. That is the whole reason the
 package's pipeline is built on transactions.
 
+## Where an award sits: three hierarchies, not one
+
+It is tempting to picture a single tree — agency → program → project →
+award. USAspending has no such tree. An award hangs from **three separate
+hierarchies**, and neither "program" nor "project" is a formal level in
+any of them.
+
+**Who manages it — the agency hierarchy.** A department (the *toptier*
+agency, e.g. HHS) → a *sub-tier* agency (NIH, CDC) → an office. Every
+award records this twice: the **awarding** agency, which signed the
+award, and the **funding** agency, whose budget pays for it
+(`awarding_agency_name`, `awarding_sub_agency_name`,
+`awarding_office_name`; `funding_agency_name`). They usually agree, not
+always.
+
+**What it is for — the classification hierarchy.** The nearest thing to a
+"program area", and it differs by family:
+
+- **Assistance** (grants, cooperative agreements, direct payments, loans)
+  carries an *Assistance Listing* number (`cfda_number`, formerly CFDA),
+  e.g. `93.853`. The prefix belongs to one agency — `93` is HHS, `12` DoD,
+  `47` NSF.
+- **Contracts** have no program code at all. They are classified by
+  *what was bought* — product/service code (`psc_code`) and industry
+  (`naics_code`).
+- The **budget** side is a third classification: Treasury account →
+  program activity → object class. It lives in the account-level File C
+  data (`us_fetch_outlays()`), not in the award files, and one award can
+  draw on several accounts.
+
+**The award itself — the award hierarchy.** Contracts nest; assistance is
+flat:
+
+```
+contracts                                  assistance
+  vehicle (IDV: IDIQ, BPA, GSA schedule)     award (FAIN)
+    └ task / delivery order (PIID)             └ amendments  = transactions
+        └ modifications = transactions             └ subawards
+            └ subawards
+```
+
+A vehicle is a ceiling, not money; the dollars are obligated on the orders
+beneath it, and each order is **its own award** with its own key. The
+sample holds one CDC vehicle and four delivery orders placed under it:
+
+```{r}
+aw <- p$awards
+aw[award_key == "CONT_IDV_HHSD200200720032I_7523" |
+     parent_award_id == "HHSD200200720032I",
+   .(award_key, award_type_label, parent_award_id, n_transactions, total_obligated)]
+```
+
+The generated award key (`award_key`) spells out the nesting and the
+agency that created each level: `CONT_AWD_{order}_{agency}_{vehicle}_{vehicle
+agency}` for an order, `CONT_IDV_{vehicle}_{agency}` for a vehicle,
+`ASST_NON_{FAIN}_{agency}` for assistance. It is fixed when the award is
+created and never changes — even if the award later moves to another
+agency (`vignette("disruption")`).
+
+**"Project" has no identifier.** The closest stand-ins are the award
+itself, a vehicle and its family of orders, or — for NIH — the core
+project number embedded in the FAIN, which persists across budget years
+and follows the investigator between institutions. Most agencies give a
+competing renewal a *new* award number, so a multi-year project usually
+has to be reconstructed by matching recipient, office, program code, and
+description.
+
+### Many awards cross agencies
+
+Measured on a 1,000-nonprofit pull (15,420 awards; see `disruption_sample`):
+
+- **Shared vehicles.** 391 of 4,207 contract orders (9%) were placed by one
+  agency under another agency's vehicle — mostly GSA schedule contracts
+  (agency codes `4730`, `4732`) used by HHS, EPA, USDA, DoD, and Commerce.
+  The order's key records both agencies.
+- **Awarding ≠ funding.** 45 awards were signed by one agency for another
+  under interagency agreements — Treasury for the Consumer Financial
+  Protection Bureau, Interior for DHS, HHS, and DoD, GSA for the Postal
+  Service.
+- **Several budget accounts** can pay into one award (visible in File C).
+- **Agency transfers.** When USAID was wound down, its awards kept their
+  keys — with USAID's code — while new actions named the Department of
+  State as awarding agency.
+- **Programs span agencies even when listings don't.** An Assistance
+  Listing belongs to one agency, but real programs often run as separate
+  awards under several (the National Youth Tobacco Survey moved from a
+  CDC contract to an FDA one).
+
+So "an agency's portfolio" has at least four definitions — awarding agency
+(who manages the award), funding agency (whose budget pays), the agency
+code in the key (where the award originated), and, for orders, the
+vehicle's agency. They can disagree on the same award; say which one an
+analysis uses.
+
 ## The dozen dollar columns, in three groups
 
 USAspending rows carry many dollar columns. Only one group is money received.

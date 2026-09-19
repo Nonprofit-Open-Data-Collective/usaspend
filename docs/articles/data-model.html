@@ -155,6 +155,121 @@ transaction grain has a signed amount and a date on every action. That
 is the whole reason the package’s pipeline is built on transactions.</p>
 </div>
 <div class="section level2">
+<h2 id="where-an-award-sits-three-hierarchies-not-one">Where an award sits: three hierarchies, not one<a class="anchor" aria-label="anchor" href="#where-an-award-sits-three-hierarchies-not-one"></a>
+</h2>
+<p>It is tempting to picture a single tree — agency → program → project
+→ award. USAspending has no such tree. An award hangs from <strong>three
+separate hierarchies</strong>, and neither “program” nor “project” is a
+formal level in any of them.</p>
+<p><strong>Who manages it — the agency hierarchy.</strong> A department
+(the <em>toptier</em> agency, e.g. HHS) → a <em>sub-tier</em> agency
+(NIH, CDC) → an office. Every award records this twice: the
+<strong>awarding</strong> agency, which signed the award, and the
+<strong>funding</strong> agency, whose budget pays for it
+(<code>awarding_agency_name</code>,
+<code>awarding_sub_agency_name</code>,
+<code>awarding_office_name</code>; <code>funding_agency_name</code>).
+They usually agree, not always.</p>
+<p><strong>What it is for — the classification hierarchy.</strong> The
+nearest thing to a “program area”, and it differs by family:</p>
+<ul>
+<li>
+<strong>Assistance</strong> (grants, cooperative agreements, direct
+payments, loans) carries an <em>Assistance Listing</em> number
+(<code>cfda_number</code>, formerly CFDA), e.g. <code>93.853</code>. The
+prefix belongs to one agency — <code>93</code> is HHS, <code>12</code>
+DoD, <code>47</code> NSF.</li>
+<li>
+<strong>Contracts</strong> have no program code at all. They are
+classified by <em>what was bought</em> — product/service code
+(<code>psc_code</code>) and industry (<code>naics_code</code>).</li>
+<li>The <strong>budget</strong> side is a third classification: Treasury
+account → program activity → object class. It lives in the account-level
+File C data (<code><a href="../reference/us_fetch_outlays.html">us_fetch_outlays()</a></code>), not in the award files,
+and one award can draw on several accounts.</li>
+</ul>
+<p><strong>The award itself — the award hierarchy.</strong> Contracts
+nest; assistance is flat:</p>
+<pre><code>contracts                                  assistance
+  vehicle (IDV: IDIQ, BPA, GSA schedule)     award (FAIN)
+    └ task / delivery order (PIID)             └ amendments  = transactions
+        └ modifications = transactions             └ subawards
+            └ subawards</code></pre>
+<p>A vehicle is a ceiling, not money; the dollars are obligated on the
+orders beneath it, and each order is <strong>its own award</strong> with
+its own key. The sample holds one CDC vehicle and four delivery orders
+placed under it:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">aw</span> <span class="op">&lt;-</span> <span class="va">p</span><span class="op">$</span><span class="va">awards</span></span>
+<span><span class="va">aw</span><span class="op">[</span><span class="va">award_key</span> <span class="op">==</span> <span class="st">"CONT_IDV_HHSD200200720032I_7523"</span> <span class="op">|</span></span>
+<span>     <span class="va">parent_award_id</span> <span class="op">==</span> <span class="st">"HHSD200200720032I"</span>,</span>
+<span>   <span class="fu">.</span><span class="op">(</span><span class="va">award_key</span>, <span class="va">award_type_label</span>, <span class="va">parent_award_id</span>, <span class="va">n_transactions</span>, <span class="va">total_obligated</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;                                                    award_key award_type_label</span></span>
+<span><span class="co">#&gt;                                                       &lt;char&gt;           &lt;char&gt;</span></span>
+<span><span class="co">#&gt; 1: CONT_AWD_HHSD2002007200320001_7523_HHSD200200720032I_7523   Delivery Order</span></span>
+<span><span class="co">#&gt; 2: CONT_AWD_HHSD2002007200320002_7523_HHSD200200720032I_7523   Delivery Order</span></span>
+<span><span class="co">#&gt; 3: CONT_AWD_HHSD2002007200320003_7523_HHSD200200720032I_7523   Delivery Order</span></span>
+<span><span class="co">#&gt; 4: CONT_AWD_HHSD2002007200320004_7523_HHSD200200720032I_7523   Delivery Order</span></span>
+<span><span class="co">#&gt; 5:                           CONT_IDV_HHSD200200720032I_7523              IDC</span></span>
+<span><span class="co">#&gt;      parent_award_id n_transactions total_obligated</span></span>
+<span><span class="co">#&gt;               &lt;char&gt;          &lt;int&gt;           &lt;num&gt;</span></span>
+<span><span class="co">#&gt; 1: HHSD200200720032I              6        281586.3</span></span>
+<span><span class="co">#&gt; 2: HHSD200200720032I              7        390297.9</span></span>
+<span><span class="co">#&gt; 3: HHSD200200720032I              8       1818651.0</span></span>
+<span><span class="co">#&gt; 4: HHSD200200720032I              5        458210.1</span></span>
+<span><span class="co">#&gt; 5:              &lt;NA&gt;              7             0.0</span></span></code></pre></div>
+<p>The generated award key (<code>award_key</code>) spells out the
+nesting and the agency that created each level:
+<code>CONT_AWD_{order}_{agency}_{vehicle}_{vehicle agency}</code> for an
+order, <code>CONT_IDV_{vehicle}_{agency}</code> for a vehicle,
+<code>ASST_NON_{FAIN}_{agency}</code> for assistance. It is fixed when
+the award is created and never changes — even if the award later moves
+to another agency (<code><a href="../articles/disruption.html">vignette("disruption")</a></code>).</p>
+<p><strong>“Project” has no identifier.</strong> The closest stand-ins
+are the award itself, a vehicle and its family of orders, or — for NIH —
+the core project number embedded in the FAIN, which persists across
+budget years and follows the investigator between institutions. Most
+agencies give a competing renewal a <em>new</em> award number, so a
+multi-year project usually has to be reconstructed by matching
+recipient, office, program code, and description.</p>
+<div class="section level3">
+<h3 id="many-awards-cross-agencies">Many awards cross agencies<a class="anchor" aria-label="anchor" href="#many-awards-cross-agencies"></a>
+</h3>
+<p>Measured on a 1,000-nonprofit pull (15,420 awards; see
+<code>disruption_sample</code>):</p>
+<ul>
+<li>
+<strong>Shared vehicles.</strong> 391 of 4,207 contract orders (9%)
+were placed by one agency under another agency’s vehicle — mostly GSA
+schedule contracts (agency codes <code>4730</code>, <code>4732</code>)
+used by HHS, EPA, USDA, DoD, and Commerce. The order’s key records both
+agencies.</li>
+<li>
+<strong>Awarding ≠ funding.</strong> 45 awards were signed by one
+agency for another under interagency agreements — Treasury for the
+Consumer Financial Protection Bureau, Interior for DHS, HHS, and DoD,
+GSA for the Postal Service.</li>
+<li>
+<strong>Several budget accounts</strong> can pay into one award
+(visible in File C).</li>
+<li>
+<strong>Agency transfers.</strong> When USAID was wound down, its
+awards kept their keys — with USAID’s code — while new actions named the
+Department of State as awarding agency.</li>
+<li>
+<strong>Programs span agencies even when listings don’t.</strong> An
+Assistance Listing belongs to one agency, but real programs often run as
+separate awards under several (the National Youth Tobacco Survey moved
+from a CDC contract to an FDA one).</li>
+</ul>
+<p>So “an agency’s portfolio” has at least four definitions — awarding
+agency (who manages the award), funding agency (whose budget pays), the
+agency code in the key (where the award originated), and, for orders,
+the vehicle’s agency. They can disagree on the same award; say which one
+an analysis uses.</p>
+</div>
+</div>
+<div class="section level2">
 <h2 id="the-dozen-dollar-columns-in-three-groups">The dozen dollar columns, in three groups<a class="anchor" aria-label="anchor" href="#the-dozen-dollar-columns-in-three-groups"></a>
 </h2>
 <p>USAspending rows carry many dollar columns. Only one group is money
@@ -172,7 +287,7 @@ variant).</p>
 sample carries the cautionary example — an indefinite-delivery vehicle
 with a $40,000,000 potential value and <strong>zero dollars
 obligated</strong> across its modifications:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tx</span><span class="op">[</span><span class="va">award_key</span> <span class="op">==</span> <span class="st">"CONT_IDV_HHSD200200720032I_7523"</span>,</span>
 <span>   <span class="fu">.</span><span class="op">(</span><span class="va">action_date</span>, <span class="va">award_type_label</span>, <span class="va">federal_action_obligation</span><span class="op">)</span><span class="op">]</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">action_date</span><span class="op">)</span><span class="op">]</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">]</span></span>
 <span><span class="co">#&gt;    action_date award_type_label federal_action_obligation</span></span>
