@@ -1,6 +1,7 @@
 # Data dictionary: tables, keys, and relationships
 
 ``` r
+
 library(usaspend)
 ```
 
@@ -33,6 +34,7 @@ assistance, FPDS for contracts) hang off a derived award summary; FSRS
 subaward reports reference a prime award and *two* recipients:
 
 ``` mermaid
+
 erDiagram
     RECIPIENT ||--o{ AWARD : "holds (current)"
     AWARD ||--o{ FABS_TRANSACTION : "assistance actions"
@@ -89,6 +91,7 @@ are still present, which is why
 re-normalizes.
 
 ``` mermaid
+
 erDiagram
     AWARD ||--o{ TRANSACTIONS : "award_key (implicit -- spine built later)"
     AWARD |o--o{ SUBAWARDS : "prime_award_key (inbound rows point OUTSIDE the extract)"
@@ -156,6 +159,7 @@ organization-level inbound revenue lives in its own table because it
 cannot sit on another organization’s award rows.
 
 ``` mermaid
+
 erDiagram
     ORG ||--o{ PANEL : "org_id"
     AWARDS ||--o{ PANEL : "award_key"
@@ -236,6 +240,7 @@ A zero is informative: loan guarantees (08) and insurance (09) exist in
 the taxonomy but never appear in this population.
 
 ``` r
+
 codes <- us_classify_award_type(us_award_type_codes())
 d <- read.csv("data-dictionary/pilot-descriptives.csv")
 n <- aggregate(cbind(actions = n_transactions, awards = n_awards) ~ award_type_code,
@@ -293,6 +298,7 @@ Action codes **collide across families** — the same letter means
 different things — so classification always takes the family:
 
 ``` r
+
 knitr::kable(us_classify_action(c("A", "B", "C", "D"), "assistance"))
 ```
 
@@ -304,6 +310,7 @@ knitr::kable(us_classify_action(c("A", "B", "C", "D"), "assistance"))
 | assistance  | D                | Adjustment to Completed Award | adjustment   |
 
 ``` r
+
 knitr::kable(us_classify_action(c("A", "B", "C", "D", "G", "K", "M"), "contract"))
 ```
 
@@ -345,6 +352,7 @@ also available as
 [CSV](https://github.com/Nonprofit-Open-Data-Collective/usaspend/blob/main/vignettes/data-dictionary/pilot-descriptives.csv).
 
 ``` r
+
 d <- read.csv("data-dictionary/pilot-descriptives.csv")
 ## dollars in billions; "\\$" keeps pandoc from pairing the dollar signs
 ## across cells and reading the span between them as math

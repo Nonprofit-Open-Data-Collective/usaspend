@@ -41,6 +41,9 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Disruption</h6></li>
     <li><a class="dropdown-item" href="articles/disruption.html">Detecting disruption in federal funding</a></li>
+    <li><a class="dropdown-item" href="articles/disruption-2025.html">Nonprofit award disruption, 2025–26</a></li>
+    <li><a class="dropdown-item" href="articles/disruption-ledger.html">Disruption on the ledger</a></li>
+    <li><a class="dropdown-item" href="articles/obligation-trends.html">Obligation trends, FY2026</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
@@ -82,28 +85,28 @@
 </ul></div>
 <div class="section level2">
 <h2 id="id_2-methods">2. Methods<a class="anchor" aria-label="anchor" href="#id_2-methods"></a></h2>
-<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr class="header"><th>id</th>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>id</th>
 <th>name</th>
 <th>rule</th>
-</tr></thead><tbody><tr class="odd"><td>M0</td>
+</tr></thead><tbody><tr><td>M0</td>
 <td><code>as_obligated</code></td>
 <td>cash booked in the year it was obligated — the implicit status quo of using an obligations panel as if it were spending</td>
-</tr><tr class="even"><td>M1</td>
+</tr><tr><td>M1</td>
 <td><code>even_pop</code></td>
 <td>net obligations spread evenly over the performance window (first obligation FY through final <code>pop_end_date</code> FY) — the user-facing default rule</td>
-</tr><tr class="odd"><td>M2</td>
+</tr><tr><td>M2</td>
 <td><code>profile_duration</code></td>
 <td>empirical mean share-by-event-year profile, by award duration bin (1–6+ years), learned on training folds only (5-fold CV by award)</td>
-</tr><tr class="even"><td>M3</td>
+</tr><tr><td>M3</td>
 <td><code>profile_dur_type</code></td>
 <td>duration × award-type cells (project grant / cooperative agreement / contract / other assistance), falling back to the duration profile when a cell has &lt; 8 training awards</td>
-</tr><tr class="odd"><td>M4</td>
+</tr><tr><td>M4</td>
 <td><code>profile_dur_start</code></td>
 <td>duration × late-start cells (first obligation in Apr–Sep books most of its first-year cash into the next FY)</td>
-</tr><tr class="even"><td>M5</td>
+</tr><tr><td>M5</td>
 <td><code>phase_split</code></td>
 <td>awards with a <em>funded extension</em> are split at the extension event; each phase’s obligations are spread evenly over that phase’s own window</td>
-</tr><tr class="odd"><td>M6</td>
+</tr><tr><td>M6</td>
 <td><code>liquidation_curve</code></td>
 <td>like M4, but the profile target is the share of <strong>net obligations</strong> (not of the cash total) outlaid per event-year — the curve’s sum encodes the outlay/obligation ratio, its shape the lag: level and timing in one object</td>
 </tr></tbody></table><p>The profile methods encode the lag structure the earlier timing probe measured (cash trails commitment by roughly a year); they are deliberately transparent — cell means with hierarchical fallback — rather than a fitted model, because at these sample sizes a model’s flexibility would mostly fit noise.</p>
@@ -122,35 +125,35 @@
 <div class="section level2">
 <h2 id="id_4-results">4. Results<a class="anchor" aria-label="anchor" href="#id_4-results"></a></h2>
 <p>Ground truth: <strong>1,189 awards</strong> (909 tier-1 reconciled, 280 tier-2 shape-complete) drawn from 2,986 fetched candidates across VUMC and the 50-nonprofit pilot — HHS, USDA, NSF, NASA, Commerce, Interior and others. Measured 2026-08-29.</p>
-<table class="table"><thead><tr class="header"><th>method</th>
+<table class="table"><thead><tr><th>method</th>
 <th>mean</th>
 <th>median</th>
 <th>dollar-weighted</th>
-</tr></thead><tbody><tr class="odd"><td>as_obligated (M0)</td>
+</tr></thead><tbody><tr><td>as_obligated (M0)</td>
 <td>0.75</td>
 <td>0.90</td>
 <td>0.75</td>
-</tr><tr class="even"><td>even_pop (M1)</td>
+</tr><tr><td>even_pop (M1)</td>
 <td>0.41</td>
 <td>0.41</td>
 <td>0.39</td>
-</tr><tr class="odd"><td>profile_duration (M2)</td>
+</tr><tr><td>profile_duration (M2)</td>
 <td>0.29</td>
 <td>0.25</td>
 <td>0.28</td>
-</tr><tr class="even"><td>profile_dur_type (M3)</td>
+</tr><tr><td>profile_dur_type (M3)</td>
 <td>0.29</td>
 <td>0.25</td>
 <td>0.27</td>
-</tr><tr class="odd"><td><strong>profile_dur_start (M4)</strong></td>
+</tr><tr><td><strong>profile_dur_start (M4)</strong></td>
 <td><strong>0.27</strong></td>
 <td><strong>0.22</strong></td>
 <td><strong>0.27</strong></td>
-</tr><tr class="even"><td>phase_split (M5)</td>
+</tr><tr><td>phase_split (M5)</td>
 <td>0.40</td>
 <td>0.41</td>
 <td>0.39</td>
-</tr><tr class="odd"><td><strong>liquidation_curve (M6)</strong></td>
+</tr><tr><td><strong>liquidation_curve (M6)</strong></td>
 <td><strong>0.27</strong></td>
 <td><strong>0.22</strong></td>
 <td><strong>0.27</strong></td>
@@ -325,65 +328,65 @@
 <h2 id="id_7-pooling-and-the-short-award-family-split-2026-09-18">7. Pooling and the short-award family split (2026-09-18)<a class="anchor" aria-label="anchor" href="#id_7-pooling-and-the-short-award-family-split-2026-09-18"></a></h2>
 <p>A second population tested whether the pilot-fitted model travels: a 1,000-organization sample (the first 1,000 rows of the npmatch UEI crosswalk), with File C fetched for <strong>every</strong> in-sample award active in FY2017 or later (8,943 awards; 6,328 carry account-level records; 16 still failed after a retry pass and are kept out of the truth). The same screens (§1), widened to first FY2017+ and any size, gave <strong>1,611 truth awards</strong> (1,568 reconciled, 43 shape-complete), against the pilot’s 1,184. Ten awards appear in both; the pooled set keeps them once, as their newer sample record, for <strong>2,785</strong>. All scoring below is out-of-sample: the bundled model is scored on sample awards it never saw, and every refit is scored out-of-fold (5-fold CV by award, over the union of both populations when pooled). The implausible-end-date rule (§6.6) was applied to both; it touches 30 sample candidates and no pilot award.</p>
 <p><strong>[measured] Each population prefers its own curves.</strong> Timing misallocation, mean per award:</p>
-<table class="table"><thead><tr class="header"><th>model</th>
+<table class="table"><thead><tr><th>model</th>
 <th>on sample awards</th>
 <th>on pilot awards</th>
-</tr></thead><tbody><tr class="odd"><td>bundled (pilot, as shipped)</td>
+</tr></thead><tbody><tr><td>bundled (pilot, as shipped)</td>
 <td>0.418</td>
 <td>0.280 (in-sample)</td>
-</tr><tr class="even"><td>refit on pilot only</td>
+</tr><tr><td>refit on pilot only</td>
 <td>0.419</td>
 <td>0.282</td>
-</tr><tr class="odd"><td>refit on sample only</td>
+</tr><tr><td>refit on sample only</td>
 <td>0.404</td>
 <td>0.321</td>
-</tr><tr class="even"><td>pooled, duration × late start</td>
+</tr><tr><td>pooled, duration × late start</td>
 <td>0.399</td>
 <td>0.300</td>
-</tr><tr class="odd"><td><strong>pooled, + family split for short awards</strong></td>
+</tr><tr><td><strong>pooled, + family split for short awards</strong></td>
 <td><strong>0.372</strong></td>
 <td><strong>0.295</strong></td>
-</tr><tr class="even"><td>even spread</td>
+</tr><tr><td>even spread</td>
 <td>0.467</td>
 <td>0.405</td>
-</tr><tr class="odd"><td>as obligated</td>
+</tr><tr><td>as obligated</td>
 <td>0.595</td>
 <td>0.746</td>
 </tr></tbody></table><p>Pooling alone was the best model on sample awards but cost the pilot 0.018 (95% CI 0.014–0.021), all of it in 1–2 year awards: the pooled one-year curve is the sample’s (502 one-year truth awards against the pilot’s 27), and the two portfolios pay short awards out differently. The difference is composition. The pilot’s short awards are grants (57%) and contracts (39%), from NIH, NSF and USDA; the sample’s are 55% “other” — overwhelmingly HUD direct payments (type 06; also Education, SBA, FCC), which turn into cash almost at once.</p>
 <p><strong>[measured] A family split for short awards recovers it.</strong> Four features known at imputation time were tested as a third cell dimension, each applied either to 1–2 year awards only or to every duration (<code>data-raw/outlay-cell-split.R</code>; pooled 5-fold CV, gain over duration × late start, 95% bootstrap CI):</p>
-<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>split</th>
+<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr><th>split</th>
 <th>overall gain</th>
 <th>pilot</th>
 <th>sample</th>
-</tr></thead><tbody><tr class="odd"><td>agency group, all durations</td>
+</tr></thead><tbody><tr><td>agency group, all durations</td>
 <td>0.021 (0.017–0.025)</td>
 <td>0.007</td>
 <td>0.032</td>
-</tr><tr class="even"><td><strong>family, all durations</strong></td>
+</tr><tr><td><strong>family, all durations</strong></td>
 <td>0.018 (0.015–0.022)</td>
 <td>0.005</td>
 <td>0.028</td>
-</tr><tr class="odd"><td><strong>family, short awards only</strong></td>
+</tr><tr><td><strong>family, short awards only</strong></td>
 <td><strong>0.018 (0.014–0.021)</strong></td>
 <td><strong>0.005</strong></td>
 <td><strong>0.027</strong></td>
-</tr><tr class="even"><td>size band, all durations</td>
+</tr><tr><td>size band, all durations</td>
 <td>0.011</td>
 <td>0.003</td>
 <td>0.017</td>
-</tr><tr class="odd"><td>agency group, short only</td>
+</tr><tr><td>agency group, short only</td>
 <td>0.011</td>
 <td>−0.001</td>
 <td>0.019</td>
-</tr><tr class="even"><td>modification class, all durations</td>
+</tr><tr><td>modification class, all durations</td>
 <td>0.009</td>
 <td>0.015</td>
 <td>0.005</td>
-</tr><tr class="odd"><td>size band, short only</td>
+</tr><tr><td>size band, short only</td>
 <td>0.005</td>
 <td>0.002</td>
 <td>0.007</td>
-</tr><tr class="even"><td>modification class, short only</td>
+</tr><tr><td>modification class, short only</td>
 <td>0.000</td>
 <td>0.002</td>
 <td>−0.001</td>

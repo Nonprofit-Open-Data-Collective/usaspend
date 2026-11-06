@@ -41,6 +41,9 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Disruption</h6></li>
     <li><a class="dropdown-item" href="articles/disruption.html">Detecting disruption in federal funding</a></li>
+    <li><a class="dropdown-item" href="articles/disruption-2025.html">Nonprofit award disruption, 2025–26</a></li>
+    <li><a class="dropdown-item" href="articles/disruption-ledger.html">Disruption on the ledger</a></li>
+    <li><a class="dropdown-item" href="articles/obligation-trends.html">Obligation trends, FY2026</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
@@ -89,12 +92,12 @@
 <p>USAspending carries a dozen dollar columns. Three groups, and only one of them is revenue.</p>
 <div class="section level3">
 <h3 id="id_21-revenue--sum-these">2.1 Revenue — sum these<a class="anchor" aria-label="anchor" href="#id_21-revenue--sum-these"></a></h3>
-<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr class="header"><th>column</th>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>column</th>
 <th>note</th>
-</tr></thead><tbody><tr class="odd"><td><code>federal_action_obligation</code></td>
+</tr></thead><tbody><tr><td><code>federal_action_obligation</code></td>
 <td>the signed amount committed by this action. <strong>The default measure.</strong>
 </td>
-</tr><tr class="even"><td><code>pragmatic_obligation</code></td>
+</tr><tr><td><code>pragmatic_obligation</code></td>
 <td>USAspending’s derived column (<code>generated_pragmatic_obligations</code>); equals the obligation except for loans, where it is the subsidy cost. Assistance only — contracts have no such column and the package fills it from the obligation. <strong>[measured]</strong>
 </td>
 </tr></tbody></table></div>
@@ -105,15 +108,15 @@
 </div>
 <div class="section level3">
 <h3 id="id_23-not-revenue-at-all--separate-columns">2.3 Not revenue at all — separate columns<a class="anchor" aria-label="anchor" href="#id_23-not-revenue-at-all--separate-columns"></a></h3>
-<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr class="header"><th>column</th>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>column</th>
 <th>why</th>
-</tr></thead><tbody><tr class="odd"><td><code>face_value_of_loan</code></td>
+</tr></thead><tbody><tr><td><code>face_value_of_loan</code></td>
 <td>a liability, not income</td>
-</tr><tr class="even"><td><code>original_loan_subsidy_cost</code></td>
+</tr><tr><td><code>original_loan_subsidy_cost</code></td>
 <td>the government’s expected loss, not a payment to the recipient</td>
-</tr><tr class="odd"><td><code>non_federal_funding_amount</code></td>
+</tr><tr><td><code>non_federal_funding_amount</code></td>
 <td>cost share from someone else</td>
-</tr><tr class="even"><td><code>total_outlayed_amount_for_overall_award</code></td>
+</tr><tr><td><code>total_outlayed_amount_for_overall_award</code></td>
 <td>award-lifetime, not annual — see below</td>
 </tr></tbody></table></div>
 <div class="section level3">
@@ -130,49 +133,49 @@
 <h3 id="id_25-what-the-ledger-actually-contains--measured">2.5 What the ledger actually contains — <strong>[measured]</strong>
 <a class="anchor" aria-label="anchor" href="#id_25-what-the-ledger-actually-contains--measured"></a></h3>
 <p>The pilot’s 302,025 prime transactions, by award type. The right-hand column is the rule; the dollar column is why the rule matters.</p>
-<table class="table"><colgroup><col width="20%"><col width="20%"><col width="20%"><col width="20%"><col width="20%"></colgroup><thead><tr class="header"><th>type</th>
+<table class="table"><colgroup><col width="20%"><col width="20%"><col width="20%"><col width="20%"><col width="20%"></colgroup><thead><tr><th>type</th>
 <th>rows</th>
 <th>dollars</th>
 <th>what it is</th>
 <th>treatment</th>
-</tr></thead><tbody><tr class="odd"><td>Project grants (04) + coop agreements (05)</td>
+</tr></thead><tbody><tr><td>Project grants (04) + coop agreements (05)</td>
 <td>212k</td>
 <td>$62.8bn</td>
 <td>the core</td>
 <td>revenue</td>
-</tr><tr class="even"><td>Contracts (A–D)</td>
+</tr><tr><td>Contracts (A–D)</td>
 <td>56.6k</td>
 <td>$76.4bn</td>
 <td>DO / definitive / PO / BPA call</td>
 <td>revenue</td>
-</tr><tr class="odd"><td>Direct payments (06, 10)</td>
+</tr><tr><td>Direct payments (06, 10)</td>
 <td>19.3k</td>
 <td>$3.0bn</td>
 <td>almost entirely Pell, work-study, SEOG — student aid moving <em>through</em> the institution</td>
 <td>separable by family; usually excluded — §5.6</td>
-</tr><tr class="even"><td>Direct loans (07)</td>
+</tr><tr><td>Direct loans (07)</td>
 <td>6.5k</td>
 <td>$0 obligated, <strong>$626bn face value</strong>
 </td>
 <td>100% Federal Direct Student Loans; the institution is a conduit</td>
 <td>face value never reaches revenue — §2.3, §5.6</td>
-</tr><tr class="odd"><td>Formula/block grants (03, 02)</td>
+</tr><tr><td>Formula/block grants (03, 02)</td>
 <td>2.1k</td>
 <td>$1.6bn</td>
 <td>mostly the government-affiliated orgs</td>
 <td>revenue</td>
-</tr><tr class="even"><td>Other/reimbursable (11)</td>
+</tr><tr><td>Other/reimbursable (11)</td>
 <td>1.2k</td>
 <td>$0.3bn</td>
 <td>DOE/DOD/USDA cooperative R&amp;D</td>
 <td>revenue-like</td>
-</tr><tr class="odd"><td>IDVs</td>
+</tr><tr><td>IDVs</td>
 <td>4.3k</td>
 <td>~$0.8bn obligated vs <strong>$115bn ceiling</strong>
 </td>
 <td>contract vehicles</td>
 <td>obligations only — §2.2</td>
-</tr><tr class="even"><td>Loan guarantees (08), insurance (09)</td>
+</tr><tr><td>Loan guarantees (08), insurance (09)</td>
 <td>0</td>
 <td>—</td>
 <td>absent from this sample</td>
@@ -219,20 +222,20 @@
 <h3 id="id_54-the-de-obligation-policy--measured">5.4 The de-obligation policy — <strong>[measured]</strong>
 <a class="anchor" aria-label="anchor" href="#id_54-the-de-obligation-policy--measured"></a></h3>
 <p>A claw-back recorded in 2024 against money obligated in 2021 can be booked two ways. Neither is wrong. The package implements both and refuses to choose silently.</p>
-<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>policy</th>
+<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr><th>policy</th>
 <th>books the reversal in</th>
 <th>character</th>
 <th>cost</th>
-</tr></thead><tbody><tr class="odd"><td>
+</tr></thead><tbody><tr><td>
 <strong><code>as_posted</code></strong> (default)</td>
 <td>the year it happened</td>
 <td>cash-basis-like; matches USAspending’s own presentation; each year reproducible from that year’s transactions</td>
 <td>a large reversal can drive a year negative</td>
-</tr><tr class="even"><td><code>restate</code></td>
+</tr><tr><td><code>restate</code></td>
 <td>the year(s) that carried the obligation being reversed, latest-first (LIFO within the award)</td>
 <td>accrual-like; cleaner picture of what a year’s awards were ultimately worth</td>
 <td>rewrites history — last year’s published figure changes when this year’s data arrives; transactions do not say what they reverse, so LIFO is the uniform matching rule</td>
-</tr><tr class="odd"><td><code>drop</code></td>
+</tr><tr><td><code>drop</code></td>
 <td>nowhere</td>
 <td>—</td>
 <td>overstates. Diagnostic only.</td>

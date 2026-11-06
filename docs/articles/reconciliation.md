@@ -1,6 +1,7 @@
 # Reconciliation: accounting identities
 
 ``` r
+
 library(usaspend)
 p <- us_panel(us_sample_extract())
 ```
@@ -136,6 +137,7 @@ correct, summed transactions return to that total.
 runs the identity per award and labels every exception:
 
 ``` r
+
 r <- us_reconcile(p)
 #> Reconciled 18 awards: 15 exact (83%).
 #> • ok=15 no_reported_total=2 break=1
@@ -238,6 +240,7 @@ makes the number possible: before the duplicate rule
 Checks needing no external reference:
 
 ``` r
+
 us_audit(p)
 #>                                                     check     value status
 #>                                                    <char>    <char> <char>

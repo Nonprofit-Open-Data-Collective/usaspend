@@ -1,6 +1,7 @@
 # How USAspending data is structured
 
 ``` r
+
 library(usaspend)
 ex <- us_sample_extract()
 p  <- us_panel(ex)
@@ -22,6 +23,7 @@ The award grain looks like the natural unit, but an award is a
 that life is paperwork:
 
 ``` r
+
 tx <- p$transactions
 tx[award_key == "ASST_NON_HDTRA12310001_097",
    .(modification_number, action_date, action_type_label,
@@ -96,6 +98,7 @@ The sample holds one CDC vehicle and four delivery orders placed under
 it:
 
 ``` r
+
 aw <- p$awards
 aw[award_key == "CONT_IDV_HHSD200200720032I_7523" |
      parent_award_id == "HHSD200200720032I",
@@ -178,6 +181,7 @@ the cautionary example — an indefinite-delivery vehicle with a
 modifications:
 
 ``` r
+
 tx[award_key == "CONT_IDV_HHSD200200720032I_7523",
    .(action_date, award_type_label, federal_action_obligation)][order(action_date)][1:4]
 #>    action_date award_type_label federal_action_obligation
