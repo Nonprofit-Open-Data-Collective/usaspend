@@ -449,7 +449,7 @@ both.
 ### 6.6 The endpoint that serves the outbound fetch — **\[measured\]**
 
 `POST /api/v2/search/spending_by_award/` with `subawards = true` and
-batched `award_ids`. Traps, all live in the pilot run:  
+batched `award_ids`. Traps, all live in the pilot run:\
 - **Mixed award-type families 422.** The *result* endpoint rejects an
 `award_type_codes` list spanning assistance and contracts — while the
 *count* endpoint accepts it, so an unhandled mix fails silently as “no

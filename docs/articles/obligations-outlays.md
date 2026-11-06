@@ -1,6 +1,7 @@
 # Obligations versus outlays: the two ledgers
 
 ``` r
+
 library(usaspend)
 library(data.table)
 ```
@@ -56,6 +57,7 @@ every row at file generation — there is no annual form — and it inherits
 every window problem at once:
 
 ``` r
+
 aw <- outlay_training$awards
 d <- aw[linked == TRUE & oblig > 0 & !is.na(pop_end_fy) & pop_end_fy <= 2025]
 d[, era := fifelse(first_fy >= 2022, "FY2022+", paste0("FY", first_fy))]
@@ -100,6 +102,7 @@ the period sum).
 attaches the result to a fiscal panel.
 
 ``` r
+
 p <- us_panel(extract, period = "fiscal")
 p <- us_add_outlays(p)
 p$panel[, .N, by = outlay_coverage]

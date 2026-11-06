@@ -5,6 +5,7 @@ Everything in this vignette runs offline, on the bundled sample extract
 `inst/extdata/sample/`.
 
 ``` r
+
 library(usaspend)
 ex <- us_sample_extract()
 p  <- us_panel(ex)
@@ -29,6 +30,7 @@ A `usaspend_panel` is a list of tables, not just the panel itself:
 | `meta` | — | period, measure, de-obligation policy, build time |
 
 ``` r
+
 names(p)
 #> [1] "panel"        "awards"       "transactions" "subawards"    "subawards_in"
 #> [6] "org_map"      "meta"
@@ -70,6 +72,7 @@ were not fetched, the panel says so rather than letting a zero pass for
 a measured zero:
 
 ``` r
+
 unique(p$panel$flags)
 #> [1] "subawards_out_not_fetched"
 p$meta$subawards_out_fetched
@@ -89,6 +92,7 @@ carries the gross components, because \$1M net from +\$5M and −\$4M is a
 different fact than \$1M from a single clean award:
 
 ``` r
+
 p$panel[obligation_negative < 0,
         .(award_key, year, obligation_positive, obligation_negative, obligation_net)]
 #>                                                    award_key  year obligation_positive
@@ -123,6 +127,7 @@ cannot sit on this organization’s award rows. It is aggregated per
 organization-year in `subawards_in`:
 
 ``` r
+
 p$subawards_in
 #>           org_id  year subaward_in_amount n_subawards_in
 #>           <char> <int>              <num>          <int>
@@ -142,6 +147,7 @@ The sample makes the stakes concrete: compare prime obligations with
 inbound subawards for the first organization —
 
 ``` r
+
 merge(
   p$panel[, .(prime_net = sum(obligation_net)), by = org_id],
   p$subawards_in[, .(inbound = sum(subaward_in_amount)), by = org_id],
@@ -168,6 +174,7 @@ collapses the panel to organization × year (optionally by an extra panel
 column):
 
 ``` r
+
 us_org_year(p)[1:5]
 #> Key: <org_id, year>
 #>          org_id  year n_awards n_transactions obligation_positive obligation_negative
@@ -194,6 +201,7 @@ is the general aggregator: each dimension is a toggle, and it folds the
 inbound table in so both directions of money end up in one row.
 
 ``` r
+
 us_rollup(p)                                 # one row per org, all years
 #> Key: <org_id>
 #>          org_id n_awards n_transactions obligation_positive obligation_negative
@@ -229,6 +237,7 @@ which are organization-level, are assigned to the organization’s
 dominant state):
 
 ``` r
+
 us_rollup(p, org_id = FALSE, state = TRUE)[, .(state, n_awards, obligation_net, total_net)]
 #> Key: <state>
 #>     state n_awards obligation_net total_net
@@ -248,6 +257,7 @@ the bundled CPI-U annual averages (or any `year`/`index` table you
 supply — only ratios are used, so the base year does not matter):
 
 ``` r
+
 tail(us_price_index(), 3)
 #>     year   index
 #>    <int>   <num>
@@ -272,6 +282,7 @@ cbind(trend[year %in% 2008:2010, .(year, nominal = obligation_net)],
 The adjustment records what it did:
 
 ``` r
+
 str(attr(trend25, "usaspend_inflation"))
 #> List of 4
 #>  $ target_year: int 2025
@@ -285,6 +296,7 @@ has already summed 2008 dollars with 2024 dollars has no `year` column
 left to deflate by, and the function refuses rather than guessing:
 
 ``` r
+
 us_adjust_inflation(us_rollup(p))   # collapsed across years -- refuses
 #> Error in `us_adjust_inflation()`:
 #> ! `x` has no year column.

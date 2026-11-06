@@ -37,5 +37,27 @@
 
 ### Disruption
 
+The method, then its application to every federal award held by a
+matched nonprofit. The three reports draw on pre-computed tables from
+the full nonprofit database, which is not shipped with the package.
+
 - [Detecting disruption in federal
   funding](https://nonprofit-open-data-collective.github.io/usaspend/articles/disruption.md):
+
+- [Nonprofit award disruption,
+  2025–26](https://nonprofit-open-data-collective.github.io/usaspend/articles/disruption-2025.md):
+
+  How many active federal awards to nonprofits were disrupted after 20
+  January 2025, measured against the same window two years earlier.
+
+- [Disruption on the
+  ledger](https://nonprofit-open-data-collective.github.io/usaspend/articles/disruption-ledger.md):
+
+  What happened administratively to the awards targeted after 20 January
+  2025: notices, schedule cuts and missing money, against a normal year.
+
+- [Obligation trends,
+  FY2026](https://nonprofit-open-data-collective.github.io/usaspend/articles/obligation-trends.md):
+
+  How far FY2026 obligations and new awards to nonprofits fall below
+  their FY2015-2024 trend, by funding agency, mission and region.

@@ -1,6 +1,7 @@
 # Choosing an acquisition path: API jobs or annual archives
 
 ``` r
+
 library(usaspend)
 ```
 
@@ -9,6 +10,7 @@ is the single entry point for acquisition, and it can fetch the same
 data two very different ways:
 
 ``` r
+
 # one organization -- the API path
 ex <- us_extract("CFFMYPABYAG3", years = 2015:2025)
 
@@ -65,6 +67,7 @@ whole-fiscal-year Award Data Archive files and filters them locally with
 duckdb:
 
 ``` r
+
 man <- us_archive_manifest(2008:2025) |> us_archive_download()
 tx  <- us_archive_filter(ueis, man$csv_dir[1], group = "assistance")
 ```
@@ -155,6 +158,7 @@ computes the comparison from the measured constants — it makes no
 network calls, so you can plan offline:
 
 ``` r
+
 # a batch of 40 organizations
 us_extract_plan(sprintf("DEMO%08d", 1:40), years = 2008:2025)
 #> Recommended path: api.
@@ -168,6 +172,7 @@ us_extract_plan(sprintf("DEMO%08d", 1:40), years = 2008:2025)
 ```
 
 ``` r
+
 # the same question at 5,000 organizations
 us_extract_plan(sprintf("DEMO%08d", 1:5000), years = 2008:2025)
 #> Recommended path: archive.
@@ -201,6 +206,7 @@ carry no subawards at all. Outbound subawards must be fetched per prime
 award:
 
 ``` r
+
 ex <- us_extract(ueis, years = 2008:2025, source = "archive", subawards = "out")
 ```
 

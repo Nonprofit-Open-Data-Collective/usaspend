@@ -14,6 +14,7 @@ ground truth. The whole pipeline is three calls: **retrieve**
 [`us_impute_eval()`](https://nonprofit-open-data-collective.github.io/usaspend/reference/us_impute_eval.md)).
 
 ``` r
+
 library(usaspend)
 library(data.table)
 ```
@@ -29,6 +30,7 @@ can trip a temporary host block, so large pulls are worth caching),
 linkage, and the two truth tiers.
 
 ``` r
+
 tx <- us_normalize_transactions(my_extract$transactions)
 tr <- us_outlay_training(tx)          # fetches File C for every candidate
 # or, with a cached pull:
@@ -38,6 +40,7 @@ tr <- us_outlay_training(tx, funding = my_cached_funding)
 This vignette works offline with the bundled set:
 
 ``` r
+
 tr <- outlay_training
 tr
 #> 
@@ -113,6 +116,7 @@ calls it again at prediction time, so anything you compute here is
 available on both sides.
 
 ``` r
+
 f <- us_outlay_features(us_normalize_transactions(vumc_transactions))
 f[, .N, by = .(dur_bin, late_start)][order(dur_bin, late_start)][1:8]
 #>    dur_bin late_start     N
@@ -142,6 +146,7 @@ awards) fall back to the duration curve.
 ## 3. Fit
 
 ``` r
+
 m <- us_impute_fit(tr, min_cell = 8)
 m
 #> 
@@ -158,6 +163,7 @@ on: the lag (mass at years 1–2) and the late-start shift (the `TRUE`
 curve barely spends in year 0):
 
 ``` r
+
 library(ggplot2)
 #> Warning: package 'ggplot2' was built under R version 4.4.3
 cc <- m$curves_cell[dur_bin == 4 & n >= m$min_cell]
@@ -182,6 +188,7 @@ metrics — `timing` (misallocation share, level normalized away) and
 `level_timing` (the method is charged for missing the cash level too).
 
 ``` r
+
 ev <- us_impute_eval(tr, folds = 5)
 ev$summary
 #>    metric       method  mean median dollar_weighted
@@ -213,6 +220,7 @@ A fitted model drops into the imputation functions anywhere the bundled
 one would be used:
 
 ``` r
+
 tx  <- us_normalize_transactions(us_sample_extract()$transactions)
 imp <- us_impute_outlays(tx, model = m)
 imp[, .(dollars = round(sum(outlay_imputed))), by = imputation_method]
@@ -223,6 +231,7 @@ imp[, .(dollars = round(sum(outlay_imputed))), by = imputation_method]
 ```
 
 ``` r
+
 saveRDS(m, "outlay-model-2026.rds")          # reuse across sessions
 p <- us_panel(my_extract, period = "fiscal")
 p <- us_add_imputed_outlays(p, model = m)
