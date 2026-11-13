@@ -175,5 +175,12 @@ articles:
   - imputation-fitting
 - title: Disruption
   navbar: Disruption
+  desc: >
+    The method, then its application to every federal award held by a
+    matched nonprofit. The three reports draw on pre-computed tables from
+    the full nonprofit database, which is not shipped with the package.
   contents:
   - disruption
+  - articles/disruption-2025
+  - articles/disruption-ledger
+  - articles/obligation-trends

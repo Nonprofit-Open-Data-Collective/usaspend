@@ -19,6 +19,7 @@ truth documented in `IMPUTATION.md`) and `outlay_model` (the default
 model fitted on it).
 
 ``` r
+
 library(usaspend)
 library(data.table)
 outlay_model
@@ -42,6 +43,7 @@ three measured regularities:
   cash levels, not at the obligation level.
 
 ``` r
+
 outlay_model$curves_dur[dur_bin == 4]
 #> Key: <dur_bin>
 #>    dur_bin     t        share     n
@@ -133,6 +135,7 @@ for, missing period-of-performance dates — fall back to the basic rule
 `imputation_method` says which rule produced each row.
 
 ``` r
+
 tx  <- us_normalize_transactions(us_sample_extract()$transactions)
 imp <- us_impute_outlays(tx)
 imp[, .(awards = uniqueN(award_key), dollars = round(sum(outlay_imputed))),
@@ -150,6 +153,7 @@ timing (for an in-progress award the identity holds over its full
 projected life, not the partial window observed so far):
 
 ``` r
+
 imp_r <- us_impute_outlays(tx, reconcile = TRUE)
 merge(imp_r[, .(imputed = round(sum(outlay_imputed))), by = award_key],
       us_outlay_features(tx)[, .(award_key, oblig = round(oblig))],
@@ -171,6 +175,7 @@ cash to but the panel has no activity row for — including *future* years
 of ongoing awards, which is the point.
 
 ``` r
+
 p <- us_panel(us_sample_extract(), period = "fiscal")
 #> Warning: No outbound subawards present -- pass-through cannot be netted out.
 #> ℹ Bulk downloads match on the subawardee. Use `us_fetch_subawards_out()` to fetch

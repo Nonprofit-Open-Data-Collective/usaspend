@@ -1,4 +1,4 @@
-pandoc: '3.2'
+pandoc: '3.10'
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
@@ -7,9 +7,12 @@ articles:
   award-types: award-types.html
   data-dictionary: data-dictionary.html
   data-model: data-model.html
+  articles/disruption-2025: disruption-2025.html
+  articles/disruption-ledger: disruption-ledger.html
   disruption: disruption.html
   imputation-fitting: imputation-fitting.html
   imputation: imputation.html
+  articles/obligation-trends: obligation-trends.html
   obligations-outlays: obligations-outlays.html
   org-map: org-map.html
   panel: panel.html
@@ -17,7 +20,7 @@ articles:
   structure: structure.html
   subawards: subawards.html
   usaspend: usaspend.html
-last_built: 2026-09-19T03:57Z
+last_built: 2026-11-06T04:00Z
 urls:
   reference: https://nonprofit-open-data-collective.github.io/usaspend/reference
   article: https://nonprofit-open-data-collective.github.io/usaspend/articles

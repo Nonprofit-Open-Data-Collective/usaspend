@@ -5,6 +5,7 @@ clean **organization × award × year** panel of net federal award
 activity from USAspending.gov. The whole path is three calls:
 
 ``` r
+
 library(usaspend)
 ex <- us_extract(c("CFFMYPABYAG3", "FG8QB99NF8K3"),   # your UEIs
                  years = 2008:2025, subawards = "both")
@@ -16,6 +17,7 @@ Everything below runs offline, on the bundled sample extract — a real
 three-UEI pull kept verbatim.
 
 ``` r
+
 library(usaspend)
 ex <- us_sample_extract()
 p  <- us_panel(ex)
@@ -29,6 +31,7 @@ written in modifications.** Here is a real award from the sample — eight
 actions across four calendar years, three of them zero-dollar:
 
 ``` r
+
 p$transactions[award_key == "ASST_NON_HDTRA12310001_097",
   .(modification_number, action_date, action_type_label,
     federal_action_obligation)][order(action_date)]
@@ -47,6 +50,7 @@ p$transactions[award_key == "ASST_NON_HDTRA12310001_097",
 The panel books each action’s dollars to the year it happened:
 
 ``` r
+
 p$panel[award_key == "ASST_NON_HDTRA12310001_097",
   .(year, n_transactions, obligation_net)]
 #>     year n_transactions obligation_net
@@ -61,6 +65,7 @@ to the award’s reported lifetime total, which USAspending computes in a
 different system than the transactions —
 
 ``` r
+
 sum(p$panel[award_key == "ASST_NON_HDTRA12310001_097"]$obligation_net)
 #> [1] 1300000
 p$awards[award_key == "ASST_NON_HDTRA12310001_097"]$award_total_obligated

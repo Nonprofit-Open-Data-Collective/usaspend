@@ -1,6 +1,7 @@
 # Accounting: from a raw ledger to net dollars per year
 
 ``` r
+
 library(usaspend)
 ex <- us_sample_extract()
 ```
@@ -14,6 +15,7 @@ specification lives in the repository’s `ACCOUNTING.md`.)
 ## 1. Clean the ledger — `us_normalize_transactions()`
 
 ``` r
+
 tx <- us_normalize_transactions(ex$transactions)
 #> Normalized 120 -> 120 transactions.
 #> • 0 duplicates, 0 deleted, 0 aggregate records
@@ -48,6 +50,7 @@ happened. The sample shows both mismatches at once — a `CONTINUATION`
 carrying \$0 and a `REVISION` carrying a claw-back:
 
 ``` r
+
 tx[award_key %in% c("ASST_NON_HDTRA12310001_097", "ASST_NON_D8732143_075") &
    action_type_label %in% c("Continuation", "Revision"),
    .(award_key, action_date, action_type_label, federal_action_obligation)][order(award_key, action_date)]
@@ -77,6 +80,7 @@ Every org-award-year carries `obligation_positive`,
 never carries the net alone:
 
 ``` r
+
 p <- us_panel(ex)
 #> Normalized 120 -> 120 transactions.
 #> • 0 duplicates, 0 deleted, 0 aggregate records
@@ -105,6 +109,7 @@ ways, and the package implements both rather than choosing silently:
 | `drop` | nowhere | diagnostic only — measures the overstatement; warns |
 
 ``` r
+
 lg <- us_ledger(tx)
 om <- us_org_map(ex$meta$uei)
 for (pol in c("as_posted", "restate")) {
@@ -173,6 +178,7 @@ data
 rebuilt into a full panel object:
 
 ``` r
+
 library(data.table)
 data(vumc_transactions); data(vumc_subawards)
 ueis <- unique(vumc_transactions$recipient_uei)
@@ -191,6 +197,7 @@ p <- us_panel(ex_v, org_map = data.frame(uei = ueis, org_id = "35-2528741"),
 ### 7.1 `panel` — org × award × year
 
 ``` r
+
 dim(p$panel)
 #> [1] 9290   30
 ```
@@ -231,6 +238,7 @@ One row per award, each attribute taken from the latest action that
 reports it (award-level fields are sparse across modifications).
 
 ``` r
+
 dim(p$awards)
 #> [1] 2166   33
 ```
@@ -292,6 +300,7 @@ for the full field dictionary) plus the normalization columns:
 ### 7.4 `subawards` — with direction
 
 ``` r
+
 p$subawards[, .(rows = .N,
                 dollars_m = round(sum(subaward_amount, na.rm = TRUE) / 1e6)),
             by = direction]
@@ -343,6 +352,7 @@ award rows.
 ### 7.6 `meta`
 
 ``` r
+
 str(p$meta)
 #> List of 6
 #>  $ period               : chr "calendar"
@@ -350,7 +360,7 @@ str(p$meta)
 #>  $ deobligation_policy  : chr "as_posted"
 #>  $ subawards_out_fetched: logi TRUE
 #>  $ n_orgs               : int 1
-#>  $ built_at             : POSIXct[1:1], format: "2026-09-18 20:57:28"
+#>  $ built_at             : POSIXct[1:1], format: "2026-11-05 21:02:15"
 ```
 
 ## 8. One organization end to end: Vanderbilt University Medical Center
@@ -362,6 +372,7 @@ claw-backs in every year, and both subaward directions at scale.
 ### 8.1 The raw ledger
 
 ``` r
+
 nrow(vumc_transactions)
 #> [1] 12085
 vumc_transactions[, .N,
@@ -381,6 +392,7 @@ arriving under every action-type label. On the subaward side (after
 normalization assigns direction):
 
 ``` r
+
 p$subawards[direction %in% c("in", "out"),
             .(rows = .N,
               dollars_m = round(sum(subaward_amount, na.rm = TRUE) / 1e6)),
@@ -412,6 +424,7 @@ lifetime total — the claw-back is part of the award’s true value, not
 noise:
 
 ``` r
+
 vumc_transactions[award_key == "ASST_NON_U54CA280915_075",
                   .(tx_sum = sum(federal_action_obligation),
                     reported = unique(award_total_obligated))]
@@ -449,6 +462,7 @@ such years get a zero-obligation placeholder row (`n_transactions = 0`)
 so the dollars have somewhere to land instead of being dropped:
 
 ``` r
+
 p$panel[n_transactions == 0, .N]                      # placeholder rows
 #> [1] 1630
 p$panel[n_transactions == 0 & subaward_out_amount > 0][
@@ -464,6 +478,7 @@ p$panel[n_transactions == 0 & subaward_out_amount > 0][
 ### 8.5 The normalized panel
 
 ``` r
+
 dim(p$panel)
 #> [1] 9290   30
 p$panel[, .(awards = uniqueN(award_key)), by = award_group]
@@ -477,6 +492,7 @@ p$panel[, .(awards = uniqueN(award_key)), by = award_group]
 agencies:
 
 ``` r
+
 p$panel[, .(awards = uniqueN(award_key),
             net_m = round(sum(obligation_net) / 1e6)),
         by = awarding_agency_name][order(-net_m)]

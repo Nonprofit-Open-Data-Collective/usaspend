@@ -1,6 +1,7 @@
 # Organizations, UEIs and the crosswalk
 
 ``` r
+
 library(usaspend)
 library(data.table)
 ```
@@ -32,6 +33,7 @@ With no crosswalk, each requested UEI is its own organization and its
 `org_id` is the UEI itself:
 
 ``` r
+
 ex <- us_sample_extract()
 us_org_map(ex$meta$uei)
 #>             uei       org_id
@@ -50,6 +52,7 @@ them to one `org_id` — an EIN, say. Every table downstream is then keyed
 on the organization:
 
 ``` r
+
 # for illustration only: treat two of the sample's UEIs as one organization
 om <- data.table(uei    = ex$meta$uei,
                  org_id = c("ORG-1", "ORG-1", "ORG-2"))
@@ -127,6 +130,7 @@ IRG’s UEI, with a requested UEI as the recorded parent — exactly what
 the API returns for a subsidiary.
 
 ``` r
+
 KEY <- "ASST_NON_HDTRA12310001_097"
 sim <- us_sample_extract()
 tx  <- sim$transactions
@@ -165,6 +169,7 @@ This is the default. The subsidiaries go into the crosswalk with
 `extracted = FALSE`, and when the extract finishes it tells you so:
 
 ``` r
+
 sim$org_map <- usaspend:::extract_crosswalk(sim)
 usaspend:::report_subsidiaries(sim$org_map)   # what us_extract() prints
 #> ! 1 subsidiary UEI of 1 requested organization was added to the crosswalk (`$org_map`),
@@ -182,6 +187,7 @@ usaspend:::report_subsidiaries(sim$org_map)   # what us_extract() prints
 Their transactions stay in the extract but are **out of sample**:
 
 ``` r
+
 p <- us_panel(sim)
 #> Normalized 120 -> 120 transactions.
 #> • 0 duplicates, 0 deleted, 0 aggregate records
@@ -210,6 +216,7 @@ does not report the gap as an unexplained break. It gives the award its
 own label, tested before any other:
 
 ``` r
+
 r <- us_reconcile(p)
 #> Reconciled 18 awards: 14 exact (78%).
 #> • ok=14 no_reported_total=2 break=1 out_of_sample=1
@@ -228,6 +235,7 @@ of gap).
 ### `subsidiaries = TRUE`: pulled in full, counted with the parent
 
 ``` r
+
 ex <- us_extract(uei, years = 2008:2025, subsidiaries = TRUE)
 
 # or, on an extract you already have, without repeating the main pull:
@@ -255,6 +263,7 @@ requested UEI it rolls up to. You do not need to list it in your
 crosswalk:
 
 ``` r
+
 # simulate the second pull: mark the subsidiary extracted
 full <- sim
 full$org_map <- copy(sim$org_map)[uei == "R29FEFR7P8H9", extracted := TRUE]
@@ -286,6 +295,7 @@ An explicit row in `org_map` overrides this, for instance to keep a
 subsidiary as an organization of its own:
 
 ``` r
+
 om2 <- rbind(om, data.table(uei = "R29FEFR7P8H9", org_id = "IRG"))
 unique(us_panel(full, org_map = om2)$panel[award_key == KEY, org_id])
 #> Normalized 120 -> 120 transactions.
@@ -309,6 +319,7 @@ For the second question, drop a subsidiary’s transactions filed under
 any parent outside the crosswalk before building the panel:
 
 ``` r
+
 sub_uei <- ex$org_map[relationship == "subsidiary" & extracted == TRUE, uei]
 tx <- ex$transactions
 pre <- tx$recipient_uei %in% sub_uei &
@@ -331,6 +342,7 @@ the parent would bring in its whole portfolio, which the request did not
 ask for. To see them:
 
 ``` r
+
 ex$transactions[recipient_uei %in% ex$meta$uei &
                   !is.na(recipient_parent_uei) &
                   recipient_parent_uei != recipient_uei &

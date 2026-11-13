@@ -41,6 +41,9 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Disruption</h6></li>
     <li><a class="dropdown-item" href="articles/disruption.html">Detecting disruption in federal funding</a></li>
+    <li><a class="dropdown-item" href="articles/disruption-2025.html">Nonprofit award disruption, 2025–26</a></li>
+    <li><a class="dropdown-item" href="articles/disruption-ledger.html">Disruption on the ledger</a></li>
+    <li><a class="dropdown-item" href="articles/obligation-trends.html">Obligation trends, FY2026</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
@@ -75,22 +78,22 @@
 </ul><hr><div class="section level2">
 <h2 id="id_1-what-the-package-produces">1. What the package produces<a class="anchor" aria-label="anchor" href="#id_1-what-the-package-produces"></a></h2>
 <p>Four canonical tables (<code><a href="reference/us_schema.html">us_schema()</a></code>), plus one derived org-level table:</p>
-<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr class="header"><th>table</th>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>table</th>
 <th>grain</th>
 <th>what it is</th>
-</tr></thead><tbody><tr class="odd"><td><code>transactions</code></td>
+</tr></thead><tbody><tr><td><code>transactions</code></td>
 <td>award action</td>
 <td>the cleaned ledger; the only grain that supports an annual panel</td>
-</tr><tr class="even"><td><code>awards</code></td>
+</tr><tr><td><code>awards</code></td>
 <td>prime award</td>
 <td>the spine — agency, type, CFDA/NAICS, period of performance, lifetime totals</td>
-</tr><tr class="odd"><td><code>subawards</code></td>
+</tr><tr><td><code>subawards</code></td>
 <td>FSRS report line</td>
 <td>pass-through, in both directions</td>
-</tr><tr class="even"><td><strong><code>panel</code></strong></td>
+</tr><tr><td><strong><code>panel</code></strong></td>
 <td><strong>org × award × year</strong></td>
 <td><strong>the deliverable</strong></td>
-</tr><tr class="odd"><td><code>subawards_in</code></td>
+</tr><tr><td><code>subawards_in</code></td>
 <td>org × year</td>
 <td>subaward revenue <em>received</em> – reported under other primes’ award keys, so it cannot sit on this organization’s award rows</td>
 </tr></tbody></table><p>The panel carries, per organization-award-year: the awarding agency and sub-agency, the award type category, gross positive and gross negative obligations and their net, dollars passed through as subawards, and <code>net_revenue = obligation_net − subaward_out_amount</code>.</p>
@@ -170,16 +173,16 @@
 <div class="section level3">
 <h3 id="choosing">Choosing<a class="anchor" aria-label="anchor" href="#choosing"></a></h3>
 <p><code><a href="reference/us_extract_plan.html">us_extract_plan()</a></code> computes the comparison from measured constants and recommends a path; <code>us_extract(source = "auto")</code> follows it.</p>
-<table class="table"><thead><tr class="header"><th>input</th>
+<table class="table"><thead><tr><th>input</th>
 <th>API path</th>
 <th>archive path</th>
-</tr></thead><tbody><tr class="odd"><td>1 org (3 UEIs), 18 FY</td>
+</tr></thead><tbody><tr><td>1 org (3 UEIs), 18 FY</td>
 <td>~1 min</td>
 <td>~4 hours</td>
-</tr><tr class="even"><td>1,364 UEIs, 18 FY</td>
+</tr><tr><td>1,364 UEIs, 18 FY</td>
 <td>~110 min</td>
 <td>~4 hours</td>
-</tr><tr class="odd"><td>126,784 UEIs, 18 FY</td>
+</tr><tr><td>126,784 UEIs, 18 FY</td>
 <td>~140 hours</td>
 <td>~4 hours</td>
 </tr></tbody></table><p>Crossover is around <strong>2,900 UEIs</strong> at 18 fiscal years. The top-1,000 sample (1,364 UEIs) sits below it, which is why <code>EXTRACT-PLAN.md</code> recommends the API for that run; extending to the full crosswalk flips the recommendation.</p>
@@ -191,23 +194,23 @@
 <ol style="list-style-type: decimal"><li><p><strong>Column names match exactly.</strong> All 32 mapped assistance columns and all 26 mapped contract columns are present in the archives. <code><a href="reference/us_archive_verify_schema.html">us_archive_verify_schema()</a></code> confirms this in one call.</p></li>
 <li>
 <p><strong>The row universes are identical, and vintage skew is measurably tiny.</strong> All four cells, archive vs same-window API slice:</p>
-<table class="table"><thead><tr class="header"><th>cell</th>
+<table class="table"><thead><tr><th>cell</th>
 <th>rows</th>
 <th>one-sided keys</th>
 <th>obligation diff</th>
-</tr></thead><tbody><tr class="odd"><td>FY2015 assistance</td>
+</tr></thead><tbody><tr><td>FY2015 assistance</td>
 <td>8,795 = 8,795</td>
 <td>0</td>
 <td>$0</td>
-</tr><tr class="even"><td>FY2015 contracts</td>
+</tr><tr><td>FY2015 contracts</td>
 <td>2,947 = 2,947</td>
 <td>0</td>
 <td>$0</td>
-</tr><tr class="odd"><td>FY2024 assistance</td>
+</tr><tr><td>FY2024 assistance</td>
 <td>17,225 vs 17,224</td>
 <td>1</td>
 <td>−$4,125.69</td>
-</tr><tr class="even"><td>FY2024 contracts</td>
+</tr><tr><td>FY2024 contracts</td>
 <td>2,487 = 2,487</td>
 <td>0</td>
 <td>$0</td>
@@ -243,41 +246,41 @@ POST /api/v2/search/spending_by_award/  subawards=true, award_ids=[&lt;=~500 ids
 <div class="section level2">
 <h2 id="id_5-normalization-and-accounting">5. Normalization and accounting<a class="anchor" aria-label="anchor" href="#id_5-normalization-and-accounting"></a></h2>
 <p>Specified in full in <code>ACCOUNTING.md</code>. <strong>All implemented and validated against the 50-nonprofit pilot</strong> (302,025 prime transactions, 39,243 subaward rows; pulled 2026-08-27). The full pipeline runs the pilot end-to-end in ~1 minute and yields 168,362 org × award × year rows netting to $118.5bn.</p>
-<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>function</th>
+<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr><th>function</th>
 <th>does</th>
 <th>spec</th>
 <th>pilot result</th>
-</tr></thead><tbody><tr class="odd"><td><code><a href="reference/us_normalize_transactions.html">us_normalize_transactions()</a></code></td>
+</tr></thead><tbody><tr><td><code><a href="reference/us_normalize_transactions.html">us_normalize_transactions()</a></code></td>
 <td>dedupe, corrections/deletes, aggregate records, anomaly flags</td>
 <td>§3</td>
 <td>20,828 exact duplicates removed (6.9%); 18,447 rows flagged</td>
-</tr><tr class="even"><td><code><a href="reference/us_normalize_awards.html">us_normalize_awards()</a></code></td>
+</tr><tr><td><code><a href="reference/us_normalize_awards.html">us_normalize_awards()</a></code></td>
 <td>award spine; latest-non-missing attributes; <code>n_recipients</code>
 </td>
 <td>§4</td>
 <td>61,738 awards; 130 legitimately span organizations</td>
-</tr><tr class="odd"><td><code><a href="reference/us_normalize_subawards.html">us_normalize_subawards()</a></code></td>
+</tr><tr><td><code><a href="reference/us_normalize_subawards.html">us_normalize_subawards()</a></code></td>
 <td>direction, dedupe restatements, year basis</td>
 <td>§6</td>
 <td>7,427 restatement duplicates removed; all rows inbound or internal</td>
-</tr><tr class="even"><td><code><a href="reference/us_ledger.html">us_ledger()</a></code></td>
+</tr><tr><td><code><a href="reference/us_ledger.html">us_ledger()</a></code></td>
 <td>signed ledger; loans excluded via zero obligations</td>
 <td>§5</td>
 <td>$626bn student-loan face value correctly kept out of revenue</td>
-</tr><tr class="odd"><td><code><a href="reference/us_net_by_year.html">us_net_by_year()</a></code></td>
+</tr><tr><td><code><a href="reference/us_net_by_year.html">us_net_by_year()</a></code></td>
 <td>the core aggregation; three de-obligation policies</td>
 <td>§5</td>
 <td>
 <code>restate</code> shifts &lt;1%/yr except at the data’s leading edge</td>
-</tr><tr class="even"><td><code><a href="reference/us_subaward_by_year.html">us_subaward_by_year()</a></code></td>
+</tr><tr><td><code><a href="reference/us_subaward_by_year.html">us_subaward_by_year()</a></code></td>
 <td>subaward flows by direction and year</td>
 <td>§6</td>
 <td>$13.97bn inbound revenue identified</td>
-</tr><tr class="odd"><td><code><a href="reference/us_panel.html">us_panel()</a></code></td>
+</tr><tr><td><code><a href="reference/us_panel.html">us_panel()</a></code></td>
 <td>assembly</td>
 <td>§7</td>
 <td>grain unique; gross/net split verified</td>
-</tr><tr class="even"><td>
+</tr><tr><td>
 <code><a href="reference/us_reconcile.html">us_reconcile()</a></code> / <code><a href="reference/us_audit.html">us_audit()</a></code>
 </td>
 <td>invariants and diagnostics</td>
