@@ -96,6 +96,68 @@ const sm = bs.find(r => r.size === "small"), md = bs.find(r => r.size === "mediu
 document.getElementById("size-text").innerHTML =
   `Large organizations hold ${fmt.p(100 * lg.active_2025 / C25.active, 0)} of active awards, and their broad disruption rate barely moved (${fmt.p(lg.pct_2023)} → ${fmt.p(lg.pct_2025)}). The change is proportionally largest for <b>small organizations</b>: terminations went from ${fmt.n(sm.terminated_2023)} to ${fmt.n(sm.terminated_2025)} awards (${fmt.x((sm.terminated_2025 / sm.active_2025) / (sm.terminated_2023 / sm.active_2023))} the rate), and any disruption from ${fmt.p(sm.pct_2023)} to ${fmt.p(sm.pct_2025)}. Small organizations also hold few awards, so a disruption is more often total: ${fmt.n(ox.small.orgs_all_awards_disrupted)} small organizations saw <em>every</em> active award disrupted, against ${fmt.n(ox.large.orgs_all_awards_disrupted)} large ones.`;
 
+{
+  /* Size chart 1: termination rate 2023 vs 2025, with the rate multiple as the headline number */
+  const sub = { small: "< $1M revenue", medium: "$1M–$10M", large: "≥ $10M" };
+  const cap = s => s[0].toUpperCase() + s.slice(1);
+  const rows = bs.map(r => {
+    const a = 100 * r.terminated_2023 / r.active_2023, b = 100 * r.terminated_2025 / r.active_2025;
+    return { r, a, b, m: b / a };
+  });
+  const mMax = Math.max(...rows.map(d => d.m));
+  {
+    const W = 860, rowH = 62, top = 22, H = top + rows.length * rowH + 26;
+    const x0 = 170, x1 = 660, mx = niceMax(Math.max(...rows.map(d => d.b))), sx = v => x0 + (x1 - x0) * v / mx;
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
+      "aria-label": "Termination rate by organization size, 2023 vs 2025: " + rows.map(d => `${d.r.size} ${fmt.p(d.a)} to ${fmt.p(d.b)}`).join("; ") });
+    for (let i = 0; i <= 5; i++) {
+      const v = mx * i / 5, x = sx(v);
+      el("line", { x1: x, x2: x, y1: 4, y2: H - 30, class: "grid" }, svg);
+      txt(svg, x, H - 10, fmt.p(v, 0), { "text-anchor": "middle", style: "font-size:14px" });
+    }
+    txt(svg, 790, 12, "rate increase", { "text-anchor": "middle", class: "tiny", style: "font-size:13px" });
+    rows.forEach((d, i) => {
+      const y = top + i * rowH;
+      txt(svg, x0 - 16, y + 18, cap(d.r.size), { "text-anchor": "end", class: "lab", style: "font-size:17px;font-weight:600" });
+      txt(svg, x0 - 16, y + 37, sub[d.r.size], { "text-anchor": "end", class: "tiny", style: "font-size:13px" });
+      el("path", { d: barPath(x0, y + 2, sx(d.a) - x0, 18), fill: "var(--base)" }, svg);
+      txt(svg, sx(d.a) + 6, y + 16, fmt.p(d.a), { style: "font-size:14px" });
+      el("path", { d: barPath(x0, y + 24, sx(d.b) - x0, 18), fill: "var(--s-term)" }, svg);
+      txt(svg, sx(d.b) + 6, y + 38, fmt.p(d.b), { class: "lab", style: "font-size:15px;font-weight:600" });
+      txt(svg, 790, y + 34, fmt.x(d.m), { "text-anchor": "middle",
+        style: `fill:var(--warn);font-size:30px;font-weight:700;opacity:${(0.45 + 0.55 * (d.m - 1) / (mMax - 1)).toFixed(2)}` });
+      const h = el("rect", { x: 0, y: y - 4, width: W, height: rowH - 8, class: "hit" }, svg);
+      hover(h, `<b>${cap(d.r.size)}</b> (${sub[d.r.size]})<br>2023: ${fmt.n(d.r.terminated_2023)} of ${fmt.n(d.r.active_2023)} terminated (${fmt.p(d.a)})<br>2025: ${fmt.n(d.r.terminated_2025)} of ${fmt.n(d.r.active_2025)} terminated (${fmt.p(d.b)})`);
+    });
+    el("line", { x1: x0, x2: x0, y1: 4, y2: H - 30, class: "axis" }, svg);
+    document.getElementById("c-size-term").appendChild(svg);
+  }
+  /* Size chart 2: among organizations with any disrupted award, the share that had every award disrupted */
+  {
+    const W = 860, rowH = 64, H = bs.length * rowH;
+    const x0 = 170, x1 = 700, bh = 34;
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
+      "aria-label": "Share of hit organizations with every award disrupted: " + bs.map(r => `${r.size} ${fmt.p(100 * ox[r.size].orgs_all_awards_disrupted / ox[r.size].orgs_any_disrupted, 0)}`).join("; ") });
+    bs.forEach((r, i) => {
+      const o = ox[r.size], k = o.orgs_all_awards_disrupted, n = o.orgs_any_disrupted, s = 100 * k / n;
+      const y = i * rowH + 8;
+      txt(svg, x0 - 16, y + 22, cap(r.size), { "text-anchor": "end", class: "lab", style: "font-size:17px;font-weight:600" });
+      el("rect", { x: x0, y, width: x1 - x0, height: bh, rx: 4, fill: "var(--s-term-lt)" }, svg);
+      el("rect", { x: x0, y, width: (x1 - x0) * s / 100, height: bh, rx: 4, fill: "var(--s-term)" }, svg);
+      txt(svg, x0 + 14, y + 23, fmt.p(s, 0), { style: "fill:#fff;font-size:20px;font-weight:700" });
+      txt(svg, x1 + 14, y + 15, fmt.n(k) + " orgs", { class: "lab", style: "font-size:16px;font-weight:600" });
+      txt(svg, x1 + 14, y + 32, "of " + fmt.n(n) + " hit", { class: "tiny", style: "font-size:13px" });
+      const h = el("rect", { x: 0, y: y - 6, width: W, height: bh + 12, class: "hit" }, svg);
+      hover(h, `<b>${cap(r.size)}</b> (${sub[r.size]})<br>${fmt.n(n)} of ${fmt.n(o.orgs_active)} organizations had ≥1 award disrupted<br>${fmt.n(k)} of them (${fmt.p(s, 0)}) had every active award disrupted`);
+    });
+    document.getElementById("c-size-all").appendChild(svg);
+  }
+  document.getElementById("c-size-term-t").textContent =
+    `Termination rates rose ${fmt.x(rows[0].m)} at small nonprofits and ${fmt.x(rows[rows.length - 1].m)} at large ones`;
+  document.getElementById("c-size-all-t").textContent =
+    `When a small nonprofit was hit, ${fmt.p(100 * ox.small.orgs_all_awards_disrupted / ox.small.orgs_any_disrupted, 0)} of the time it lost every award`;
+}
+
 table(document.getElementById("t-top"), [
   { h: "Organization", cls: "wrap", f: r => r.org || "–" },
   { h: "Agency", f: r => r.agency_orig },
