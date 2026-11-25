@@ -1,7 +1,6 @@
 # Award types: what is actually in the data
 
 ``` r
-
 library(usaspend)
 ```
 
@@ -10,7 +9,6 @@ whether its dollars are revenue, capacity, or someone else’s money. The
 package’s taxonomy:
 
 ``` r
-
 us_award_type_codes()
 #>  [1] "A"       "B"       "C"       "D"       "IDV_A"   "IDV_B"   "IDV_B_A" "IDV_B_B"
 #>  [9] "IDV_B_C" "IDV_C"   "IDV_D"   "IDV_E"   "02"      "03"      "04"      "05"     
@@ -61,7 +59,6 @@ delivery orders placed under it — which are separate awards with their
 own keys. The sample shows the pair:
 
 ``` r
-
 tx <- us_sample_extract()$transactions
 tx[grepl("HHSD200200720032I", award_key),
    .(rows = .N, obligated = sum(federal_action_obligation)),
@@ -99,7 +96,6 @@ why
 requires it:
 
 ``` r
-
 us_classify_action(c("B", "C"), award_group = "assistance")[, -1]
 #>    action_type_code action_type_label action_class
 #>              <char>            <char>       <char>

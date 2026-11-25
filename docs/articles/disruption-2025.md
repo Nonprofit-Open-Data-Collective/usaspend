@@ -79,6 +79,15 @@ its largest single year of federal obligations where the BMF figure is
 smaller, since federal awards are revenue: small \< \$1M, medium
 \$1M–\$10M, large ≥ \$10M.
 
+Share of active federal awards terminated, 2023 vs. 2025
+
+20232025
+
+Organizations with at least one disrupted award in 2025 (terminated,
+reduced or stalled), by whether *every* active award was disrupted
+
+Every award disruptedSome awards disrupted
+
 ## Largest disrupted awards by cash at stake
 
 ## What this measure misses

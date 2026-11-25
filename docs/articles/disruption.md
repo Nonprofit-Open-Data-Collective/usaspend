@@ -22,7 +22,6 @@ Everything below runs offline on `disruption_sample`, a bundled set of
 aggregates and case ledgers from a 1,000-nonprofit pull.
 
 ``` r
-
 library(usaspend)
 library(data.table)
 d <- disruption_sample
@@ -50,7 +49,6 @@ sample went from roughly zero a year to 84. De-obligated dollars did not
 follow:
 
 ``` r
-
 knitr::kable(d$signals[year >= 2021, .(year,
   term_code_actions = term_code, term_notice_actions = term_text,
   deobligated_M = round(deob_dollars / 1e6, 1),
@@ -72,7 +70,6 @@ not a policy signal.) The reason is visible in the terminated awards
 themselves:
 
 ``` r
-
 t <- d$terminations
 t[kind == "formal", .(
   awards = .N,
@@ -105,7 +102,6 @@ action), `pop_potential_end_date`, and the awarding office
 reads them and adds one logical column per signal:
 
 ``` r
-
 ex <- us_extract(my_ueis, years = 2016:2026)
 tx <- us_normalize_transactions(ex$transactions, requested_uei = my_ueis)
 f  <- us_disruption_flags(tx)
@@ -143,7 +139,6 @@ claw-backs) by the agency that originated each award, over the same
 October–August window of each fiscal year:
 
 ``` r
-
 tr <- d$trend_fy[agency %in% c("HHS", "USAID", "DoD", "Education", "EPA", "USDA")]
 tr[, agency := factor(agency, c("HHS", "USAID", "DoD", "Education", "EPA", "USDA"))]
 ggplot(tr, aes(fy, gross_obligations / 1e6)) +
@@ -164,7 +159,6 @@ ggplot(tr, aes(fy, gross_obligations / 1e6)) +
 ![](disruption_files/figure-html/trend-plot-1.png)
 
 ``` r
-
 tot <- d$trend_fy[, .(gross_M = round(sum(gross_obligations) / 1e6)), by = fy]
 tot[, change_vs_FY2024 := sprintf("%+.0f%%", 100 * (gross_M / gross_M[fy == 2024] - 1))]
 tot
@@ -196,7 +190,6 @@ FY2026.
 Monthly, with the inauguration marked:
 
 ``` r
-
 m <- d$trend_month[month >= as.Date("2021-10-01")]
 m[, roll12 := frollmean(gross_obligations, 12)]
 ggplot(m, aes(month)) +
@@ -231,7 +224,6 @@ and in assistance “adjustment to completed award” actions: awards being
 finished off ahead of schedule.
 
 ``` r
-
 d$signals[year >= 2021, .(year, term_code, term_text, end_cut,
                           end_cut_with_no_money = end_cut_no_deob,
                           closeout, rescinded)]
@@ -250,7 +242,6 @@ the first months and then stopped; quiet truncations continued at a
 steady rate through 2026:
 
 ``` r
-
 tm <- t[, .N, by = .(month = as.Date(format(t_date, "%Y-%m-01")), kind)]
 ggplot(tm, aes(month, N, fill = kind)) +
   geom_col(position = position_dodge2(preserve = "single", padding = 0.15), width = 25) +
@@ -268,7 +259,6 @@ ggplot(tm, aes(month, N, fill = kind)) +
 What happened to the money afterwards:
 
 ``` r
-
 dcast(t, kind ~ status, fun.aggregate = length)
 #> Key: <kind>
 #>                kind de-obligated new money since rescinded still obligated
@@ -288,7 +278,6 @@ t[, .(awards = .N, obligated_before_M = round(sum(obligated_before) / 1e6, 1),
 after the reference date; add awards whose schedule was cut without one.
 
 ``` r
-
 T0 <- as.Date("2025-01-20")
 formal <- f[action_date >= T0 & (dsr_term_code | dsr_term_text),
             .(t_date = min(action_date), kind = "formal"), by = award_key]
@@ -304,7 +293,6 @@ single zero-dollar action — and no further record. At the end of the
 data the award’s full obligation still stands.
 
 ``` r
-
 show_case <- function(k, from = "1900-01-01") {
   x <- d$cases[case == k & action_date >= as.Date(from), .(action_date, mod = modification_number,
                             type = action_type_label,
@@ -338,7 +326,6 @@ the ceiling by \$33.6M. A detector keyed on de-obligations would date
 this termination to July.
 
 ``` r
-
 show_case("termination_deob", from = "2024-01-01")
 ```
 
@@ -360,7 +347,6 @@ rare but must be tracked: the termination did not stick, the reduction
 did.
 
 ``` r
-
 show_case("termination_rescinded", from = "2024-12-01")
 ```
 
@@ -394,7 +380,6 @@ the de-obligation, but most reductions are recorded some other way.
   is visible only as a drop in the rate.
 
 ``` r
-
 d$signals[year >= 2021, .(year, early_deob, early_deob_M = round(early_deob_dollars / 1e6, 1),
                           ceiling_cut, ceiling_cut_M = round(ceiling_cut_dollars / 1e6, 1),
                           end_cut)]
@@ -429,7 +414,6 @@ obligated under it, so no de-obligation was possible. The description
 cites an executive-order code.
 
 ``` r
-
 show_case("ceiling_cut")
 ```
 
@@ -448,7 +432,6 @@ day. No termination language, no de-obligation: in the obligation ledger
 this award still reads as \$95M committed.
 
 ``` r
-
 show_case("quiet_truncation")
 ```
 
@@ -470,7 +453,6 @@ rise, *fell* — agencies were not extending the awards they were slowing
 down.
 
 ``` r
-
 d$signals[year >= 2021, .(year, admin, zero_dollar, extension, stop_work)]
 #>     year admin zero_dollar extension stop_work
 #>    <int> <int>       <int>     <int>     <int>
@@ -488,7 +470,6 @@ action of an award with more than 400 days left to run, and ask whether
 the next funding action arrived on time:
 
 ``` r
-
 cn <- d$continuations[, .(N = sum(N)), by = .(due_year, outcome)]
 cn <- dcast(cn, due_year ~ outcome, value.var = "N", fill = 0)
 cn[, share_not_on_time := round(1 - `on time` / (`on time` + `30-120 days late` +
@@ -528,7 +509,6 @@ quarter, take the awards whose schedule — as known at the start of the
 quarter — covers the whole quarter, and count those with no outlay:
 
 ``` r
-
 oq <- d$outlay_quarters[fy * 10 + fq < d$meta$outlay_last_quarter[["fy"]] * 10 +
                                           d$meta$outlay_last_quarter[["fq"]]]
 all_q <- oq[, .(active = sum(active), no_cash_share = round(sum(no_cash) / sum(active), 3)),
@@ -554,7 +534,6 @@ all_q
 ```
 
 ``` r
-
 oa <- oq[agency %in% c("HHS", "USAID", "EPA", "Education"),
          .(share = sum(no_cash) / sum(active), active = sum(active)), by = .(agency, fy, fq)]
 oa[, q := fy + (fq - 1) / 4]
@@ -589,7 +568,6 @@ June moved the end date out a year. The award was neither terminated nor
 reduced — its money was delayed, and the schedule absorbed it.
 
 ``` r
-
 show_case("missed_continuation")
 ```
 
@@ -621,7 +599,6 @@ later the same organization received a new award for the same survey,
 from a different HHS sub-agency, at about a third of the old ceiling.
 
 ``` r
-
 show_case("reaward_old", from = "2024-12-01")
 ```
 
@@ -632,7 +609,6 @@ show_case("reaward_old", from = "2024-12-01")
 | 2025-06-27 | P00012 | Other Administrative Action | 0 | 0 | 2025-04-28 | EOI::IMPLEMENTING THE PRESIDENT’S DOGE COST EFFICIENCY INITIATIVE::EOI NOTICE OF TERMINATI |
 
 ``` r
-
 show_case("reaward_new")
 ```
 
@@ -649,7 +625,6 @@ similarity, same office, same program code, and whether the new award’s
 text cites the old award id:
 
 ``` r
-
 t[, .N, by = link][order(-N)]
 #>        link     N
 #>      <char> <int>
@@ -683,7 +658,6 @@ reconciliation breaks in the original holder’s panel
 ([`vignette("reconciliation")`](https://nonprofit-open-data-collective.github.io/usaspend/articles/reconciliation.md)):
 
 ``` r
-
 knitr::kable(d$pi_transfers[, .(award_key, reported_total, in_sample_total,
                                 other_recipients = substr(other_recipients, 1, 70))],
              format.args = list(big.mark = ","))
@@ -703,7 +677,6 @@ A novation keeps the contract and replaces the contractor — for example
 after an acquisition. It is one action with its own code:
 
 ``` r
-
 show_case("novation")
 ```
 
@@ -724,7 +697,6 @@ agency was wound down in 2025. The sample holds 366 USAID awards, 58 of
 them still scheduled to run on 20 January 2025:
 
 ``` r
-
 d$usaid[c("awards", "active_at_T0", "with_action_since_T0", "terminated",
           "terminated_deobligated", "moved_to_state")]
 #> $awards
@@ -765,7 +737,6 @@ Two records show the mechanics. An energy contract vehicle (an IDIQ) and
 one of its task orders, both held by the same organization:
 
 ``` r
-
 show_case("usaid_idv", from = "2024-11-01")
 ```
 
@@ -778,7 +749,6 @@ show_case("usaid_idv", from = "2024-11-01")
 | 2026-02-09 | P00015 | Other Administrative Action | 0 | 7e+08 | NA | ADMINISTRATIVE UPDATE FAR CLAUSES REFERENCED |
 
 ``` r
-
 knitr::kable(d$cases[case == "usaid_task_order" & action_date >= "2025-10-01",
   .(action_date, mod = modification_number, type = action_type_label,
     obligation = round(federal_action_obligation), awarding_agency_name,
@@ -852,7 +822,6 @@ Counts of each action type over February–August, with the 2025 rate
 relative to the 2023–2024 average:
 
 ``` r
-
 at <- copy(d$action_types)
 at[, ratio_2025 := round(`2025` / pmax((`2023` + `2024`) / 2, 1), 2)]
 knitr::kable(at[order(award_group, -ratio_2025)])

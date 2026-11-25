@@ -1,17 +1,64 @@
 url: https://nonprofit-open-data-collective.github.io/usaspend/
+destination: docs
 
 template:
-  bootstrap: 5
-  bslib:
-    primary: "#1a5276"
+  package: pkgstyle
 
 home:
   title: "usaspend: Normalized Federal Award Panels from USAspending"
 
 navbar:
   structure:
-    left: [intro, reference, articles]
-    right: [search, github]
+    left: [intro, data, pipeline, outlays, disruption, reference]
+  components:
+    data:
+      text: The data
+      menu:
+      - text: How USAspending data is structured
+        href: articles/data-model.html
+      - text: "Data dictionary: tables, keys, and relationships"
+        href: articles/data-dictionary.html
+      - text: Award types
+        href: articles/award-types.html
+      - text: Subawards
+        href: articles/subawards.html
+      - text: Obligations versus outlays
+        href: articles/obligations-outlays.html
+    pipeline:
+      text: The pipeline
+      menu:
+      - text: Package architecture
+        href: articles/structure.html
+      - text: Choosing an acquisition path
+        href: articles/acquisition.html
+      - text: Organizations, UEIs and the crosswalk
+        href: articles/org-map.html
+      - text: "Accounting: from a raw ledger to net dollars"
+        href: articles/accounting.html
+      - text: "The panel: reading, rolling up, deflating"
+        href: articles/panel.html
+      - text: "Reconciliation: accounting identities"
+        href: articles/reconciliation.html
+    outlays:
+      text: Outlays
+      menu:
+      - text: Imputing outlays
+        href: articles/imputation.html
+      - text: Fitting an outlay-imputation model
+        href: articles/imputation-fitting.html
+    disruption:
+      text: Disruption
+      menu:
+      - text: Detecting disruption in federal funding
+        href: articles/disruption.html
+      - text: -------
+      - text: Reports
+      - text: Nonprofit award disruption, 2025–26
+        href: articles/disruption-2025.html
+      - text: Disruption on the ledger
+        href: articles/disruption-ledger.html
+      - text: Obligation trends, FY2026
+        href: articles/obligation-trends.html
 
 reference:
 - title: The pipeline

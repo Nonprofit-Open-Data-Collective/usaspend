@@ -48,3 +48,6 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 debug.log
+
+# Paper drafts (local only)
+/paper/

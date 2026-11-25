@@ -1,7 +1,6 @@
 # Subawards: pass-through, direction, and what FSRS cannot see
 
 ``` r
-
 library(usaspend)
 ex <- us_sample_extract()
 ```
@@ -27,7 +26,6 @@ Its largest inbound subaward is FEMA disaster money reaching Kaiser
 state agency that is the prime grantee:
 
 ``` r
-
 om <- us_org_map(ex$meta$uei)
 sb <- us_normalize_subawards(ex$subawards, org_uei = om$uei)
 #> Normalized 32 -> 32 subaward rows (0 duplicates removed).
@@ -53,7 +51,6 @@ split 29,319 inbound, 2,497 internal (both sides pilot orgs — NYU → NYU
 School of Medicine and the like), and **zero outbound**.
 
 ``` r
-
 sb[, .N, by = direction]
 #>    direction     N
 #>       <char> <int>

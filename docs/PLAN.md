@@ -129,7 +129,6 @@ not by convention.
 ### Path A — REST API, for one organization or a small batch
 
 ``` r
-
 ex <- us_extract("CFFMYPABYAG3", years = 2015:2025)
 ```
 
@@ -181,7 +180,6 @@ Constraints, all measured:
 ### Path B — annual Award Data Archive, for large batches
 
 ``` r
-
 man <- us_archive_manifest(2008:2025) |> us_archive_download()
 tx  <- us_archive_filter(ueis, man$csv_dir[1], group = "assistance")
 ```
