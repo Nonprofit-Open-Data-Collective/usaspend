@@ -31,7 +31,6 @@ and each expands into the calls below. Solid arrows are data flow; the
 dashed arrow is a recommendation.
 
 ``` mermaid
-
 flowchart TD
     plan["us_extract_plan()"] -. "recommends a path" .-> extract
     extract["us_extract()"]
@@ -79,7 +78,6 @@ In practice you call the top and the bottom of the diagram;
 runs its interior for you:
 
 ``` r
-
 ex <- us_extract(ueis, years = 2008:2025, subawards = "out")
 p  <- us_panel(ex)
 us_reconcile(p)

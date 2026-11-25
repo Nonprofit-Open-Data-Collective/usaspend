@@ -100,7 +100,7 @@ str(us_empty("transactions"))
 #>  $ award_id                  : chr 
 #>  $ award_id_uri              : chr 
 #>  $ modification_number       : chr 
-#>  $ action_date               : 'Date' num(0) 
+#>  $ action_date               : 'Date' num 
 #>  $ action_year               : int 
 #>  $ action_fiscal_year        : int 
 #>  $ action_type_code          : chr 
@@ -133,10 +133,10 @@ str(us_empty("transactions"))
 #>  $ cfda_title                : chr 
 #>  $ naics_code                : chr 
 #>  $ psc_code                  : chr 
-#>  $ pop_start_date            : 'Date' num(0) 
-#>  $ pop_end_date              : 'Date' num(0) 
-#>  $ pop_potential_end_date    : 'Date' num(0) 
-#>  $ last_modified_date        : 'Date' num(0) 
+#>  $ pop_start_date            : 'Date' num 
+#>  $ pop_end_date              : 'Date' num 
+#>  $ pop_potential_end_date    : 'Date' num 
+#>  $ last_modified_date        : 'Date' num 
 #>  $ source_file               : chr 
 #>  - attr(*, ".internal.selfref")=<externalptr> 
 ```

@@ -21,7 +21,6 @@ awarding agency, the award type, the net dollars obligated in that year,
 and the dollars passed through as subawards.
 
 ``` r
-
 # one organization
 ex <- us_extract("CFFMYPABYAG3", years = 2015:2025, subawards = "both")
 
@@ -85,7 +84,6 @@ so nothing downstream knows or cares which was used.
 ## Install
 
 ``` r
-
 # install.packages("remotes")
 remotes::install_github("Nonprofit-Open-Data-Collective/usaspend")
 ```
